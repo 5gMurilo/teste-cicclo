@@ -1,0 +1,9 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "dev": { "cache": false },
+    "build": { "cache": false },
+    "lint": { "cache": false },
+    "test": { "cache": false }
+  }
+}
