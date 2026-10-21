@@ -467,7 +467,7 @@ Nenhuma tarefa desta fase começa antes de CP1. Cada comando abaixo requer seu p
 **Reuses**: client/detailQuery/status; estender seletor de ação existente e integrar CTA mínimo ao detalhe.
 **Requirement**: QUEUE-01, QUEUE-02, QUEUE-05, UX-01.
 **What**: Implementar o único endpoint activate, mutation sem retry/pausa e disponibilidade pelo status/capacidade.
-**Done when**: [ ] Só pending_activation oferece CTA; resultado é consultado/invalida detalhe/lista; queued explica pago; 409 faz refetch; ausência de suporte oculta ação.
+**Done when**: [~] Só pending_activation oferece CTA; resultado é consultado/invalida detalhe/lista; queued explica pago; 409 faz refetch; ausência de suporte oculta ação.
 **Tests**: integration — teto de 5 casos: sem capacidade, pending_activation, resposta queued/oferta, estado indevido sem POST, 409 e ação pending não duplicada.
 **Gate**: CP1 + F + CC.
 **Commit**: `feat(bookings): activate paid pending service items`
@@ -711,7 +711,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **30/37 tarefas com Done when marcado**; T31-T37 (P1) em execução, cada capacidade só liga depois de provada na API real (CP1).
+- Implementação: **30/37 tarefas com Done when marcado** (última: T31); demais abertas ou pendentes de gate externo.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1, C2 e C3 provados contra a API real em 2026-10-21; N1 aprovado pelo usuário no iOS em relato global (AD-006); CP1 (P1) não comprovado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.

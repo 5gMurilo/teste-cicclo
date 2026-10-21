@@ -61,11 +61,10 @@
 ## Handoff
 
 - **Feature**: `.specs/features/cicclo-mobile/spec.md`.
-- **Phase / Task**: P0 implementado (T1 a T30) e verificado pelo Verifier independente no que é verificável localmente e pelo teste ao vivo. C1, C2 e C3 provados contra a API real em 2026-10-21; N1 aprovado pelo usuário no iOS (AD-006) apenas em relato global ("Validado o iOS"), sem registro por cenário, aparelho, versão ou leitor de tela (`apps/mobile/docs/native-validation.md`); por isso T29 fica `[~]`. Android não ensaiado.
-- **Completed**: 30/37 com Done when `[x]` (T1 a T30); P1 iniciado. Gate B: 32 suítes, 262 testes, typecheck, lint e export verdes (o export exige `EXPO_PUBLIC_API_URL` apenas para as leituras em runtime, não para exportar).
-- **Verifier**: PASS na rodada 4 sobre `cb9adcd`. Depois disso entraram 4 commits de correções de uso no iOS (log de desenvolvimento, mensagem de configuração ausente, `anchor`, README) e o registro do N1; a verificação delta desses commits apontou 2 itens (registro do N1 além do relato; guardas do log sem teste), corrigidos no commit seguinte; falta a reverificação.
-- **Pendente**: verificação delta final do Verifier; Android (opcional); ícones das abas (cosmético, exige `@expo/vector-icons`); compra de duas ou mais unidades e preferência aceita ao vivo (exige restaurar a demo); retenção da chave após horas. P1 (T31 a T37) só depois de CP1 e de decisão do usuário.
-- **Next step**: concluir a verificação delta; depois, decidir com o usuário se segue para P1 e quais endpoints de ciclo de vida já estão prontos na API.
+- **Phase / Task**: Execute inline e sequencial. Última tarefa fechada: T31.
+- **Completed**: P0 fechado e verificado; ícones das abas feitos (f9a92bc). T31 implementada: itemCommand.ts (base dos comandos, um por vez, sem retry, invalida bookings) e activateItem.ts; ação Ativar no detalhe só com capabilities.itemCommands.activate; ligada só depois da prova CP1 na API real (30/37 com Done when marcado).
+- **In-progress**: Nenhuma.
+- **Next step**: T32 (OfferCountdown a partir do expiresAt do servidor). A prova ao vivo dos quatro comandos acontece depois de T37 e liga os sinalizadores de capacidade.
 - **Blockers**: nenhum para P0. `dotnet` fora do PATH da sessão do agente (workspace e testes de bootstrap que compilam a API falham por isso; não é do mobile).
-- **Branches**: cadeia linear E0 a E5 (`chore/mobile-05-p0-readiness` é a atual); `mobile-worktree` integrada por fast-forward. Nada foi enviado ao remoto.
-- **Uncommitted files**: nenhum.
+- **Branches** (atual: `feat/mobile-06-service-lifecycle`): chore/mobile-00-baseline 08e6c7d; chore/mobile-05-p0-readiness 1a4ff65; feat/mobile-01-catalog-wallet 6bd529c; feat/mobile-02-selection-review 0a34316; feat/mobile-03-safe-booking 9674db3; feat/mobile-04-booking-tracking ad3d9a8; feat/mobile-06-service-lifecycle f9a92bc; mobile-worktree f3ac3ca.
+- **Uncommitted files**: `.omc/` e `apps/mobile/.omc/` (estado de ferramenta, não versionar).

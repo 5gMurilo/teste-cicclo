@@ -8,6 +8,7 @@ import { CONFIG_ERROR_MESSAGE, isConfigError } from '../../shared/config/env';
 import { formatBRL } from '../../shared/lib/money';
 import { colors, spacing } from '../../shared/theme/tokens';
 import { bookingDetailOptions, isBookingId } from './detailQuery';
+import { ItemActions } from './ItemActions';
 import type { BookingItem } from './schema';
 import { statusLabel } from './status';
 
@@ -52,7 +53,7 @@ export function BookingDetailsScreen({ bookingId }: { bookingId: string | undefi
           <Text style={styles.error}>Não foi possível atualizar. Os dados abaixo podem estar desatualizados.</Text>
         ) : null}
         {booking.items.map((item) => (
-          <ItemRow key={item.itemId} item={item} />
+          <ItemRow key={item.itemId} bookingId={booking.bookingId} item={item} />
         ))}
         <Text style={styles.note}>As máquinas são simuladas.</Text>
       </ScrollView>
@@ -67,15 +68,17 @@ export function BookingDetailsScreen({ bookingId }: { bookingId: string | undefi
   );
 }
 
-function ItemRow({ item }: { item: BookingItem }) {
+function ItemRow({ bookingId, item }: { bookingId: string; item: BookingItem }) {
   return (
-    <View
-      style={styles.item}
-      accessible
-      accessibilityLabel={`${item.serviceCode}, ${formatBRL(item.unitPriceCents)}, ${statusLabel(item.status)}`}
-    >
+    <View style={styles.item}>
+      <View
+        style={styles.itemInfo}
+        accessible
+        accessibilityLabel={`${item.serviceCode}, ${formatBRL(item.unitPriceCents)}, ${statusLabel(item.status)}`}
+      >
       <Text style={styles.name}>{`${item.serviceCode} · ${formatBRL(item.unitPriceCents)}`}</Text>
       <Text style={styles.detail}>{statusLabel(item.status)}</Text>
+      {item.status === 'queued' ? <Text style={styles.detail}>Já pago: o valor foi cobrado na contratação.</Text> : null}
       {item.status === 'queued' && item.queuePosition !== null ? (
         <Text style={styles.detail}>{`Posição na fila: ${item.queuePosition}`}</Text>
       ) : null}
@@ -85,6 +88,8 @@ function ItemRow({ item }: { item: BookingItem }) {
       {item.machineId !== null && (item.status === 'to_be_confirmed' || item.status === 'in_progress') ? (
         <Text style={styles.detail}>{`Máquina simulada ${shortId(item.machineId)}`}</Text>
       ) : null}
+      </View>
+      <ItemActions bookingId={bookingId} item={item} />
     </View>
   );
 }
@@ -114,7 +119,8 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, padding: spacing.md },
   footer: { padding: spacing.md, borderTopColor: colors.border, borderTopWidth: 1 },
   title: { fontSize: 22, fontWeight: '600', color: colors.text },
-  item: { gap: spacing.xs, padding: spacing.md, borderColor: colors.border, borderWidth: 1, borderRadius: 8 },
+  item: { gap: spacing.sm, padding: spacing.md, borderColor: colors.border, borderWidth: 1, borderRadius: 8 },
+  itemInfo: { gap: spacing.xs },
   name: { fontSize: 16, fontWeight: '600', color: colors.text },
   detail: { fontSize: 14, color: colors.text },
   note: { fontSize: 14, color: colors.textMuted },
