@@ -35,6 +35,9 @@ public static class OfferPolicy
 
     public static DateTime ExpiresAt(DateTime offeredAt, TimeSpan timeout) => offeredAt + timeout;
 
+    /// <summary>Prazo estrito: a oferta só vale com now &lt; expiresAt, então now == expiresAt já venceu.</summary>
+    public static bool IsExpired(DateTime expiresAt, DateTime now) => now >= expiresAt;
+
     /// <summary>
     /// Confirmação da oferta corrente no instante da decisão: em execução é repetição sem efeito; fora de
     /// to_be_confirmed, ou com vínculo item↔máquina divergente (máquina não reservada para o item), é inválida; a
@@ -47,7 +50,7 @@ public static class OfferPolicy
           || machine.MachineId != item.MachineId
           || machine.State != MachineState.Reserved
           || machine.ActiveItemId != item.ItemId ? OfferCheck.Invalid
-        : now >= item.ExpiresAt ? OfferCheck.Expired
+        : IsExpired(item.ExpiresAt!.Value, now) ? OfferCheck.Expired
         : OfferCheck.Confirmable;
 
     /// <summary>

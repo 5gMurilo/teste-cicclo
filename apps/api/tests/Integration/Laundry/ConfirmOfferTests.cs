@@ -273,7 +273,7 @@ public sealed class ConfirmOfferTests(PostgresFixture postgres)
     }
 
     private static ConfirmOfferUseCase UseCase(TestDatabase database, TimeProvider clock) =>
-        new(Sessions(database, ConfirmApp), clock, NullLogger<ConfirmOfferUseCase>.Instance);
+        new(Sessions(database, ConfirmApp), Coordinator(clock), Metrics(), clock, NullLogger<ConfirmOfferUseCase>.Instance);
 
     /// <summary>Item pendente ativado numa máquina livre no instante atual do relógio: oferta corrente de 60 s.</summary>
     private static async Task<(Guid BookingId, Guid ItemId)> OfferedAsync(TestDatabase database, FakeTimeProvider clock, string code = "wash")

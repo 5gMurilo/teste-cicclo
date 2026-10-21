@@ -33,6 +33,12 @@ public interface IQueueSession
     /// <summary>pending_activation → queued com ticket e queued_at.</summary>
     Task EnqueueAsync(Guid itemId, long ticket, DateTime queuedAt, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Oferta vencida: máquina reserved do item → available, e item to_be_confirmed → queued com ticket e queued_at novos,
+    /// sem máquina nem tempos da oferta antiga.
+    /// </summary>
+    Task RequeueExpiredAsync(Guid itemId, Guid machineId, long ticket, DateTime requeuedAt, CancellationToken cancellationToken);
+
     /// <summary>queued → to_be_confirmed na máquina, e máquina available → reserved apontando o item.</summary>
     Task OfferAsync(Guid itemId, Guid machineId, DateTime offeredAt, DateTime expiresAt, CancellationToken cancellationToken);
 }

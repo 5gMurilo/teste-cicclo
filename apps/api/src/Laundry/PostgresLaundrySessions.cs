@@ -97,6 +97,27 @@ public sealed class PostgresLaundrySessions(IDbContextFactory<CiccloDbContext> c
                     cancellationToken),
                 "item pendente para enfileirar");
 
+        public async Task RequeueExpiredAsync(Guid itemId, Guid machineId, long ticket, DateTime requeuedAt, CancellationToken cancellationToken)
+        {
+            Expect(
+                await db.Database.ExecuteSqlAsync(
+                    $"""
+                    UPDATE machines SET state = 'available', active_item_id = NULL, updated_at = {requeuedAt}
+                    WHERE id = {machineId} AND state = 'reserved' AND active_item_id = {itemId}
+                    """,
+                    cancellationToken),
+                "máquina reservada para a oferta vencida");
+            Expect(
+                await db.Database.ExecuteSqlAsync(
+                    $"""
+                    UPDATE service_request_items
+                    SET status = 'queued', queue_ticket = {ticket}, queued_at = {requeuedAt}, machine_id = NULL, offered_at = NULL, expires_at = NULL
+                    WHERE id = {itemId} AND status = 'to_be_confirmed' AND machine_id = {machineId} AND expires_at <= {requeuedAt}
+                    """,
+                    cancellationToken),
+                "oferta vencida para devolver à fila");
+        }
+
         public async Task OfferAsync(Guid itemId, Guid machineId, DateTime offeredAt, DateTime expiresAt, CancellationToken cancellationToken)
         {
             Expect(
