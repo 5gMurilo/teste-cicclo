@@ -1,3 +1,5 @@
+using Cicclo.Api.Bookings;
+using Cicclo.Api.Bookings.GetBooking;
 using Cicclo.Api.Platform;
 using Cicclo.Api.Platform.BackgroundServices;
 using Cicclo.Api.Platform.Health;
@@ -14,7 +16,7 @@ builder.AddApiTelemetry();
 builder.Services.AddApiHealthChecks();
 builder.Services.AddHttpBoundary();
 builder.Services.AddApiOpenApi();
-builder.Services.AddApiReadRateLimit(builder.Configuration);
+builder.Services.AddApiRateLimits(builder.Configuration);
 builder.Services.AddOptions<LaundryOptions>()
     .Bind(builder.Configuration.GetSection(LaundryOptions.SectionName))
     .ValidateDataAnnotations()
@@ -27,6 +29,7 @@ builder.Services.AddDbContext<CiccloDbContext>(
 builder.Services.AddDbContextFactory<CiccloDbContext>();
 builder.Services.AddScoped<PostgresWalletBalanceQuery>();
 builder.Services.AddScoped<PostgresServiceCatalogQuery>();
+builder.Services.AddScoped<PostgresBookingProjection>();
 
 if (bootstrapDemo)
 {
@@ -49,7 +52,8 @@ app.UseHttpBoundary();
 app.UseRateLimiter();
 app.MapApiOpenApi();
 app.MapHealthEndpoints();
-app.MapGroup("/api/v1").RequireRateLimiting(ApiReadRateLimit.Policy).MapWalletEndpoint().MapServicesEndpoint();
+app.MapGroup("/api/v1").RequireRateLimiting(ApiRateLimits.Reads).MapWalletEndpoint().MapServicesEndpoint();
+app.MapGroup("/api/v1").RequireRateLimiting(ApiRateLimits.BookingReads).MapGetBookingEndpoint();
 app.Run();
 return 0;
 

@@ -29,6 +29,14 @@ public sealed partial class ApiExceptionHandler(ILogger<ApiExceptionHandler> log
             return true;
         }
 
+        // Binding inválido (RouteHandlerOptions.ThrowOnBadRequest): erro do cliente, não falha do sistema.
+        if (exception is BadHttpRequestException { StatusCode: StatusCodes.Status400BadRequest })
+        {
+            LogBadRequest(httpContext.Request.Path);
+            await ApiProblems.InvalidParameter(httpContext).ExecuteAsync(httpContext);
+            return true;
+        }
+
         if (IsDatabaseUnavailable(exception))
         {
             LogDatabaseUnavailable(exception, httpContext.Request.Path);
@@ -60,6 +68,9 @@ public sealed partial class ApiExceptionHandler(ILogger<ApiExceptionHandler> log
 
     [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = "Requisição {Path} cancelada pelo cliente.")]
     private partial void LogRequestAborted(string path);
+
+    [LoggerMessage(EventId = 4, Level = LogLevel.Information, Message = "Requisição {Path} recusada no binding de parâmetros.")]
+    private partial void LogBadRequest(string path);
 
     [LoggerMessage(EventId = 2, Level = LogLevel.Warning, Message = "Banco de dados indisponível ao atender {Path}.")]
     private partial void LogDatabaseUnavailable(Exception exception, string path);

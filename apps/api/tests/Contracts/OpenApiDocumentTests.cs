@@ -53,9 +53,11 @@ public sealed class OpenApiDocumentTests(WebApplicationFactory<Program> factory)
         var json = await OpenApiContract.FetchAsync(client);
 
         var document = OpenApiContract.Read(json).Document!;
-        Assert.Equal(["/api/v1/services", "/api/v1/wallet", "/health", "/health/live", "/health/ready"], document.Paths.Keys.Order(StringComparer.Ordinal));
+        Assert.Equal(
+            ["/api/v1/bookings/{bookingId}", "/api/v1/services", "/api/v1/wallet", "/health", "/health/live", "/health/ready"],
+            document.Paths.Keys.Order(StringComparer.Ordinal));
         Assert.All(document.Paths.Values, path => Assert.Equal([HttpMethod.Get], path.Operations!.Keys));
-        foreach (var future in new[] { "bookings", "simulation", "machines", "transactions" })
+        foreach (var future in new[] { "simulation", "machines", "transactions", "activate", "confirm\"", "cancel" })
         {
             Assert.DoesNotContain(future, json, StringComparison.OrdinalIgnoreCase);
         }

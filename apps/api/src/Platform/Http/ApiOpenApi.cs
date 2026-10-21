@@ -45,14 +45,33 @@ public static class ApiOpenApi
 
     /// <summary>Erros comuns das leituras: 429 com Retry-After, 500 e 503, todos com o corpo <see cref="ApiProblem"/>.</summary>
     public static RouteHandlerBuilder ProducesReadProblems(this RouteHandlerBuilder builder) =>
-        builder
+        builder.ProducesApiProblems("Limite da política de leituras excedido (janela fixa por IP).");
+
+    /// <summary>
+    /// Erros da operação com o corpo <see cref="ApiProblem"/>: os específicos informados (status e descrição) e os comuns
+    /// 429 com Retry-After (descrição da política), 500 e 503.
+    /// </summary>
+    public static RouteHandlerBuilder ProducesApiProblems(
+        this RouteHandlerBuilder builder, string rateLimitDescription, params (int Status, string Description)[] specific)
+    {
+        foreach (var (status, _) in specific)
+        {
+            builder.Produces<ApiProblem>(status, ApiProblems.ContentType);
+        }
+
+        return builder
             .Produces<ApiProblem>(StatusCodes.Status429TooManyRequests, ApiProblems.ContentType)
             .Produces<ApiProblem>(StatusCodes.Status500InternalServerError, ApiProblems.ContentType)
             .Produces<ApiProblem>(StatusCodes.Status503ServiceUnavailable, ApiProblems.ContentType)
             .AddOpenApiOperationTransformer((operation, _, _) =>
             {
+                foreach (var (status, description) in specific)
+                {
+                    operation.Responses![status.ToString(System.Globalization.CultureInfo.InvariantCulture)].Description = description;
+                }
+
                 var limited = (OpenApiResponse)operation.Responses!["429"];
-                limited.Description = "Limite da política de leituras excedido (janela fixa por IP).";
+                limited.Description = rateLimitDescription;
                 limited.Headers ??= new Dictionary<string, IOpenApiHeader>();
                 limited.Headers["Retry-After"] = new OpenApiHeader
                 {
@@ -64,6 +83,7 @@ public static class ApiOpenApi
                 operation.Responses["503"].Description = "PostgreSQL indisponível ou base demo não preparada.";
                 return Task.CompletedTask;
             });
+    }
 
     /// <summary>Exemplo JSON da resposta de sucesso, serializado com as mesmas convenções web da API.</summary>
     public static RouteHandlerBuilder WithResponseExample<T>(this RouteHandlerBuilder builder, int status, T example) =>

@@ -94,7 +94,7 @@ internal sealed class BookingItemConfiguration : IEntityTypeConfiguration<Bookin
         _ => throw new ArgumentOutOfRangeException(nameof(value), value, "Estado de item sem representação persistida."),
     };
 
-    private static BookingItemStatus ParseStatus(string value) => value switch
+    public static BookingItemStatus ParseStatus(string value) => value switch
     {
         "pending_activation" => BookingItemStatus.PendingActivation,
         "queued" => BookingItemStatus.Queued,

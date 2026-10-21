@@ -37,6 +37,7 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
         typeof(WalletEndpoint), typeof(PostgresWalletBalanceQuery),
         typeof(ServicesEndpoint), typeof(PostgresServiceCatalogQuery),
         typeof(PostgresCreateBookingSessions), typeof(PostgresLaundrySessions),
+        typeof(PostgresBookingProjection), typeof(Cicclo.Api.Bookings.GetBooking.GetBookingEndpoint),
     ];
 
     [Fact]
@@ -52,7 +53,7 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
                 typeof(WalletAccount), typeof(LaundryService), typeof(Machine), typeof(MachineType), typeof(MachineState),
                 typeof(Booking), typeof(BookingItem), typeof(BookingItemStatus), typeof(LedgerEntry), typeof(LedgerEntryKind),
                 typeof(CreateBookingUseCase), typeof(ICreateBookingSessions), typeof(ICreateBookingSession), typeof(StoredBooking),
-                typeof(WalletBalance), typeof(ServiceCatalogEntry),
+                typeof(WalletBalance), typeof(ServiceCatalogEntry), typeof(BookingView), typeof(BookingItemView), typeof(BookingResponse),
                 typeof(OfferPolicy), typeof(QueueCoordinator), typeof(IQueueSession), typeof(ILaundrySession), typeof(ILaundrySessions),
                 typeof(Cicclo.Api.Laundry.ConfirmOffer.ConfirmOffer), typeof(Cicclo.Api.Laundry.ConfirmOffer.ConfirmOfferResult),
                 typeof(Cicclo.Api.Laundry.ReconcileOffers.ReconcileOffers), typeof(LaundryMetrics), typeof(QueueChanges),

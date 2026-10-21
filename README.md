@@ -94,6 +94,31 @@ Erros usam `application/problem+json` com `type` `urn:cicclo:problem:<slug>`, `e
 
 O limite de leituras é uma janela fixa de 1 minuto por endereço IP remoto, sem fila, configurável por `RateLimiting:Reads:PermitLimit` (padrão 60). Cabeçalhos como `X-Forwarded-For` não são considerados. Os endpoints de saúde não entram nesse limite.
 
+### Contratações
+
+`GET /api/v1/bookings/{bookingId}` devolve o estado autoritativo de um booking da wallet demo, lido num único snapshot do PostgreSQL:
+
+```json
+{
+  "bookingId": "fb0cb8f8-ced3-4ad7-9ee5-e7df973abc19",
+  "currency": "BRL",
+  "chargedAmountCents": 3980,
+  "remainingBalanceCents": 1020,
+  "createdAt": "2026-10-21T12:00:00Z",
+  "items": [
+    { "itemId": "3fc7b7f5-4b2a-4d35-bd16-1dfbcab7d98f", "serviceCode": "dry", "unitPriceCents": 2090, "status": "pending_activation", "machineId": null, "queuePosition": null, "expiresAt": null },
+    { "itemId": "ee7cefb9-9150-464f-bc77-90c795d6947d", "serviceCode": "wash", "unitPriceCents": 1890, "status": "to_be_confirmed", "machineId": "00000000-0000-4000-8000-000000000101", "queuePosition": null, "expiresAt": "2026-10-21T12:01:00Z" }
+  ]
+}
+```
+
+- `chargedAmountCents` e `unitPriceCents` são históricos: mudar o catálogo depois da compra não os altera. `remainingBalanceCents` é o saldo **atual** da wallet.
+- Itens ordenados por `serviceCode` e `itemId`. Os campos opcionais estão sempre presentes: `machineId` só em `to_be_confirmed` e `in_progress`; `queuePosition` (1-based, derivada do ticket na fila do tipo de máquina, não persistida) só em `queued`; `expiresAt` (prazo da oferta) só em `to_be_confirmed`.
+- A leitura não expira ofertas nem promove a fila: uma oferta vencida aparece com `expiresAt` no passado até a reconciliação.
+- `bookingId` que não é UUID responde 400 `VALIDATION_ERROR`; booking inexistente ou de outra wallet responde 404 `BOOKING_NOT_FOUND`.
+
+As leituras de contratações têm política própria: janela fixa de 1 minuto por IP, `RateLimiting:BookingReads:PermitLimit` (padrão 30), separada do limite de wallet e catálogo.
+
 ### Observabilidade
 
 A API escreve logs estruturados em JSON no console (um único provider), com `TraceId` e `SpanId` nos escopos. Um cabeçalho W3C `traceparent` recebido é continuado pelo trace da requisição. Traces e métricas HTTP vêm da instrumentação nativa do ASP.NET Core: as métricas usam rota normalizada (`/api/v1/wallet`), método e status, nunca IDs ou query string. O recurso identifica `service.name=cicclo.api`, `service.version` (versão do assembly, com commit quando disponível no build) e `deployment.environment.name`.
