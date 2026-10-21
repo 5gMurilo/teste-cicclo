@@ -1,11 +1,16 @@
 using Cicclo.Api.Platform;
+using Cicclo.Api.Platform.Http;
 using Cicclo.Api.Platform.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 var bootstrapDemo = BootstrapDemoCommand.IsRequested(args);
 var builder = WebApplication.CreateBuilder(BootstrapDemoCommand.WithoutOption(args));
 builder.Services.AddHealthChecks();
-builder.Services.Configure<LaundryOptions>(builder.Configuration.GetSection(LaundryOptions.SectionName));
+builder.Services.AddHttpBoundary();
+builder.Services.AddOptions<LaundryOptions>()
+    .Bind(builder.Configuration.GetSection(LaundryOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
 builder.Services.AddDbContext<CiccloDbContext>((services, options) =>
     options.UseNpgsql(services.GetRequiredService<IConfiguration>().GetConnectionString(CiccloDbContext.ConnectionStringName)));
 
@@ -25,6 +30,7 @@ if (bootstrapDemo)
 }
 
 var app = builder.Build();
+app.UseHttpBoundary();
 app.MapHealthChecks("/health");
 app.Run();
 return 0;
