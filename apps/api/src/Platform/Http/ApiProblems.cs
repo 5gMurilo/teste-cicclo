@@ -30,6 +30,8 @@ public static class ApiProblems
 
     public const string BookingNotFound = "BOOKING_NOT_FOUND";
 
+    public const string ItemNotFound = "ITEM_NOT_FOUND";
+
     public const string InvalidServiceSelection = "INVALID_SERVICE_SELECTION";
 
     public const string ServiceNotFound = "SERVICE_NOT_FOUND";

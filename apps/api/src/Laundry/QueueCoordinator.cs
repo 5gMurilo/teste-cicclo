@@ -9,7 +9,7 @@ public enum ActivationOutcome
     /// <summary>O item pendente entrou na fila e, havendo máquina livre sem ninguém à frente, recebeu a oferta.</summary>
     Activated,
 
-    /// <summary>O item já estava ativo (fila, oferta ou execução): nada mudou, nem ticket novo.</summary>
+    /// <summary>O item já estava ativo (fila, oferta ou execução): o item não ganha ticket novo; só a reconciliação do tipo pode mudar algo.</summary>
     AlreadyActive,
 
     NotFound,
@@ -61,9 +61,13 @@ public sealed class QueueCoordinator(TimeProvider time, IOptions<LaundryOptions>
             return new(ActivationOutcome.NotFound, null, [], []);
         }
 
-        if (target.Status != BookingItemStatus.PendingActivation)
+        if (target.Status is BookingItemStatus.Queued or BookingItemStatus.ToBeConfirmed or BookingItemStatus.InProgress)
         {
-            return new(ActivationOutcome.AlreadyActive, Placement(itemId, items), [], [], type);
+            // Repetição (QUEUE-13): nenhum ticket novo para o item. Como todo comando, reconcilia o tipo antes de
+            // responder; uma oferta já vencida volta ao fim da fila e as máquinas livres são ofertadas.
+            var dueExpired = await ExpireDueAsync(session, machines, items, now, cancellationToken);
+            var dueOffers = await OfferFreeMachinesAsync(session, machines, items, now, cancellationToken);
+            return new(ActivationOutcome.AlreadyActive, Placement(itemId, items), dueOffers, dueExpired, type);
         }
 
         // A oferta vencida volta à fila antes de o item recém-ativado entrar: ela venceu antes desta chegada.
