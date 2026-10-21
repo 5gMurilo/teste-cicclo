@@ -4,7 +4,8 @@ import { randomUUID } from 'expo-crypto';
 import type { ReactNode } from 'react';
 
 import { createTestQueryClient } from '../../../test/queryClient';
-import { useBookingSubmission } from '../useBookingSubmission';
+import { TransportError } from '../../../shared/api/client';
+import { classifyFailure, useBookingSubmission } from '../useBookingSubmission';
 
 jest.mock('expo-crypto', () => ({ randomUUID: jest.fn() }));
 
@@ -192,5 +193,12 @@ describe('useBookingSubmission', () => {
 
     expect(result.current.state).toMatchObject({ status: 'rejected', reason: 'configuration' });
     expect(sent).toHaveLength(0);
+  });
+});
+
+describe('classifyFailure', () => {
+  it('keeps a client timeout as unknown: the purchase may exist on the server', () => {
+    expect(classifyFailure(new TransportError('timeout'))).toEqual({ status: 'unknown', cause: 'timeout', retryAfterAt: null });
+    expect(classifyFailure(new TransportError('network'))).toMatchObject({ status: 'unknown', cause: 'network' });
   });
 });

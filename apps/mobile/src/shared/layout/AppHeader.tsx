@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CONFIG_ERROR_MESSAGE } from '../config/env';
 import { formatBRL } from '../lib/money';
 import { colors, spacing } from '../theme/tokens';
 
@@ -9,7 +10,8 @@ export type BalanceState =
   | { status: 'ready'; cents: number }
   /** A previously confirmed value kept after a failed refresh; shown labelled, never as current. */
   | { status: 'stale'; cents: number; updatedAtLabel: string }
-  | { status: 'error' };
+  /** `config`: the API URL is missing or invalid, so a retry cannot help. */
+  | { status: 'error'; config?: boolean };
 
 type Props = {
   displayName: string;
@@ -41,8 +43,8 @@ function Balance({ balance, onRetry }: { balance: BalanceState; onRetry: () => v
       );
     case 'ready':
       return (
-        <View style={styles.balance} accessible accessibilityLabel={`Saldo: ${formatBRL(balance.cents)}`}>
-          <Text style={styles.muted}>Saldo</Text>
+        <View style={styles.balance} accessible accessibilityLabel={`Saldo da carteira: ${formatBRL(balance.cents)}`}>
+          <Text style={styles.muted}>Saldo da carteira</Text>
           <Text style={styles.amount}>{formatBRL(balance.cents)}</Text>
         </View>
       );
@@ -60,6 +62,15 @@ function Balance({ balance, onRetry }: { balance: BalanceState; onRetry: () => v
         </View>
       );
     case 'error':
+      if (balance.config) {
+        return (
+          <View style={styles.balance}>
+            <Text accessibilityRole="alert" style={styles.danger}>
+              {CONFIG_ERROR_MESSAGE}
+            </Text>
+          </View>
+        );
+      }
       return (
         <View style={styles.balance}>
           <Text style={styles.danger}>Saldo indisponível</Text>

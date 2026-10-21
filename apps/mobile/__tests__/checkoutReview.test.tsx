@@ -2,6 +2,9 @@ import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-li
 
 import { queryClient } from '../src/shared/api/queryClient';
 
+// This file covers the review without the purchase capability; purchases are covered in purchaseFlow.test.tsx.
+jest.mock('../src/shared/api/capabilities', () => ({ capabilities: { purchase: false, keyRetentionMs: null } }));
+
 const APP_DIR = './src/app';
 const CHECKOUT_TAB = /^Checkout.*tab, 3 of 3$/;
 const nbsp = (text: string) => text.replace(/R\$ /g, 'R$ ');

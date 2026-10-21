@@ -8,6 +8,9 @@ import { queryClient as appQueryClient } from '../../../shared/api/queryClient';
 import { createTestQueryClient } from '../../../test/queryClient';
 import { CheckoutProvider, useCheckout } from '../CheckoutProvider';
 
+// These tests cover the provider with the purchase capability off.
+jest.mock('../../../shared/api/capabilities', () => ({ capabilities: { purchase: false, keyRetentionMs: null } }));
+
 const CHECKOUT_TAB = /^Checkout.*tab, 3 of 3$/;
 const service = (code: string, unitPriceCents: number, over: Record<string, unknown> = {}) => ({
   code,
@@ -157,6 +160,25 @@ describe('CheckoutProvider', () => {
     expect(outcomes.slice(0, 10).every((o) => (o as { ok: boolean }).ok)).toBe(true);
     expect(outcomes[10]).toEqual({ ok: false, reason: 'over-limit' });
     expect(result.current.derived.quantity).toBe(10);
+  });
+
+  it('does not send a purchase from confirm() while the purchase capability is off', async () => {
+    const posts: string[] = [];
+    globalThis.fetch = jest.fn((url: string | URL | Request, init?: RequestInit) => {
+      if (init?.method === 'POST') posts.push(String(url));
+      return respond(String(url).endsWith('/wallet') ? walletReply : servicesReply);
+    }) as unknown as typeof fetch;
+    const { result } = await mountProvider();
+    await waitFor(() => expect(result.current.readiness).toBe('ready'));
+    await act(async () => {
+      result.current.add('wash');
+    });
+
+    await act(async () => result.current.purchase.confirm());
+
+    expect(result.current.purchase).toMatchObject({ enabled: false, canConfirm: false });
+    expect(result.current.purchase.state.status).toBe('idle');
+    expect(posts).toHaveLength(0);
   });
 
   it('still allows removal and clears the preference with the last preferred unit', async () => {

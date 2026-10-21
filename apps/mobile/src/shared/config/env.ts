@@ -66,3 +66,11 @@ export function readPublicEnv(): PublicEnv {
 export function readDisplayName(): string {
   return parseDisplayName(process.env.EXPO_PUBLIC_DEMO_DISPLAY_NAME);
 }
+
+export function isConfigError(error: unknown): boolean {
+  return error instanceof ConfigError;
+}
+
+/** Shown by every read-error view when the API origin is missing or invalid: retrying cannot fix it. */
+export const CONFIG_ERROR_MESSAGE =
+  'Configuração da API ausente ou inválida. Defina EXPO_PUBLIC_API_URL em apps/mobile/.env e reinicie o Metro.';

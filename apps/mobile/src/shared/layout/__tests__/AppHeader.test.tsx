@@ -14,7 +14,8 @@ describe('AppHeader', () => {
 
     expect(screen.getByRole('header', { name: 'Olá! Ana' })).toBeOnTheScreen();
     expect(screen.getByText('R$ 50,00')).toBeOnTheScreen();
-    expect(screen.getByLabelText('Saldo: R$ 50,00')).toBeOnTheScreen();
+    expect(screen.getByText('Saldo da carteira')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Saldo da carteira: R$ 50,00')).toBeOnTheScreen();
   });
 
   it('shows no currency while loading', async () => {

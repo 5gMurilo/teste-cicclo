@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { CONFIG_ERROR_MESSAGE, isConfigError } from '../../shared/config/env';
 import { formatBRL } from '../../shared/lib/money';
 import { colors, spacing } from '../../shared/theme/tokens';
 import { ServiceCard } from '../catalog/components/ServiceCard';
@@ -27,6 +28,15 @@ export function HomeScreen() {
   }
 
   if (!catalog.data) {
+    if (isConfigError(catalog.error)) {
+      return (
+        <View style={styles.center}>
+          <Text accessibilityRole="alert" style={styles.error}>
+            {CONFIG_ERROR_MESSAGE}
+          </Text>
+        </View>
+      );
+    }
     return (
       <View style={styles.center}>
         <Text style={styles.error}>Não foi possível carregar os serviços.</Text>

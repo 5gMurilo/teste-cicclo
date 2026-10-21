@@ -22,3 +22,6 @@ TestResults/
 .artifacts/
 .DS_Store
 *.log
+
+# Local agent tool state
+.omc/

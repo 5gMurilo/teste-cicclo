@@ -61,7 +61,7 @@ describe('Home selection', () => {
 
     expect(screen.getByText(`Selecionado: ${nbsp('R$ 39,80')}`)).toBeOnTheScreen();
     expect(screen.getByText(`Disponível para adicionar: ${nbsp('R$ 10,20')}`)).toBeOnTheScreen();
-    expect(screen.getByLabelText(`Saldo: ${nbsp('R$ 50,00')}`)).toBeOnTheScreen();
+    expect(screen.getByLabelText(`Saldo da carteira: ${nbsp('R$ 50,00')}`)).toBeOnTheScreen();
     expect(methods.every((method) => method === 'GET')).toBe(true);
   });
 
@@ -107,6 +107,20 @@ describe('Home selection', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(/^Aguarde o saldo e o catálogo serem confirmados/);
     expect(screen.queryByText(/^Selecionado/)).toBeNull();
     expect(screen.queryByRole('button', { name: 'Revisar seleção' })).toBeNull();
+  });
+
+  it('allows 10 occurrences and explains the limit on the 11th, keeping the selection', async () => {
+    setApi(100_000, service('wash', 'Lavagem', 100));
+    await renderRouter(APP_DIR);
+    await screen.findByText('Lavagem');
+    await screen.findByText(nbsp('R$ 1.000,00'));
+
+    for (let i = 0; i < 10; i++) await fireEvent.press(add('Lavagem'));
+    expect(screen.queryByRole('alert')).toBeNull();
+    await fireEvent.press(add('Lavagem'));
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Limite de 10 serviços por contratação.');
+    expect(screen.getByText(`Selecionado: ${nbsp('R$ 10,00')}`)).toBeOnTheScreen();
   });
 
   it('does not offer selection for an unavailable service', async () => {

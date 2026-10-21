@@ -119,6 +119,19 @@ describe('Serviços screen', () => {
     expect(app.getPathname()).toBe('/');
   });
 
+  it('shows the History empty state with a way back to Home when only active bookings exist', async () => {
+    serve(() => ({ status: 200, body: page([booking(1, '2026-10-21T12:00:00Z', 'queued')]) }));
+    const app = await openServices();
+    await screen.findByRole('button', { name: /^Abrir contratação/ });
+
+    await fireEvent.press(screen.getByRole('radio', { name: 'Histórico' }));
+
+    expect(screen.getByText('Nenhuma contratação no histórico.')).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: /^Abrir contratação/ })).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Escolher serviços' }));
+    expect(app.getPathname()).toBe('/');
+  });
+
   it('shows an error with retry and recovers', async () => {
     serve(
       () => ({ status: 422, body: { errorCode: 'BOOM' } }),

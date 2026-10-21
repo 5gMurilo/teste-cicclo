@@ -2,7 +2,7 @@
 
 Monorepo pnpm + Turborepo com dois aplicativos independentes:
 
-- `apps/mobile`: React Native 0.88.0, Expo SDK 58 e TypeScript.
+- `apps/mobile`: React Native 0.88.0, Expo SDK 58 e TypeScript. Instalação do app, URL da API por dispositivo, fluxo, idempotência e limitações: [apps/mobile/README.md](apps/mobile/README.md).
 - `apps/api`: C# e ASP.NET Core em .NET 10 LTS, com endpoint `GET /health`.
 
 O workspace reconhece `apps/*` e `packages/*`. Não há pacotes compartilhados ainda; crie-os apenas quando houver código realmente compartilhado. Expo/React Native não oferecem uma linha LTS formal: o mobile usa a versão estável compatível do Expo. O .NET 10 tem suporte LTS até novembro de 2028.
@@ -38,7 +38,7 @@ dotnet restore apps/api/Cicclo.Api.slnx --locked-mode
 pnpm dev
 ```
 
-O Turborepo inicia Expo (porta 8081) e a API (`http://localhost:5001`) em paralelo. A porta 5001 evita conflito com o AirPlay do macOS na 5000. O mobile mostra `Cicclo`, sem chamar a API ou depender do banco. Pare o desenvolvimento com `Ctrl+C`.
+O Turborepo inicia Expo (porta 8081) e a API (`http://localhost:5001`) em paralelo. A porta 5001 evita conflito com o AirPlay do macOS na 5000. O mobile consome a API de negócio e exige `EXPO_PUBLIC_API_URL` (ver [apps/mobile/README.md](apps/mobile/README.md)); sem a API acessível ele mostra erros de leitura. Pare o desenvolvimento com `Ctrl+C`.
 
 A API usa `dotnet watch --no-hot-reload`: alterações reiniciam o processo. Isso evita um erro de leitura do manifest de static web assets observado no hot reload do SDK 10.0.402 no macOS; a API não serve arquivos estáticos nesta base.
 
@@ -74,7 +74,7 @@ pnpm test:bootstrap
 - `build`: exporta bundles de Android e iOS para `apps/mobile/dist/` e compila a solução .NET em Release. **Não gera APK/IPA**, não assina e não publica aplicativos. Builds nativos e EAS ficam fora desta inicialização.
 - `lint`: ESLint no mobile e `dotnet format whitespace --verify-no-changes` na API, sem alterar fontes.
 - `typecheck`: TypeScript no mobile; os tipos C# são verificados pela compilação da API em `build`.
-- `test`: teste de renderização da tela mobile e teste HTTP de integração `/health`, sem modo watch.
+- `test`: testes Jest do mobile (com a API simulada no limite de `fetch`) e testes da API, sem modo watch.
 - `test:bootstrap`: contratos do workspace, documentação e infraestrutura; execute depois de `build`, pois também verifica os artefatos gerados.
 
 As tarefas .NET não usam cache Turbo nesta base. O build do mobile pode restaurar `dist/` do cache; desenvolvimento e testes não usam cache. Os comandos da raiz preservam código de saída diferente de zero quando uma tarefa falha.

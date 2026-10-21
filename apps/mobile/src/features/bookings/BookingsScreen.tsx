@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ApiError } from '../../shared/api/apiError';
+import { CONFIG_ERROR_MESSAGE, isConfigError } from '../../shared/config/env';
 import { formatBRL } from '../../shared/lib/money';
 import { colors, spacing } from '../../shared/theme/tokens';
 import { bookingsListOptions } from './listQuery';
@@ -40,6 +41,15 @@ export function BookingsScreen() {
   }
 
   if (!list.data) {
+    if (isConfigError(list.error)) {
+      return (
+        <View style={styles.center}>
+          <Text accessibilityRole="alert" style={styles.error}>
+            {CONFIG_ERROR_MESSAGE}
+          </Text>
+        </View>
+      );
+    }
     const unavailable = list.error instanceof ApiError && list.error.status === 404;
     return (
       <View style={styles.center}>

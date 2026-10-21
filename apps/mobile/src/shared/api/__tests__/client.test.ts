@@ -166,3 +166,92 @@ describe('requestJson', () => {
     expect(calls[0].init.signal.aborted).toBe(false);
   });
 });
+
+describe('requestJson development logging', () => {
+  const originalEnv = process.env.NODE_ENV;
+  let warn: jest.SpyInstance;
+
+  beforeEach(() => {
+    // The log is off under Jest by default; simulate a development bundle.
+    (process.env as Record<string, string>).NODE_ENV = 'development';
+    warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    (process.env as Record<string, string>).NODE_ENV = originalEnv as string;
+    warn.mockRestore();
+  });
+
+  it('logs only the classification and the path of a failed request, never body, headers or key', async () => {
+    installFetch(() => reply(409, '{"errorCode":"IDEMPOTENCY_CONFLICT","traceId":"t-1","detail":"secret"}'));
+
+    await expect(
+      requestJson({
+        method: 'POST',
+        path: '/bookings?page=1',
+        body: '{"secret":true}',
+        headers: { 'Idempotency-Key': 'key-123' },
+      }),
+    ).rejects.toBeInstanceOf(ApiError);
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith('[api] POST /bookings failed', {
+      kind: 'http',
+      status: 409,
+      errorCode: 'IDEMPOTENCY_CONFLICT',
+      traceId: 't-1',
+    });
+    expect(JSON.stringify(warn.mock.calls)).not.toMatch(/secret|key-123|page=1/);
+  });
+
+  it('logs a transport failure and a missing API URL, and stays silent on success', async () => {
+    installFetch(() => reply(200, '{}'));
+    await requestJson({ method: 'GET', path: '/ok' });
+    expect(warn).not.toHaveBeenCalled();
+
+    installFetch(() => Promise.reject(new TypeError('Network request failed')));
+    await expect(requestJson({ method: 'GET', path: '/wallet' })).rejects.toBeInstanceOf(TransportError);
+    expect(warn).toHaveBeenLastCalledWith('[api] GET /wallet failed', { kind: 'network', status: null });
+
+    delete process.env.EXPO_PUBLIC_API_URL;
+    await expect(requestJson({ method: 'GET', path: '/services' })).rejects.toThrow('EXPO_PUBLIC_API_URL');
+    expect(warn).toHaveBeenLastCalledWith('[api] GET /services failed', {
+      kind: 'config',
+      message: 'EXPO_PUBLIC_API_URL is not set',
+    });
+  });
+
+  it('stays silent in a release bundle, where __DEV__ is false', async () => {
+    const globals = globalThis as { __DEV__?: boolean };
+    const original = globals.__DEV__;
+    globals.__DEV__ = false;
+    installFetch(() => Promise.reject(new TypeError('Network request failed')));
+    try {
+      await expect(requestJson({ method: 'GET', path: '/wallet' })).rejects.toBeInstanceOf(TransportError);
+    } finally {
+      globals.__DEV__ = original;
+    }
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('stays silent under Jest (NODE_ENV test) even in a development bundle', async () => {
+    (process.env as Record<string, string>).NODE_ENV = 'test';
+    installFetch(() => Promise.reject(new TypeError('Network request failed')));
+
+    await expect(requestJson({ method: 'GET', path: '/wallet' })).rejects.toBeInstanceOf(TransportError);
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('does not log a request cancelled by the caller', async () => {
+    installFetch(pendingUntilAborted);
+    const controller = new AbortController();
+
+    const pending = requestJson({ method: 'GET', path: '/wallet', signal: controller.signal }).catch(() => undefined);
+    controller.abort();
+    await pending;
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+});

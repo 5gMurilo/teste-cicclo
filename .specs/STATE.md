@@ -42,14 +42,30 @@
 - **Date**: 2026-10-21
 - **Status**: active
 
+### AD-006
+- **Decision**: O gate N1 (T29) será executado no iOS (simulador ou iPhone) em vez do Android; o resultado é registrado como "validado no iOS", e o Android só é declarado validado se for ensaiado também.
+- **Reason**: Escolha do usuário por ser mais simples de executar; o app é híbrido e o código é o mesmo nas duas plataformas.
+- **Trade-off**: A spec (UX-02, QUAL-02) cita Android; o iOS não prova TalkBack, fonte 200% nem os gestos do Android. Deriva consciente da spec, registrada aqui e no roteiro.
+- **Scope**: T29, T30 e a definição de pronto de P0 (`apps/mobile/docs/native-validation.md`).
+- **Date**: 2026-10-21
+- **Status**: active
+
+### AD-007
+- **Decision**: O usuário decidiu que a validação no iOS vale também para o Android (app híbrido, comportamento igual nas duas plataformas); T29 e T30 ficam fechadas com essa decisão, sem ensaio Android.
+- **Reason**: Decisão do usuário em 2026-10-21, após o relato "Validado o iOS".
+- **Trade-off**: A decisão é do usuário e não é evidência: não há ensaio com TalkBack, fonte 200% nem gestos do Android, e o relato do iOS não tem detalhe por cenário. UX-02 e o smoke Android de QUAL-02 ficam aceitos por decisão, não provados.
+- **Scope**: T29, T30 e a definição de pronto de P0 (substitui o pendente Android de AD-006).
+- **Date**: 2026-10-21
+- **Status**: active
+
 ## Handoff
 
 - **Feature**: `.specs/features/cicclo-mobile/spec.md`.
-- **Phase / Task**: Execute inline e sequencial. Última tarefa fechada: T28.
-- **Completed**: T1-T9, T11-T20, T22 e T27 fechadas; T10, T21, T23-T26 e T28 implementadas e pendentes de gate com a API real (C1, C2, C3). T28 = pós-compra leva a /bookings/{id} (Ver contratação); lista e detalhe convergem pela invalidação; falha de GET depois do sucesso não reenvia a compra. E1 a E4 completas em código (21/37 com Done when marcado).
-- **In-progress**: Nenhuma.
-- **Next step**: E5: T29 (checklist de validação Android, executado pelo usuário) e T30 (README e fechamento P0 com Verifier). Depois, o gate com a API real (C1, C2, C3) e a integração das branches.
-- **Pendente da API real**: C1 (T10 e demo de E1/E2), integração por fast-forward de E1 e E2 em `mobile-worktree`; C2 (CTA real em T21), C3 (T22-T28), N1 (T29, com o usuário). Decisão do usuário (2026-10-21): implementar o código de todas as etapas E com fakes primeiro e deixar a interação real com a API para depois de todas elas.
-- **Blockers**: C1/C2/C3 não provados. `dotnet` não aparece no PATH desta sessão (há `docker` e `psql`). `tests/bootstrap.test.mjs` teste 6 falha localmente por isso.
-- **Branches** (atual: `feat/mobile-04-booking-tracking`): chore/mobile-00-baseline 08e6c7d; feat/mobile-01-catalog-wallet 6bd529c; feat/mobile-02-selection-review 0a34316; feat/mobile-03-safe-booking 9674db3; feat/mobile-04-booking-tracking 003b1fa; mobile-worktree 08e6c7d.
-- **Uncommitted files**: `.omc/` e `apps/mobile/.omc/` (estado de ferramenta, não versionar).
+- **Phase / Task**: P0 implementado (T1 a T30) e verificado pelo Verifier independente no que é verificável localmente e pelo teste ao vivo. C1, C2 e C3 provados contra a API real em 2026-10-21; N1 aprovado pelo usuário no iOS (AD-006) apenas em relato global ("Validado o iOS"), sem registro por cenário, aparelho, versão ou leitor de tela (`apps/mobile/docs/native-validation.md`); por isso T29 fica `[~]`. Android não ensaiado.
+- **Completed**: 30/37 com Done when `[x]` (T1 a T30); P1 iniciado. Gate B: 32 suítes, 262 testes, typecheck, lint e export verdes (o export exige `EXPO_PUBLIC_API_URL` apenas para as leituras em runtime, não para exportar).
+- **Verifier**: PASS na rodada 4 sobre `cb9adcd`. Depois disso entraram 4 commits de correções de uso no iOS (log de desenvolvimento, mensagem de configuração ausente, `anchor`, README) e o registro do N1; a verificação delta desses commits apontou 2 itens (registro do N1 além do relato; guardas do log sem teste), corrigidos no commit seguinte; falta a reverificação.
+- **Pendente**: verificação delta final do Verifier; Android (opcional); ícones das abas (cosmético, exige `@expo/vector-icons`); compra de duas ou mais unidades e preferência aceita ao vivo (exige restaurar a demo); retenção da chave após horas. P1 (T31 a T37) só depois de CP1 e de decisão do usuário.
+- **Next step**: concluir a verificação delta; depois, decidir com o usuário se segue para P1 e quais endpoints de ciclo de vida já estão prontos na API.
+- **Blockers**: nenhum para P0. `dotnet` fora do PATH da sessão do agente (workspace e testes de bootstrap que compilam a API falham por isso; não é do mobile).
+- **Branches**: cadeia linear E0 a E5 (`chore/mobile-05-p0-readiness` é a atual); `mobile-worktree` integrada por fast-forward. Nada foi enviado ao remoto.
+- **Uncommitted files**: nenhum.

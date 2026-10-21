@@ -110,7 +110,7 @@ describe('after a confirmed purchase', () => {
     expect(await screen.findByRole('button', { name: /^Abrir contratação 11111111/ })).toBeOnTheScreen();
 
     await fireEvent.press(screen.getByLabelText('Home, tab, 2 of 3'));
-    expect(await screen.findByLabelText(`Saldo: ${nbsp('R$ 31,10')}`)).toBeOnTheScreen();
+    expect(await screen.findByLabelText(`Saldo da carteira: ${nbsp('R$ 31,10')}`)).toBeOnTheScreen();
     expect(posts).toBe(1);
   });
 
