@@ -61,10 +61,10 @@
 ## Handoff
 
 - **Feature**: `.specs/features/cicclo-mobile/spec.md`.
-- **Phase / Task**: Execute inline e sequencial. Última tarefa fechada: T37.
-- **Completed**: P0 fechado; T32 e T36 fechadas; T31, T33, T34, T35 e T37 implementadas e pendentes da prova CP1 limpa. T37 = oferta destacada no cartão da lista (prazo, contagem, rótulo falado fixo, relê ao vencer); teste ao vivo live/lifecycle.live.test.ts escrito; a 1a execução alterou a demo e o resumo de aprovação se perdeu (32/37 com Done when marcado).
-- **In-progress**: Nenhuma.
-- **Next step**: Restaurar a demo (usuário), rodar live/contract e live/lifecycle com a saída salva em arquivo, registrar em api-contract.md, ligar capabilities.itemCommands.* e rodar o Verifier de P1.
-- **Blockers**: nenhum para P0. `dotnet` fora do PATH da sessão do agente (workspace e testes de bootstrap que compilam a API falham por isso; não é do mobile).
-- **Branches** (atual: `feat/mobile-06-service-lifecycle`): chore/mobile-00-baseline 08e6c7d; chore/mobile-05-p0-readiness 1a4ff65; feat/mobile-01-catalog-wallet 6bd529c; feat/mobile-02-selection-review 0a34316; feat/mobile-03-safe-booking 9674db3; feat/mobile-04-booking-tracking ad3d9a8; feat/mobile-06-service-lifecycle d343efb; mobile-worktree f3ac3ca.
-- **Uncommitted files**: `.omc/` e `apps/mobile/.omc/` (estado de ferramenta, não versionar).
+- **Phase / Task**: P0 fechado (T1 a T30, Verifier PASS em `cb9adcd` e delta PASS em `57b40ed`; N1 aprovado pelo usuário no iOS, aceito para o Android por AD-007). P1 implementado (T31 a T37) e ligado na branch `feat/mobile-06-service-lifecycle`.
+- **P1**: T32 e T36 `[x]`; T31, T33, T34, T35 e T37 `[~]`. As quatro capacidades (`capabilities.itemCommands.*`) foram ligadas com evidência parcial na API real (seção "Provas P1 contra a API real" em `apps/mobile/docs/api-contract.md`, com o que foi e o que não foi observado), porque o usuário precisa usar as ações; o resumo de aprovação de `live/lifecycle.live.test.ts` se perdeu na primeira execução.
+- **Pendente**: restaurar a demo (`--reset-demo` do backend, API parada), rodar `live/contract.live.test.ts` e `live/lifecycle.live.test.ts` com a saída salva em arquivo, completar a tabela de provas, fechar os `[~]` e rodar o Verifier de P1 (escopo QUEUE-01 a QUEUE-10).
+- **Estado da demo agora**: carteira 1020 e três contratações (lavagem A cancelada; lavagem em andamento com secagem cancelada; uma secagem com oferta criada pelo app).
+- **Blockers**: nenhum para uso. `dotnet` fora do PATH da sessão do agente (workspace e bootstrap que compilam a API falham por isso; não é do mobile).
+- **Branches**: cadeia linear E0 a E5, E6 `feat/mobile-06-service-lifecycle` (atual); `mobile-worktree` integrada por fast-forward. Nada foi enviado ao remoto.
+- **Uncommitted files**: nenhum.
