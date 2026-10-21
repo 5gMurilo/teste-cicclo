@@ -483,6 +483,49 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
             "SELECT (SELECT count(*) FROM service_requests), (SELECT count(*) FROM wallet_transactions), (SELECT balance::text FROM wallets)")).Single());
     }
 
+    // A16: numa intenção nova, serviço, capacidade e preço esperado são validados antes do saldo. Saldo 10.00
+    // não cobre nem o total enviado (1800) nem o calculado (1890); 900 cobriria só o enviado.
+    [Theory]
+    [InlineData(1800L)]
+    [InlineData(900L)]
+    public async Task K13_DivergentExpectedPriceTakesPrecedenceOverInsufficientBalance(long expected)
+    {
+        var database = await ReadyAsync("10.00");
+        var before = await database.RowsAsync(StateSql);
+
+        var result = await UseCase(Real(database)).ExecuteAsync(Guid.NewGuid(), Intent(["wash"], expected), CancellationToken.None);
+
+        Assert.Equal(CreateBookingOutcome.Rejected, result.Outcome);
+        Assert.Equal(BookingRejection.PriceChanged, result.Rejection);
+        Assert.Equal(1890L, result.CalculatedTotalCents);
+        Assert.Null(result.Booking);
+        Assert.Equal(before, await database.RowsAsync(StateSql));
+        Assert.Contains("wallet|10.00|", before[0]);
+    }
+
+    [Theory]
+    [InlineData("", new[] { "wash", "iron" }, 3780L, BookingRejection.ServiceNotFound)]
+    [InlineData("UPDATE services SET is_active = false WHERE code = 'dry'", new[] { "wash", "dry" }, 3980L, BookingRejection.ServiceDisabled)]
+    [InlineData("UPDATE machines SET state = 'out_of_service' WHERE machine_type = 'dryer'", new[] { "dry", "wash" }, 3980L, BookingRejection.NoOperationalMachine)]
+    public async Task K13_InvalidInactiveOrUnservedItemTakesPrecedenceOverInsufficientBalance(string setup, string[] codes, long expected, BookingRejection rejection)
+    {
+        var database = await ReadyAsync("10.00");
+        if (setup.Length > 0)
+        {
+            await database.ExecuteAsync(setup);
+        }
+
+        var before = await database.RowsAsync(StateSql);
+
+        var result = await UseCase(Real(database)).ExecuteAsync(Guid.NewGuid(), Intent(codes, expected), CancellationToken.None);
+
+        Assert.Equal(CreateBookingOutcome.Rejected, result.Outcome);
+        Assert.Equal(rejection, result.Rejection);
+        Assert.Null(result.Booking);
+        Assert.Equal(before, await database.RowsAsync(StateSql));
+        Assert.Contains("wallet|10.00|", before[0]);
+    }
+
     private async Task<TestDatabase> ReadyAsync(string? balance = null)
     {
         var database = await postgres.CreateDatabaseAsync();
