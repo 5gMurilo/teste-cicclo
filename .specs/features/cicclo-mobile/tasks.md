@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** em andamento. Última tarefa concluída: T19 (18/37 com Done when marcado); ver STATE.md.
+**Execução:** em andamento. Última tarefa concluída: T20 (19/37 com Done when marcado); ver STATE.md.
 
 ## Execution Protocol
 
@@ -333,7 +333,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: QueryClient e key pública wallet; prefixo público bookings definido junto ao primeiro consumidor de invalidação e reutilizado em T23/T25.
 **Requirement**: BUY-05, BUY-07, SAFE-01.
 **What**: Cancelar GET em voo antes de setar saldo confirmado compatível e invalidar queries pertinentes sem inventar metadados.
-**Done when**: [ ] GET antigo não derruba 1020; updatedAt não é inventado; response POST não é inserido como detalhe sem compatibilidade; cache failure não reenvia compra confirmada.
+**Done when**: [x] GET antigo não derruba 1020; updatedAt não é inventado; response POST não é inserido como detalhe sem compatibilidade; cache failure não reenvia compra confirmada.
 **Tests**: integration — teto de 6 casos: resposta antiga diferida após cancel, saldo confirmado 1020, wallet ausente, schema metadata preservada/refetch, invalidation seletiva, erro de refetch mantendo confirmed.
 **Gate**: F + CC; política de consistência real registrada em C2.
 **Commit**: `feat(checkout): apply confirmed balances without stale query races`
@@ -709,7 +709,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **18/37 tarefas com Done when marcado** (última: T19); demais abertas ou pendentes de gate externo.
+- Implementação: **19/37 tarefas com Done when marcado** (última: T20); demais abertas ou pendentes de gate externo.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1/C2/C3/CP1 não comprovadas; N1 não executado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.

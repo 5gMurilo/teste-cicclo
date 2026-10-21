@@ -8,6 +8,7 @@ import { TransportError } from '../../shared/api/client';
 import { ConfigError } from '../../shared/config/env';
 import { catalogKey } from '../catalog/queries';
 import { walletKey } from '../wallet/queries';
+import { applyConfirmedBooking } from './applyConfirmedBooking';
 import {
   createBooking,
   serializeBookingBody,
@@ -136,9 +137,9 @@ export function useBookingSubmission({
 
   const send = useCallback(
     async (intent: BookingIntent, afterUnknown: boolean) => {
+      let booking: ConfirmedBooking;
       try {
-        const booking = await createBooking({ idempotencyKey: intent.key, body: intent.body });
-        commit({ status: 'confirmed', intent, booking });
+        booking = await createBooking({ idempotencyKey: intent.key, body: intent.body });
       } catch (error) {
         const outcome = classifyFailure(error, afterUnknown);
         commit({ ...outcome, intent });
@@ -146,7 +147,11 @@ export function useBookingSubmission({
           void queryClient.invalidateQueries({ queryKey: walletKey });
           void queryClient.invalidateQueries({ queryKey: catalogKey });
         }
+        return;
       }
+      // Confirmation comes first; the cache catches up afterwards and can never undo it.
+      commit({ status: 'confirmed', intent, booking });
+      await applyConfirmedBooking(queryClient, booking);
     },
     [commit, queryClient],
   );
