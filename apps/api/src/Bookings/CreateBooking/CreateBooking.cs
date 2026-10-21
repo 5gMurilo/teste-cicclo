@@ -43,7 +43,8 @@ public sealed record CreateBookingResult(
 /// a primeira ocorrência do serviço preferido e lote sem preferência fica todo pendente. Falha na ativação reverte tudo.
 /// Só uma compra criada (inclusive a reconhecida depois de commit desconhecido) invalida o cache de leitura da wallet,
 /// depois que a sessão foi descartada; replay e recusa não mudaram saldo e não invalidam.
-/// Avisos realtime (opcionais, notifier null fora da barreira) só saem depois do commit confirmado; commit desconhecido não avisa.
+/// Avisos realtime (opcionais, notifier null fora da barreira) só saem depois do commit confirmado e da invalidação, para
+/// que o GET disparado por `wallet.updated` não encontre a projeção anterior; commit desconhecido não avisa.
 /// </summary>
 public sealed partial class CreateBooking(
     ICreateBookingSessions sessions,
@@ -64,11 +65,6 @@ public sealed partial class CreateBooking(
     {
         using var activity = Activities.StartActivity("booking.create");
         var result = await ExecuteWithRetriesAsync(idempotencyKey, intent, cancellationToken);
-        if (result.Outcome == CreateBookingOutcome.Created)
-        {
-            await walletCache.AfterCommitAsync();
-        }
-
         activity?.SetTag("booking.outcome", result.Outcome.ToString());
         activity?.SetTag("booking.rejection", result.Rejection?.ToString());
         activity?.SetTag("booking.id", result.Booking?.BookingId.ToString());
@@ -158,9 +154,16 @@ public sealed partial class CreateBooking(
         // não chegou ao servidor e libera o lock da wallet), então a reconciliação não espera por ela mesma.
         if (commitOutcomeUnknown)
         {
-            return await ReconcileAsync(idempotencyKey, intent, booking.Id, cancellationToken);
+            var reconciled = await ReconcileAsync(idempotencyKey, intent, booking.Id, cancellationToken);
+            if (reconciled.Outcome == CreateBookingOutcome.Created)
+            {
+                await walletCache.AfterCommitAsync();
+            }
+
+            return reconciled;
         }
 
+        await walletCache.AfterCommitAsync();
         if (activation?.Changes is { } changes)
         {
             laundryMetrics.RecordCommitted([changes]);
