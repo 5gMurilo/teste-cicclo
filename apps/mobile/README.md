@@ -11,7 +11,7 @@ App Expo (React Native) da lavanderia Cicclo. Mostra o saldo da carteira demo, o
 | Navegação, header, catálogo, seleção, revisão (E1 e E2) | Implementado e coberto por testes com API fake |
 | Contratação com intenção única, verificação e recuperação (E3) | Implementado e provado contra a API real (gate C2). O botão de contratar está ligado (`capabilities.purchase = true`) |
 | Lista, detalhe, revalidação por foco e rede (E4) | Implementado e provado contra a API real (gate C3) |
-| Validação no Android com leitor de tela (N1) | **Pendente**, executada pelo usuário: ver [docs/native-validation.md](docs/native-validation.md) |
+| Validação no aparelho com leitor de tela (N1) | **Pendente**, executada pelo usuário no **iOS** (VoiceOver); o Android não será declarado validado sem ensaio próprio. Ver [docs/native-validation.md](docs/native-validation.md) |
 | Ciclo de vida do serviço: ativar, confirmar oferta, cancelar, relatar problema, polling (P1) | **Não implementado.** Só começa depois de P0 verificado e de cada endpoint comprovado |
 | Intenção persistida, SignalR, APK (P2) | Fora do escopo |
 
@@ -95,7 +95,7 @@ Comandos na raiz. Resultados reais de 2026-10-21 (commit de documentação deste
 | --- | --- |
 | `pnpm --filter @cicclo/mobile typecheck` | Passa |
 | `pnpm --filter @cicclo/mobile lint` | Passa, zero avisos |
-| `pnpm --filter @cicclo/mobile test` | Passa: 30 suítes, 252 testes |
+| `pnpm --filter @cicclo/mobile test` | Passa: 32 suítes, 260 testes |
 | `pnpm --filter @cicclo/mobile build` | Passa: `expo export` para Android e iOS |
 | `pnpm typecheck` (workspace) | Passa |
 | `pnpm lint`, `pnpm test`, `pnpm build` (workspace) | **Falham por motivo externo**: o pacote da API exige `dotnet`, que não está no PATH da máquina onde foram executados. As partes mobile passam isoladamente (linhas acima) |
@@ -107,7 +107,7 @@ Os testes mobile usam uma API simulada no limite de `fetch`: `pnpm test` nunca a
 EXPO_PUBLIC_API_URL=http://127.0.0.1:5001 pnpm --filter @cicclo/mobile test:live
 ```
 
-Um export bem-sucedido não prova que o app funciona no Android.
+Um export bem-sucedido não prova que o app funciona em um aparelho.
 
 ## Mapa de capacidades
 
@@ -117,4 +117,4 @@ Um export bem-sucedido não prova que o app funciona no Android.
 | Contratação com idempotência e recuperação | Funcional | Testes de integração e prova contra a API real (C2) |
 | Lista e detalhe de contratações | Funcional | Testes de integração e prova contra a API real (C3) |
 | Ativar, confirmar oferta, cancelar, relatar, polling | Não implementado | Fora de P0 |
-| Android real com leitor de tela | Pendente | Gate N1, executado pelo usuário |
+| App no aparelho (iOS) com VoiceOver e texto ampliado | Pendente | Gate N1, executado pelo usuário; Android sem ensaio |
