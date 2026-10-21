@@ -2,7 +2,9 @@ using System.Globalization;
 using Cicclo.Api.Bookings;
 using Cicclo.Api.Bookings.CreateBooking;
 using Cicclo.Api.Platform.Http;
+using Cicclo.Api.Platform.Persistence;
 using Cicclo.Api.Tests.Support;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
 using Xunit;
@@ -24,6 +26,7 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
     private const string IntruderApp = "cicclo-e02-intruder";
     private const string CompetitorApp = "cicclo-e02-competitor";
     private const string PricingApp = "cicclo-e02-pricing";
+    private const string WalletHolderApp = "cicclo-e02-wallet-holder";
     private static readonly TimeSpan SignalTimeout = TimeSpan.FromSeconds(20);
 
     private const string StateSql =
@@ -101,6 +104,44 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
         Assert.Null(result.Booking);
         Assert.Equal(before, await database.RowsAsync(StateSql));
         Assert.Contains("wallet|10.00|", before[0]);
+    }
+
+    // FIN-05 só recusa quando o saldo é menor que o custo: saldo exatamente igual ao total (18.90 para wash/1890)
+    // é suficiente, a compra é confirmada e a wallet e o balance_after do débito ficam em 0.00.
+    [Fact]
+    public async Task K05b_BalanceExactlyEqualToTheTotalIsSufficientAndLeavesZero()
+    {
+        var database = await ReadyAsync("18.90");
+
+        var result = await UseCase(Real(database)).ExecuteAsync(Guid.NewGuid(), Intent(["wash"], 1890), CancellationToken.None);
+
+        Assert.Equal(CreateBookingOutcome.Created, result.Outcome);
+        Assert.Null(result.Rejection);
+        Assert.Equal(1890L, MoneyCents.FromDecimal(result.Booking!.ChargedAmount));
+        Assert.Equal(0L, MoneyCents.FromDecimal(result.Booking.RemainingBalance));
+        Assert.Equal("0.00", await database.ScalarAsync<string>("SELECT balance::text FROM wallets"));
+        Assert.Equal(
+            $"{result.Booking.BookingId}|debit|18.90|0.00",
+            (await database.RowsAsync("SELECT request_id, kind, amount::text, balance_after::text FROM wallet_transactions")).Single());
+        Assert.Equal("1|1", (await database.RowsAsync(
+            "SELECT (SELECT count(*) FROM service_requests), (SELECT count(*) FROM service_request_items)")).Single());
+    }
+
+    // FIN-05 do outro lado da fronteira: um centavo abaixo do total (18.89 para wash/1890) é saldo menor que o
+    // custo e recusa com InsufficientBalance, sem nenhuma mutação.
+    [Fact]
+    public async Task K05c_BalanceOneCentBelowTheTotalRejectsWithoutAnyMutation()
+    {
+        var database = await ReadyAsync("18.89");
+        var before = await database.RowsAsync(StateSql);
+
+        var result = await UseCase(Real(database)).ExecuteAsync(Guid.NewGuid(), Intent(["wash"], 1890), CancellationToken.None);
+
+        Assert.Equal(CreateBookingOutcome.Rejected, result.Outcome);
+        Assert.Equal(BookingRejection.InsufficientBalance, result.Rejection);
+        Assert.Null(result.Booking);
+        Assert.Equal(before, await database.RowsAsync(StateSql));
+        Assert.Contains("wallet|18.89|", before[0]);
     }
 
     [Fact]
@@ -683,6 +724,135 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
             await database.RowsAsync(StateSql));
     }
 
+    // IDEM-07 e design "Retries e commit desconhecido" (falha durante commit não prova rollback; reconciliar pela
+    // chave em contexto novo; sem evidência, falha recuperável): o servidor encerra a conexão da compra logo antes
+    // do COMMIT real. O próprio adaptador traduz a falha em CommitOutcomeUnknown; o servidor reverteu a transação,
+    // então a reconsulta não acha a chave e o resultado é Inconclusive sem mutação. A mesma chave confirma depois.
+    [Fact]
+    public async Task K12k_RealCommitOnATerminatedConnectionIsTranslatedByTheAdapterAndReconciledAsInconclusive()
+    {
+        var database = await ReadyAsync();
+        var before = await database.RowsAsync(StateSql);
+        var key = Guid.NewGuid();
+        var lookups = new List<string>();
+        var sessions = new ScriptedBookingSessions(Real(database))
+        {
+            OnCommit = async (_, commit) =>
+            {
+                await TerminateBookingConnectionAsync(database);
+                await commit();
+            },
+            OnFind = (attempt, found) =>
+            {
+                lock (lookups)
+                {
+                    lookups.Add($"{attempt}|{(found is null ? "not-found" : "found")}");
+                }
+
+                return found;
+            },
+        };
+
+        var result = await UseCase(sessions).ExecuteAsync(key, Intent(["wash"], 1890), CancellationToken.None).WaitAsync(SignalTimeout);
+
+        Assert.Equal(CreateBookingOutcome.Inconclusive, result.Outcome);
+        Assert.Null(result.Booking);
+        Assert.Null(result.Rejection);
+        Assert.Equal(2, sessions.Opened);
+        Assert.Equal(["1|not-found", "2|not-found"], lookups);
+        var failure = Assert.IsType<CreateBookingStoreException>(Assert.Single(sessions.Failures));
+        Assert.Equal(CreateBookingStoreFailure.CommitOutcomeUnknown, failure.Failure);
+        Assert.Contains(Chain(failure.InnerException), exception => exception is NpgsqlException);
+        Assert.Equal(before, await database.RowsAsync(StateSql));
+
+        var retry = await UseCase(Real(database)).ExecuteAsync(key, Intent(["wash"], 1890), CancellationToken.None);
+
+        Assert.Equal(CreateBookingOutcome.Created, retry.Outcome);
+        Assert.Equal("1|1|31.10", (await database.RowsAsync(
+            "SELECT (SELECT count(*) FROM service_requests), (SELECT count(*) FROM wallet_transactions), (SELECT balance::text FROM wallets)")).Single());
+    }
+
+    // Design "Retries e commit desconhecido": sem evidência suficiente, falha recuperável, nunca 201 fabricado. Depois
+    // da queda real no COMMIT, a própria reconciliação perde a conexão (encerrada pelo servidor com a wallet já
+    // bloqueada, antes da busca da chave): o resultado continua Inconclusive, sem exceção e sem mutação.
+    [Fact]
+    public async Task K12l_ReconciliationThatLosesItsOwnConnectionIsInconclusiveWithoutMutation()
+    {
+        var database = await ReadyAsync();
+        var before = await database.RowsAsync(StateSql);
+        var key = Guid.NewGuid();
+        var lookups = new List<string>();
+        var sessions = new ScriptedBookingSessions(Real(database))
+        {
+            OnCommit = async (_, commit) =>
+            {
+                await TerminateBookingConnectionAsync(database);
+                await commit();
+            },
+            AfterLockWallet = async attempt =>
+            {
+                if (attempt == 2)
+                {
+                    await TerminateBookingConnectionAsync(database);
+                }
+            },
+            OnFind = (attempt, found) =>
+            {
+                lock (lookups)
+                {
+                    lookups.Add($"{attempt}|{(found is null ? "not-found" : "found")}");
+                }
+
+                return found;
+            },
+        };
+
+        var result = await UseCase(sessions).ExecuteAsync(key, Intent(["wash"], 1890), CancellationToken.None).WaitAsync(SignalTimeout);
+
+        Assert.Equal(CreateBookingOutcome.Inconclusive, result.Outcome);
+        Assert.Null(result.Booking);
+        Assert.Null(result.Rejection);
+        Assert.Equal(2, sessions.Opened);
+        // A sessão 2 não chegou a concluir a busca: a decisão vem da falha da reconciliação, não de "não encontrada".
+        Assert.Equal(["1|not-found"], lookups);
+        Assert.Equal(2, sessions.Failures.Count);
+        Assert.Equal(CreateBookingStoreFailure.CommitOutcomeUnknown, Assert.IsType<CreateBookingStoreException>(sessions.Failures[0]).Failure);
+        Assert.Contains(Chain(sessions.Failures[1]), exception => exception is NpgsqlException);
+        Assert.Equal(before, await database.RowsAsync(StateSql));
+
+        var retry = await UseCase(Real(database)).ExecuteAsync(key, Intent(["wash"], 1890), CancellationToken.None);
+
+        Assert.Equal(CreateBookingOutcome.Created, retry.Outcome);
+        Assert.Equal("1|1|31.10", (await database.RowsAsync(
+            "SELECT (SELECT count(*) FROM service_requests), (SELECT count(*) FROM wallet_transactions), (SELECT balance::text FROM wallets)")).Single());
+    }
+
+    // Design "Propagar CancellationToken em I/O": se a requisição é cancelada depois da queda real no COMMIT, a
+    // reconciliação não abre sessão nova e o cancelamento chega ao chamador; não vira Inconclusive nem muta nada.
+    [Fact]
+    public async Task K12m_CancellationDuringReconciliationPropagatesWithoutMutation()
+    {
+        var database = await ReadyAsync();
+        var before = await database.RowsAsync(StateSql);
+        using var cancellation = new CancellationTokenSource();
+        var sessions = new ScriptedBookingSessions(Real(database))
+        {
+            OnCommit = async (_, commit) =>
+            {
+                await TerminateBookingConnectionAsync(database);
+                await cancellation.CancelAsync();
+                await commit();
+            },
+        };
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            UseCase(sessions).ExecuteAsync(Guid.NewGuid(), Intent(["wash"], 1890), cancellation.Token).WaitAsync(SignalTimeout));
+
+        var failure = Assert.IsType<CreateBookingStoreException>(Assert.Single(sessions.Failures));
+        Assert.Equal(CreateBookingStoreFailure.CommitOutcomeUnknown, failure.Failure);
+        Assert.Equal(before, await database.RowsAsync(StateSql));
+    }
+
     // A16: numa intenção nova, serviço, capacidade e preço esperado são validados antes do saldo. Saldo 10.00
     // não cobre nem o total enviado (1800) nem o calculado (1890); 900 cobriria só o enviado.
     [Theory]
@@ -760,6 +930,57 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
         Assert.Equal(Describe(created.Booking), Describe(replay.Booking));
     }
 
+    // Design D02 e "TimeProvider UTC único, capturado para a decisão depois dos locks": uma compra que esperou o
+    // lock da wallet não confirma com o horário anterior à espera. O relógio está em T0 enquanto a compra é vista
+    // esperando o lock e vai para T1 antes da liberação; criação e as três datas do banco (FIN-11) ficam em T1.
+    [Fact]
+    public async Task K14b_DecisionInstantIsTakenAfterWaitingForTheWalletLock()
+    {
+        var database = await ReadyAsync();
+        var t0 = new DateTimeOffset(2026, 10, 21, 10, 0, 0, TimeSpan.Zero);
+        var t1 = t0.AddMinutes(5);
+        var clock = new SteppingTimeProvider(t0);
+        await using var holder = new NpgsqlConnection(Named(database, WalletHolderApp));
+        await holder.OpenAsync();
+        await using var transaction = await holder.BeginTransactionAsync();
+        await using (var walletLock = new NpgsqlCommand($"SELECT 1 FROM wallets WHERE id = '{DemoData.WalletId}' FOR UPDATE", holder, transaction))
+        {
+            await walletLock.ExecuteNonQueryAsync();
+        }
+
+        var purchase = new CreateBooking(Real(database), clock, NullLogger<CreateBooking>.Instance)
+            .ExecuteAsync(Guid.NewGuid(), Intent(["wash"], 1890), CancellationToken.None);
+        await WaitUntilWaitingOnLockAsync(database, BookingApp);
+        Assert.False(purchase.IsCompleted);
+        clock.MoveTo(t1);
+        await transaction.CommitAsync();
+        var created = await purchase.WaitAsync(SignalTimeout);
+
+        Assert.Equal(CreateBookingOutcome.Created, created.Outcome);
+        Assert.Equal(new DateTime(2026, 10, 21, 10, 5, 0, DateTimeKind.Utc), created.Booking!.CreatedAt);
+        Assert.Equal(DateTimeKind.Utc, created.Booking.CreatedAt.Kind);
+        Assert.Equal(
+            "2026-10-21 10:05:00.000000|2026-10-21 10:05:00.000000|2026-10-21 10:05:00.000000",
+            (await database.RowsAsync(
+                """
+                SELECT to_char(r.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS.US'),
+                       to_char(t.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS.US'),
+                       to_char(w.updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS.US')
+                FROM service_requests r JOIN wallet_transactions t ON t.request_id = r.id JOIN wallets w ON w.id = r.wallet_id
+                """)).Single());
+    }
+
+    // OPS-03 (banco indisponível e falha detectável → DATABASE_UNAVAILABLE, sem afirmar sucesso financeiro): sem
+    // connection string configurada, a compra falha como banco indisponível antes de abrir qualquer transação.
+    [Fact]
+    public async Task K15_MissingConnectionStringIsDatabaseUnavailable()
+    {
+        var sessions = new PostgresCreateBookingSessions(new UnconfiguredContextFactory());
+
+        await Assert.ThrowsAsync<DatabaseUnavailableException>(() =>
+            UseCase(sessions).ExecuteAsync(Guid.NewGuid(), Intent(["wash"], 1890), CancellationToken.None));
+    }
+
     private async Task<TestDatabase> ReadyAsync(string? balance = null)
     {
         var database = await postgres.CreateDatabaseAsync();
@@ -811,6 +1032,22 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
         }
     }
 
+    /// <summary>
+    /// O servidor encerra a única conexão da compra aberta no momento (pg_terminate_backend com prazo espera o fim do
+    /// processo), então o próximo comando dela falha de verdade e a transação já foi revertida pelo PostgreSQL.
+    /// </summary>
+    private static async Task TerminateBookingConnectionAsync(TestDatabase database) =>
+        Assert.Equal(["true"], await database.RowsAsync(
+            $"SELECT pg_terminate_backend(pid, {(int)SignalTimeout.TotalMilliseconds})::text FROM pg_stat_activity WHERE datname = current_database() AND application_name = '{BookingApp}'"));
+
+    private static IEnumerable<Exception> Chain(Exception? exception)
+    {
+        for (; exception is not null; exception = exception.InnerException)
+        {
+            yield return exception;
+        }
+    }
+
     private static PostgresException? FindPostgres(Exception? exception)
     {
         for (; exception is not null; exception = exception.InnerException)
@@ -840,5 +1077,21 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => now;
+    }
+
+    /// <summary>Contextos com o provedor PostgreSQL, mas sem connection string configurada.</summary>
+    private sealed class UnconfiguredContextFactory : IDbContextFactory<CiccloDbContext>
+    {
+        public CiccloDbContext CreateDbContext() => new(new DbContextOptionsBuilder<CiccloDbContext>().UseNpgsql().Options);
+    }
+
+    /// <summary>Relógio que só muda quando o teste manda; o caso de uso só lê GetUtcNow, em outra thread.</summary>
+    private sealed class SteppingTimeProvider(DateTimeOffset start) : TimeProvider
+    {
+        private long utcTicks = start.UtcTicks;
+
+        public void MoveTo(DateTimeOffset instant) => Volatile.Write(ref utcTicks, instant.UtcTicks);
+
+        public override DateTimeOffset GetUtcNow() => new(Volatile.Read(ref utcTicks), TimeSpan.Zero);
     }
 }
