@@ -32,6 +32,10 @@ public static class ApiProblems
 
     public const string ItemNotFound = "ITEM_NOT_FOUND";
 
+    public const string InvalidStateTransition = "INVALID_STATE_TRANSITION";
+
+    public const string MachineOfferExpired = "MACHINE_OFFER_EXPIRED";
+
     public const string InvalidServiceSelection = "INVALID_SERVICE_SELECTION";
 
     public const string ServiceNotFound = "SERVICE_NOT_FOUND";

@@ -1,8 +1,10 @@
 using Cicclo.Api.Bookings;
 using Cicclo.Api.Bookings.ActivateItem;
+using Cicclo.Api.Bookings.ConfirmItem;
 using Cicclo.Api.Bookings.CreateBooking;
 using Cicclo.Api.Bookings.GetBooking;
 using Cicclo.Api.Bookings.ListBookings;
+using Cicclo.Api.Laundry.ConfirmOffer;
 using Cicclo.Api.Platform;
 using Cicclo.Api.Platform.BackgroundServices;
 using Cicclo.Api.Platform.Health;
@@ -56,6 +58,7 @@ builder.Services.AddSingleton<BookingMetrics>();
 builder.Services.AddScoped<ICreateBookingSessions, PostgresCreateBookingSessions>();
 builder.Services.AddScoped<CreateBooking>();
 builder.Services.AddScoped<ActivateItem>();
+builder.Services.AddScoped<ConfirmOffer>();
 var app = builder.Build();
 app.UseHttpBoundary();
 app.UseRateLimiter();
@@ -64,7 +67,7 @@ app.MapHealthEndpoints();
 app.MapGroup("/api/v1").RequireRateLimiting(ApiRateLimits.Reads).MapWalletEndpoint().MapServicesEndpoint();
 app.MapGroup("/api/v1").RequireRateLimiting(ApiRateLimits.BookingReads).MapGetBookingEndpoint().MapListBookingsEndpoint().MapListTransactionsEndpoint();
 app.MapGroup("/api/v1").RequireRateLimiting(ApiRateLimits.BookingCreate).MapCreateBookingEndpoint();
-app.MapGroup("/api/v1").RequireRateLimiting(ApiRateLimits.ItemCommands).MapActivateItemEndpoint();
+app.MapGroup("/api/v1").RequireRateLimiting(ApiRateLimits.ItemCommands).MapActivateItemEndpoint().MapConfirmItemEndpoint();
 app.Run();
 return 0;
 
