@@ -487,6 +487,22 @@ describe('T34 and T33 hardening: nothing is credited early, the detail is re-rea
     expect(queryClient.getQueryData(['wallet'])).toMatchObject({ balanceCents: 3110 });
   });
 
+  it('keeps a confirmed cancellation and its refund even when the wallet cache cannot be updated', async () => {
+    detail = { status: 200, body: booking(item('queued', { queuePosition: 1 })) };
+    commandReply = () => ({ status: 200, body: cancelBody(1890, 5000) });
+    await openDetail();
+    await screen.findByText('Na fila');
+    const failing = jest.spyOn(queryClient, 'cancelQueries').mockRejectedValue(new Error('cache exploded'));
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Cancelar wash' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Confirmar cancelamento de wash' }));
+
+    expect(await screen.findByText(/Estorno confirmado/)).toBeOnTheScreen();
+    expect(screen.queryByText(/Não foi possível concluir a ação/)).toBeNull();
+    expect(posts).toHaveLength(1);
+    failing.mockRestore();
+  });
+
   it('re-reads the detail when the offer deadline reaches zero, before any polling tick', async () => {
     const T0 = Date.parse('2026-10-21T12:00:00Z');
     jest.spyOn(Date, 'now').mockImplementation(() => T0);
