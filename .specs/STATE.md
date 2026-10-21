@@ -45,11 +45,11 @@
 ## Handoff
 
 - **Feature**: `.specs/features/cicclo-mobile/spec.md`.
-- **Phase / Task**: Execute inline e sequencial. Última tarefa fechada: T21.
-- **Completed**: T1-T9 e T11-T20 fechadas; T10 e T21 implementadas e pendentes de gate com a API real (C1 e C2). T21 = coordenador de compra no CheckoutProvider (um por app, acima das tabs), CTA e estados confirmed/submitting/rejected/unknown no CheckoutScreen, edição congelada enquanto pendente; CTA real atrás de capabilities.purchase=false até o C2 (19/37 com Done when marcado).
+- **Phase / Task**: Execute inline e sequencial. Última tarefa fechada: T22.
+- **Completed**: T1-T9, T11-T20 e T22 fechadas; T10 e T21 pendentes de gate com a API real. T22 = bookings/status.ts (fase active/history/empty, rótulos, status desconhecido nunca terminal) (20/37 com Done when marcado).
 - **In-progress**: Nenhuma.
-- **Next step**: T22 (bookings/status.ts, regras puras). E3 completa em código; C2 e a demo 5000→3110 ficam para o fim.
+- **Next step**: T23 (listQuery.ts, GET /bookings paginado: page/pageSize, PageResponse{items,page,pageSize,hasNextPage}).
 - **Pendente da API real**: C1 (T10 e demo de E1/E2), integração por fast-forward de E1 e E2 em `mobile-worktree`; C2 (CTA real em T21), C3 (T22-T28), N1 (T29, com o usuário). Decisão do usuário (2026-10-21): implementar o código de todas as etapas E com fakes primeiro e deixar a interação real com a API para depois de todas elas.
 - **Blockers**: C1/C2/C3 não provados. `dotnet` não aparece no PATH desta sessão (há `docker` e `psql`). `tests/bootstrap.test.mjs` teste 6 falha localmente por isso.
-- **Branches** (atual: `feat/mobile-03-safe-booking`): chore/mobile-00-baseline 08e6c7d; feat/mobile-01-catalog-wallet 6bd529c; feat/mobile-02-selection-review 0a34316; feat/mobile-03-safe-booking f5708e8; mobile-worktree 08e6c7d.
+- **Branches** (atual: `feat/mobile-04-booking-tracking`): chore/mobile-00-baseline 08e6c7d; feat/mobile-01-catalog-wallet 6bd529c; feat/mobile-02-selection-review 0a34316; feat/mobile-03-safe-booking 9674db3; feat/mobile-04-booking-tracking 9674db3; mobile-worktree 08e6c7d.
 - **Uncommitted files**: `.omc/` e `apps/mobile/.omc/` (estado de ferramenta, não versionar).

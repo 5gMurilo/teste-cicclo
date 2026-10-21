@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** em andamento. Última tarefa concluída: T21 (19/37 com Done when marcado); ver STATE.md.
+**Execução:** em andamento. Última tarefa concluída: T22 (20/37 com Done when marcado); ver STATE.md.
 
 ## Execution Protocol
 
@@ -357,7 +357,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Status da API/contrato; sem importar catálogo ou checkout.
 **Requirement**: BOOK-02, BOOK-03, BOOK-05, SAFE-01.
 **What**: Definir estados conhecidos e seletores de booking ativo/terminal, preservando lotes mistos.
-**Done when**: [ ] Algum item não terminal mantém booking ativo; todos terminais vão ao histórico; status desconhecido não é terminal nem habilita ação financeira.
+**Done when**: [x] Algum item não terminal mantém booking ativo; todos terminais vão ao histórico; status desconhecido não é terminal nem habilita ação financeira.
 **Tests**: unit — teto de 5 casos: cada não terminal parametrizado, todos terminais, misto, desconhecido e coleção malformada rejeitada na fronteira.
 **Gate**: Q + CC.
 **Commit**: `feat(bookings): centralize active and historical status rules`
@@ -709,7 +709,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **19/37 tarefas com Done when marcado** (última: T21); demais abertas ou pendentes de gate externo.
+- Implementação: **20/37 tarefas com Done when marcado** (última: T22); demais abertas ou pendentes de gate externo.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1/C2/C3/CP1 não comprovadas; N1 não executado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.
