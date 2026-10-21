@@ -42,7 +42,7 @@ apps/api/scripts/start-demo.sh
 curl http://127.0.0.1:5001/api/v1/wallet
 ```
 
-O script sobe o PostgreSQL, aplica migrations e `seed.sql` (bootstrap explícito), inicia a API e confere carteira e catálogo (seção "Demonstração local completa"). Em seguida, faça a compra e o replay da seção "Contratações". A API do Compose não liga `Laundry:DemoMode`: as rotas de simulação respondem 404 nela. O roteiro completo, com simulação, está em "Roteiro de demonstração (5 a 8 minutos)" e usa o SDK .NET. Para voltar ao estado inicial, use "Reset da demonstração".
+O script sobe o PostgreSQL, aplica migrations e `seed.sql` (bootstrap explícito), inicia a API e confere carteira e catálogo (seção "Demonstração local completa"). Em seguida, faça a compra e o replay da seção "Contratações". A API do Compose liga `Laundry__DemoMode=true` (com `Development`), então as rotas de simulação, como `POST /api/v1/simulation/machines/{machineId}/complete`, existem nela. O roteiro completo, com simulação, está em "Roteiro de demonstração (5 a 8 minutos)" e usa o SDK .NET. Para voltar ao estado inicial, use "Reset da demonstração".
 
 ## Instalação
 
@@ -509,7 +509,7 @@ Resultados observados, na ordem:
 10. `GET /openapi/v1.json`: OpenAPI 3.1.1 com 19 operações. Com o PostgreSQL parado: `/health/live` e `/health` 200, `/health/ready` 503, carteira e compra 503 `DATABASE_UNAVAILABLE`; ao religar o banco, a readiness volta a 200 sem reiniciar a API. Com `OpenTelemetry__OtlpEndpoint` apontando para uma porta sem coletor, todo o roteiro acima respondeu igual.
 11. Reset com a API ativa: código 2, "1 conexão(ões) ativa(s) da API/worker (cicclo.api)". Com a API parada (`Ctrl+C`) e a confirmação `127.0.0.1:5432/cicclo`: código 0, saldo 50.00, nenhuma compra ou lançamento, máquinas `available`, 6 migrations preservadas.
 
-No Compose (`start-demo.sh`), compra e replay reproduzem os passos 1 e 2, a rota de simulação responde 404 (sem DemoMode) e o reset pelo serviço `bootstrap` recusa com a API ativa (2), recusa sem confirmação (2) e restaura com `postgres:5432/cicclo` depois de `stop api` (0); ao subir a API de novo, a carteira volta a 5000 e a lista de compras fica vazia.
+No Compose (`start-demo.sh`), compra e replay reproduzem os passos 1 e 2, (execução anterior, ainda sem `DemoMode` no Compose, quando a rota de simulação respondia 404) o reset pelo serviço `bootstrap` recusa com a API ativa (2), recusa sem confirmação (2) e restaura com `postgres:5432/cicclo` depois de `stop api` (0); ao subir a API de novo, a carteira volta a 5000 e a lista de compras fica vazia.
 
 ## Imagem Docker da API
 
@@ -552,7 +552,7 @@ Risco residual aceito: não exponha esta API em rede pública ou compartilhada. 
 
 - **Cache Redis e notificações SignalR implementados como extensões opt-in, ambos desligados por padrão.** Cada um tem a sua própria flag (`Caching:Enabled`, `Realtime:Enabled`) e liga sem depender do outro; desligados, a API se comporta como o caminho-base (nenhuma conexão Redis, `/hubs/laundry` responde 404).
 - **Cache Redis: leitura eventual.** Só `GET /api/v1/wallet` usa o cache, sem read-your-writes; mudanças fora da API e a corrida de repopulação só se corrigem pelo TTL; a invalidação pós-commit é best-effort; um Redis local único, sem persistência, TLS ou ACL além da senha. Detalhes em "Cache Redis opcional".
-- **Notificações SignalR são opcionais e sem garantia de entrega.** Ficam desligadas por padrão e não existem na API do Compose (sem `DemoMode`). Sem replay, outbox, entrega offline, ordem global ou exactly-once; um único processo, sem backplane; broadcast sem isolamento por usuário; sem CORS para clientes web de outra origem. O aplicativo mobile não as consome. Recupere o estado por REST. Com o cache também ligado, `wallet.updated` só sai depois da invalidação da chave, mas o GET seguinte continua sujeito às limitações do cache.
+- **Notificações SignalR são opcionais e sem garantia de entrega.** Ficam desligadas por padrão (`Realtime__Enabled` não é ligado pelo Compose); o `DemoMode` do Compose é só uma das três condições do Hub. Sem replay, outbox, entrega offline, ordem global ou exactly-once; um único processo, sem backplane; broadcast sem isolamento por usuário; sem CORS para clientes web de outra origem. O aplicativo mobile não as consome. Recupere o estado por REST. Com o cache também ligado, `wallet.updated` só sai depois da invalidação da chave, mas o GET seguinte continua sujeito às limitações do cache.
 - A API do Compose não liga `Laundry:DemoMode`: a simulação só funciona na API iniciada como em "Roteiro de demonstração" (ou em outro host Development com a flag).
 - O smoke de `start-demo.sh` confere só carteira e catálogo; compra, fila e simulação são conferidas pelo roteiro manual e pelos testes de aceitação.
 - O reset detecta somente conexões abertas com Application Name `cicclo.api`; não encerra sessões nem protege contra clientes externos ou uma API configurada com outro nome. Ele não reinicia a sequência `queue_ticket_seq` (só ordena a fila).
