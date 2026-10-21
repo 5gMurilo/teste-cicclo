@@ -18,6 +18,9 @@ public sealed class InitialSchemaTests(PostgresFixture postgres)
     private const string ValidMachine =
         "INSERT INTO machines (id, name, machine_type, state, updated_at) VALUES ('00000000-0000-4000-8000-000000000101', 'washer-01', 'washer', 'available', now());";
 
+    // As migrations posteriores têm testes próprios; estes cenários provam a migration inicial.
+    private const string InitialMigration = "InitialSchema";
+
     private const string TablesSql =
         "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name";
 
@@ -26,7 +29,7 @@ public sealed class InitialSchemaTests(PostgresFixture postgres)
     {
         var database = await postgres.CreateDatabaseAsync();
 
-        await database.MigrateAsync();
+        await database.MigrateAsync(InitialMigration);
 
         Assert.Equal(["__EFMigrationsHistory", "machines", "services", "wallets"], await database.RowsAsync(TablesSql));
         Assert.Equal(
@@ -78,12 +81,12 @@ public sealed class InitialSchemaTests(PostgresFixture postgres)
     public async Task S02_ReapplyingMigrationsKeepsSchemaAndHistoryWithoutDuplicates()
     {
         var database = await postgres.CreateDatabaseAsync();
-        await database.MigrateAsync();
+        await database.MigrateAsync(InitialMigration);
         var tables = await database.RowsAsync(TablesSql);
         var constraints = await database.RowsAsync(
             "SELECT conrelid::regclass::text, conname FROM pg_constraint WHERE connamespace = 'public'::regnamespace ORDER BY 1, 2");
 
-        await database.MigrateAsync();
+        await database.MigrateAsync(InitialMigration);
 
         Assert.Equal(tables, await database.RowsAsync(TablesSql));
         Assert.Equal(

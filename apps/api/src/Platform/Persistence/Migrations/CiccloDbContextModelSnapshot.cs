@@ -22,6 +22,91 @@ namespace Cicclo.Api.Platform.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Cicclo.Api.Bookings.Booking", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("IdempotencyKey")
+                        .HasColumnType("uuid")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<string>("RequestFingerprint")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("request_fingerprint");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("total_amount");
+
+                    b.Property<Guid>("WalletId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("wallet_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_service_requests");
+
+                    b.HasIndex("WalletId", "IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_service_requests_wallet_idempotency_key");
+
+                    b.ToTable("service_requests", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_service_requests_request_fingerprint_sha256", "request_fingerprint ~ '^[0-9a-f]{64}$'");
+
+                            t.HasCheckConstraint("ck_service_requests_total_amount_positive", "total_amount > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Cicclo.Api.Bookings.BookingItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BookingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("request_id");
+
+                    b.Property<string>("ServiceCode")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("service_code");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("unit_price");
+
+                    b.HasKey("Id")
+                        .HasName("pk_service_request_items");
+
+                    b.HasIndex("BookingId")
+                        .HasDatabaseName("ix_service_request_items_request_id");
+
+                    b.HasIndex("ServiceCode")
+                        .HasDatabaseName("ix_service_request_items_service_code");
+
+                    b.ToTable("service_request_items", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_service_request_items_status", "status IN ('pending_activation')");
+
+                            t.HasCheckConstraint("ck_service_request_items_unit_price_positive", "unit_price > 0");
+                        });
+                });
+
             modelBuilder.Entity("Cicclo.Api.Laundry.Machine", b =>
                 {
                     b.Property<Guid>("Id")
@@ -105,6 +190,69 @@ namespace Cicclo.Api.Platform.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Cicclo.Api.Wallet.LedgerEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<decimal>("BalanceAfter")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("balance_after");
+
+                    b.Property<Guid>("BookingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("request_id");
+
+                    b.Property<Guid?>("BookingItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("request_item_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid>("WalletId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("wallet_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_wallet_transactions");
+
+                    b.HasIndex("BookingId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_wallet_transactions_request_debit")
+                        .HasFilter("kind = 'debit'");
+
+                    b.HasIndex("BookingItemId")
+                        .HasDatabaseName("ix_wallet_transactions_request_item_id");
+
+                    b.HasIndex("WalletId")
+                        .HasDatabaseName("ix_wallet_transactions_wallet_id");
+
+                    b.ToTable("wallet_transactions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_wallet_transactions_amount_positive", "amount > 0");
+
+                            t.HasCheckConstraint("ck_wallet_transactions_balance_after_non_negative", "balance_after >= 0");
+
+                            t.HasCheckConstraint("ck_wallet_transactions_debit_without_item", "kind <> 'debit' OR request_item_id IS NULL");
+
+                            t.HasCheckConstraint("ck_wallet_transactions_kind", "kind IN ('debit')");
+                        });
+                });
+
             modelBuilder.Entity("Cicclo.Api.Wallet.WalletAccount", b =>
                 {
                     b.Property<Guid>("Id")
@@ -138,6 +286,56 @@ namespace Cicclo.Api.Platform.Persistence.Migrations
 
                             t.HasCheckConstraint("ck_wallets_currency_brl", "currency = 'BRL'");
                         });
+                });
+
+            modelBuilder.Entity("Cicclo.Api.Bookings.Booking", b =>
+                {
+                    b.HasOne("Cicclo.Api.Wallet.WalletAccount", null)
+                        .WithMany()
+                        .HasForeignKey("WalletId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_service_requests_wallets");
+                });
+
+            modelBuilder.Entity("Cicclo.Api.Bookings.BookingItem", b =>
+                {
+                    b.HasOne("Cicclo.Api.Bookings.Booking", null)
+                        .WithMany()
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_service_request_items_service_requests");
+
+                    b.HasOne("Cicclo.Api.Services.LaundryService", null)
+                        .WithMany()
+                        .HasForeignKey("ServiceCode")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_service_request_items_services");
+                });
+
+            modelBuilder.Entity("Cicclo.Api.Wallet.LedgerEntry", b =>
+                {
+                    b.HasOne("Cicclo.Api.Bookings.Booking", null)
+                        .WithMany()
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_wallet_transactions_service_requests");
+
+                    b.HasOne("Cicclo.Api.Bookings.BookingItem", null)
+                        .WithMany()
+                        .HasForeignKey("BookingItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_wallet_transactions_service_request_items");
+
+                    b.HasOne("Cicclo.Api.Wallet.WalletAccount", null)
+                        .WithMany()
+                        .HasForeignKey("WalletId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_wallet_transactions_wallets");
                 });
 #pragma warning restore 612, 618
         }

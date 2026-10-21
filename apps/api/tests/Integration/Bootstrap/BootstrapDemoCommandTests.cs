@@ -30,7 +30,7 @@ public sealed class BootstrapDemoCommandTests(PostgresFixture postgres, Publishe
         Assert.True(result.Output.IndexOf(SeedStarted, StringComparison.Ordinal) > migrated, result.Output);
         Assert.DoesNotContain(HttpListener, result.Output);
         Assert.DoesNotContain(PostgresFixture.Password, result.Output);
-        Assert.Equal(1L, await database.ScalarAsync<long>("SELECT count(*) FROM \"__EFMigrationsHistory\""));
+        Assert.Equal(TestDatabase.MigrationIds, await database.RowsAsync("SELECT \"MigrationId\" FROM \"__EFMigrationsHistory\" ORDER BY 1"));
         Assert.Equal(DemoData.InitialSnapshot, await DemoData.SnapshotAsync(database));
         Assert.True(await database.ScalarAsync<bool>(
             """
@@ -118,7 +118,7 @@ public sealed class BootstrapDemoCommandTests(PostgresFixture postgres, Publishe
         Assert.Contains("Bootstrap demo: seed falhou e foi revertido.", result.Output);
         Assert.DoesNotContain(PostgresFixture.Password, result.Output);
         Assert.Equal([$"machine|{ConflictingDryerId}|dryer-01|dryer|available"], await DemoData.SnapshotAsync(database));
-        Assert.Equal(1L, await database.ScalarAsync<long>("SELECT count(*) FROM \"__EFMigrationsHistory\""));
+        Assert.Equal(TestDatabase.MigrationIds, await database.RowsAsync("SELECT \"MigrationId\" FROM \"__EFMigrationsHistory\" ORDER BY 1"));
     }
 
     [Fact]
