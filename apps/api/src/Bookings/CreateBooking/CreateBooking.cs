@@ -64,6 +64,7 @@ public sealed partial class CreateBooking(ICreateBookingSessions sessions, TimeP
     {
         Booking booking;
         BookingSnapshot snapshot;
+        var commitOutcomeUnknown = false;
         await using (var session = await sessions.OpenAsync(cancellationToken))
         {
             var balance = await session.LockWalletAsync(DemoWallet.Id, cancellationToken);
@@ -111,8 +112,15 @@ public sealed partial class CreateBooking(ICreateBookingSessions sessions, TimeP
             catch (CreateBookingStoreException exception) when (exception.Failure == CreateBookingStoreFailure.CommitOutcomeUnknown)
             {
                 LogCommitUnknown(exception);
-                return await ReconcileAsync(idempotencyKey, intent, booking.Id, cancellationToken);
+                commitOutcomeUnknown = true;
             }
+        }
+
+        // Rollback antes de reconsultar: a sessão original já foi descartada (desfaz a transação se o commit
+        // não chegou ao servidor e libera o lock da wallet), então a reconciliação não espera por ela mesma.
+        if (commitOutcomeUnknown)
+        {
+            return await ReconcileAsync(idempotencyKey, intent, booking.Id, cancellationToken);
         }
 
         LogCreated(booking.Id, snapshot.Items.Count);
@@ -120,8 +128,8 @@ public sealed partial class CreateBooking(ICreateBookingSessions sessions, TimeP
     }
 
     /// <summary>
-    /// Commit sem confirmação: reconsulta a chave em sessão nova. O lock da wallet só é obtido depois que a
-    /// transação original terminou, então a leitura é a decisão final. Sem a compra persistida, devolve
+    /// Commit sem confirmação: reconsulta a chave em sessão nova, aberta só depois de a sessão original ser
+    /// descartada. O lock da wallet só é obtido depois que a transação original terminou, então a leitura é a decisão final. Sem a compra persistida, devolve
     /// Inconclusive: nunca fabrica sucesso nem tenta de novo com outra chave.
     /// </summary>
     private async Task<CreateBookingResult> ReconcileAsync(Guid idempotencyKey, BookingIntent intent, Guid attemptedBookingId, CancellationToken cancellationToken)

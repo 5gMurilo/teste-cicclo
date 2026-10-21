@@ -446,18 +446,34 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
         var database = await ReadyAsync();
         var before = await database.RowsAsync(StateSql);
         var key = Guid.NewGuid();
+        var lookups = new List<string>();
         var sessions = new ScriptedBookingSessions(Real(database))
         {
             // A conexão cai antes de o COMMIT chegar ao servidor: descartar a sessão faz rollback.
             OnCommit = (_, _) => throw new CreateBookingStoreException(CreateBookingStoreFailure.CommitOutcomeUnknown, "conexão perdida antes do commit"),
+            OnFind = (attempt, found) =>
+            {
+                lock (lookups)
+                {
+                    lookups.Add($"{attempt}|{(found is null ? "not-found" : "found")}");
+                }
+
+                return found;
+            },
         };
 
-        var result = await UseCase(sessions).ExecuteAsync(key, Intent(["wash"], 1890), CancellationToken.None);
+        // Rollback antes de reconsultar: a sessão de reconciliação obtém o lock da wallet logo, sem esperar
+        // o timeout de comando (30 s) que só ocorreria com a transação original ainda aberta.
+        var result = await UseCase(sessions).ExecuteAsync(key, Intent(["wash"], 1890), CancellationToken.None).WaitAsync(SignalTimeout);
 
         Assert.Equal(CreateBookingOutcome.Inconclusive, result.Outcome);
         Assert.Null(result.Booking);
         Assert.Null(result.Rejection);
         Assert.Equal(2, sessions.Opened);
+        // A decisão vem da busca da chave na sessão nova (não encontrada), não de uma falha da reconciliação.
+        Assert.Equal(["1|not-found", "2|not-found"], lookups);
+        var failure = Assert.IsType<CreateBookingStoreException>(Assert.Single(sessions.Failures));
+        Assert.Equal(CreateBookingStoreFailure.CommitOutcomeUnknown, failure.Failure);
         Assert.Equal(before, await database.RowsAsync(StateSql));
 
         var retry = await UseCase(Real(database)).ExecuteAsync(key, Intent(["wash"], 1890), CancellationToken.None);
