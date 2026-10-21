@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
 import { View } from 'react-native';
 
@@ -26,12 +27,25 @@ export default function TabsLayout() {
         onRetry={checkout.revalidate}
       />
       <Tabs screenOptions={{ headerShown: false }}>
-        <Tabs.Screen name="services" options={{ title: 'Serviços' }} />
-        <Tabs.Screen name="index" options={{ title: 'Home' }} />
+        <Tabs.Screen
+          name="services"
+          options={{
+            title: 'Serviços',
+            tabBarIcon: ({ color, size }) => <Ionicons name="list" color={color as string} size={size} />,
+          }}
+        />
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Home',
+            tabBarIcon: ({ color, size }) => <Ionicons name="home" color={color as string} size={size} />,
+          }}
+        />
         <Tabs.Screen
           name="checkout"
           options={{
             title: 'Checkout',
+            tabBarIcon: ({ color, size }) => <Ionicons name="cart" color={color as string} size={size} />,
             tabBarBadge: quantity > 0 ? quantity : undefined,
             tabBarAccessibilityLabel:
               quantity > 0
