@@ -226,7 +226,7 @@ public sealed class QueueSchemaTests(PostgresFixture postgres)
     [InlineData($"UPDATE service_request_items SET expires_at = offered_at + interval '1 microsecond', started_at = NULL WHERE id = '{Offered}'")]
     [InlineData($"UPDATE service_request_items SET started_at = offered_at WHERE id = '{Running}'")]
     [InlineData($"UPDATE service_request_items SET started_at = expires_at - interval '1 microsecond' WHERE id = '{Running}'")]
-    [InlineData($"UPDATE machines SET state = 'running', active_item_id = NULL WHERE id = '{Washer2Id}'")]
+    [InlineData($"UPDATE machines SET state = 'running', active_item_id = NULL, is_demo_occupied = true WHERE id = '{Washer2Id}'")]
     [InlineData($"UPDATE machines SET state = 'running' WHERE id = '{DemoData.WasherId}'; UPDATE service_request_items SET status = 'in_progress', started_at = expires_at - interval '1 microsecond' WHERE id = '{Offered}'")]
     public async Task Q03c_BoundaryValuesInsideTheRulesAreAccepted(string sql)
     {

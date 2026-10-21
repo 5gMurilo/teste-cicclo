@@ -310,7 +310,7 @@ public sealed class CancelItemTests(PostgresFixture postgres)
         }
 
         // A secadora em fila prova que a recusa não reconcilia nem grava nada.
-        await database.ExecuteAsync($"UPDATE machines SET state = 'running' WHERE id = '{DryerId}'");
+        await database.ExecuteAsync($"UPDATE machines SET state = 'running', is_demo_occupied = true WHERE id = '{DryerId}'");
         await ActivateAsync(Sessions(database, "cicclo-e05-setup"), Coordinator(clock), dry);
         var before = await database.RowsAsync(StateSql);
         var openApi = await OpenApiContract.FetchAsync(client);

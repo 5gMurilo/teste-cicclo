@@ -112,7 +112,7 @@ public sealed class ServicesEndpointTests(PostgresFixture postgres)
     [InlineData("running")]
     public async Task C06_ReservedOrRunningMachinesKeepTheServiceBookable(string state)
     {
-        var database = await SeededAsync(state == "reserved" ? ReservedByOffers : $"UPDATE machines SET state = '{state}';");
+        var database = await SeededAsync(state == "reserved" ? ReservedByOffers : $"UPDATE machines SET state = '{state}', is_demo_occupied = true;");
 
         var services = await CatalogAsync(database);
 

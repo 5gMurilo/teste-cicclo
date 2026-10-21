@@ -42,6 +42,7 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
         typeof(Cicclo.Api.Wallet.ListTransactions.PostgresLedgerQuery), typeof(Cicclo.Api.Wallet.ListTransactions.ListTransactionsEndpoint),
         typeof(Cicclo.Api.Bookings.ActivateItem.ActivateItemEndpoint), typeof(Cicclo.Api.Bookings.ConfirmItem.ConfirmItemEndpoint),
         typeof(Cicclo.Api.Bookings.CancelItem.CancelItemEndpoint),
+        typeof(Cicclo.Api.Laundry.GetMachines.GetMachinesEndpoint), typeof(Cicclo.Api.Laundry.GetMachines.PostgresMachinesQuery),
     ];
 
     [Fact]
@@ -64,6 +65,8 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
                 typeof(Cicclo.Api.Laundry.ReconcileOffers.ReconcileOffers), typeof(LaundryMetrics), typeof(QueueChanges),
                 typeof(Cicclo.Api.Bookings.CancelItem.CancelItem), typeof(Cicclo.Api.Bookings.CancelItem.CancelItemResult),
                 typeof(Cicclo.Api.Bookings.CancelItem.CancelItemResponse), typeof(RefundPolicy), typeof(RefundPlan), typeof(RefundMetrics),
+                typeof(Cicclo.Api.Laundry.GetMachines.MachinesResponse), typeof(Cicclo.Api.Laundry.GetMachines.MachineResponse),
+                typeof(Cicclo.Api.Laundry.GetMachines.MachineStateContract),
             },
             domainTypes.ToHashSet());
         var violations = domainTypes

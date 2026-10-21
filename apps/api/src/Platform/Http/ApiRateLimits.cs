@@ -22,7 +22,7 @@ public static class ApiRateLimits
     /// <summary>GET wallet e catálogo: `RateLimiting:Reads:PermitLimit`, padrão 60.</summary>
     public const string Reads = "reads";
 
-    /// <summary>Leituras de contratações e do histórico financeiro: `RateLimiting:BookingReads:PermitLimit`, padrão 30.</summary>
+    /// <summary>Leituras de contratações, do histórico financeiro e das máquinas: `RateLimiting:BookingReads:PermitLimit`, padrão 30.</summary>
     public const string BookingReads = "booking-reads";
 
     /// <summary>POST de compra: `RateLimiting:BookingCreate:PermitLimit`, padrão 5.</summary>

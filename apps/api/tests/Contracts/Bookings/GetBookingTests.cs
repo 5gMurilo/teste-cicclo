@@ -84,7 +84,7 @@ public sealed class GetBookingTests(PostgresFixture postgres)
     [Fact]
     public async Task G03_QueuedItemsShowThePositionDerivedPerMachineTypeWithoutMachineOrDeadline()
     {
-        var database = await ReadyAsync(postgres, $"UPDATE machines SET state = 'running' WHERE id = '{DryerId}'; UPDATE wallets SET balance = 100.00;");
+        var database = await ReadyAsync(postgres, $"UPDATE machines SET state = 'running', is_demo_occupied = true WHERE id = '{DryerId}'; UPDATE wallets SET balance = 100.00;");
         var clock = Clock();
         var sessions = Sessions(database, SetupApp);
         var earlier = await BookingApi.PurchaseAsync(database, clock, ["wash"]);

@@ -92,7 +92,7 @@ public sealed class QueueCoordinatorTests(PostgresFixture postgres)
     public async Task A04_ReleasedMachinesServeABCInTicketOrderAndRepeatedActivationKeepsTheTicket()
     {
         // Ids em ordem inversa à chegada: o ticket, não o id, decide o FIFO.
-        var database = await ReadyAsync(postgres, $"UPDATE machines SET state = 'running' WHERE id = '{WasherId}'");
+        var database = await ReadyAsync(postgres, $"UPDATE machines SET state = 'running', is_demo_occupied = true WHERE id = '{WasherId}'");
         var a = await PendingWithIdAsync(database, Guid.Parse("00000000-0000-4000-8000-00000000a003"));
         var b = await PendingWithIdAsync(database, Guid.Parse("00000000-0000-4000-8000-00000000a002"));
         var c = await PendingWithIdAsync(database, Guid.Parse("00000000-0000-4000-8000-00000000a001"));
@@ -109,7 +109,7 @@ public sealed class QueueCoordinatorTests(PostgresFixture postgres)
         Assert.Equal([1, 2, 3], placements.Select(placement => placement!.QueuePosition));
         Assert.All(placements, placement => Assert.Equal(BookingItemStatus.Queued, placement!.Status));
 
-        await database.ExecuteAsync($"UPDATE machines SET state = 'available' WHERE id = '{WasherId}'");
+        await database.ExecuteAsync($"UPDATE machines SET state = 'available', is_demo_occupied = false WHERE id = '{WasherId}'");
         var firstRelease = await PromoteAsync(sessions, Coordinator(clock), MachineType.Washer);
 
         Assert.Equal([(a, Guid.Parse(WasherId))], firstRelease.Select(offer => (offer.ItemId, offer.MachineId)));
@@ -135,14 +135,14 @@ public sealed class QueueCoordinatorTests(PostgresFixture postgres)
     [Fact]
     public async Task A05_NewcomerDoesNotOvertakeAnOlderQueuedItemWhenAMachineIsFree()
     {
-        var database = await ReadyAsync(postgres, $"UPDATE machines SET state = 'running' WHERE id = '{WasherId}'");
+        var database = await ReadyAsync(postgres, $"UPDATE machines SET state = 'running', is_demo_occupied = true WHERE id = '{WasherId}'");
         var older = await PendingAsync(database);
         var newcomer = await PendingAsync(database);
         var clock = Clock();
         var sessions = Sessions(database, QueueApp);
         await ActivateAsync(sessions, Coordinator(clock), older);
         // A máquina fica livre sem promoção; a próxima ativação disputa a mesma máquina.
-        await database.ExecuteAsync($"UPDATE machines SET state = 'available' WHERE id = '{WasherId}'");
+        await database.ExecuteAsync($"UPDATE machines SET state = 'available', is_demo_occupied = false WHERE id = '{WasherId}'");
 
         var result = await ActivateAsync(sessions, Coordinator(clock), newcomer);
 
@@ -254,7 +254,7 @@ public sealed class QueueCoordinatorTests(PostgresFixture postgres)
     [Fact]
     public async Task A10_ItemsAreLockedInTheSameTransactionUntilCommit()
     {
-        var database = await ReadyAsync(postgres, $"UPDATE machines SET state = 'running' WHERE id = '{WasherId}'");
+        var database = await ReadyAsync(postgres, $"UPDATE machines SET state = 'running', is_demo_occupied = true WHERE id = '{WasherId}'");
         var queued = await PendingAsync(database);
         var target = await PendingAsync(database);
         var clock = Clock();
@@ -311,12 +311,12 @@ public sealed class QueueCoordinatorTests(PostgresFixture postgres)
         var queued = await PendingAsync(database);
         var pending = await PendingAsync(database);
         var sessions = Sessions(database, QueueApp);
-        await database.ExecuteAsync($"UPDATE machines SET state = 'running' WHERE id = '{WasherId}'");
+        await database.ExecuteAsync($"UPDATE machines SET state = 'running', is_demo_occupied = true WHERE id = '{WasherId}'");
         await ActivateAsync(sessions, Coordinator(Clock()), queued);
         await database.ExecuteAsync(
             $"""
-            INSERT INTO machines (id, name, machine_type, state, updated_at) VALUES ('{Washer2Id}', 'washer-02', 'washer', '{washer2State}', now());
-            UPDATE machines SET state = 'available' WHERE id = '{WasherId}';
+            INSERT INTO machines (id, name, machine_type, state, updated_at, is_demo_occupied) VALUES ('{Washer2Id}', 'washer-02', 'washer', '{washer2State}', now(), {(washer2State == "running" ? "true" : "false")});
+            UPDATE machines SET state = 'available', is_demo_occupied = false WHERE id = '{WasherId}';
             """);
         var before = await database.RowsAsync(StateSql);
         var offeredAt = T0.UtcDateTime;
@@ -348,7 +348,7 @@ public sealed class QueueCoordinatorTests(PostgresFixture postgres)
     [Fact]
     public async Task A13_ItemsAreLockedInIdOrderEvenWhenStoredInAnotherOrder()
     {
-        var database = await ReadyAsync(postgres, $"UPDATE machines SET state = 'running' WHERE id = '{WasherId}'");
+        var database = await ReadyAsync(postgres, $"UPDATE machines SET state = 'running', is_demo_occupied = true WHERE id = '{WasherId}'");
         var high = await PendingWithIdAsync(database, Guid.Parse("00000000-0000-4000-8000-00000000b009"));
         var low = await PendingWithIdAsync(database, Guid.Parse("00000000-0000-4000-8000-00000000b001"));
         var sessions = Sessions(database, QueueApp);
@@ -373,7 +373,7 @@ public sealed class QueueCoordinatorTests(PostgresFixture postgres)
         // washer-00 tem id menor que washer-01, mas é gravada depois.
         const string lowerWasher = "00000000-0000-4000-8000-000000000100";
         var database = await ReadyAsync(
-            postgres, $"INSERT INTO machines (id, name, machine_type, state, updated_at) VALUES ('{lowerWasher}', 'washer-00', 'washer', 'running', now())");
+            postgres, $"INSERT INTO machines (id, name, machine_type, state, updated_at, is_demo_occupied) VALUES ('{lowerWasher}', 'washer-00', 'washer', 'running', now(), true)");
         var item = await PendingAsync(database);
         var (holder, transaction) = await HoldAsync(database, HolderApp, $"SELECT 1 FROM machines WHERE id = '{WasherId}' FOR UPDATE");
 

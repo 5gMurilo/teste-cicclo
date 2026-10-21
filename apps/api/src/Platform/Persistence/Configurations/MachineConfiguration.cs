@@ -19,6 +19,11 @@ internal sealed class MachineConfiguration : IEntityTypeConfiguration<Machine>
             table.HasCheckConstraint(
                 "ck_machines_active_item",
                 "(state IN ('reserved', 'running') OR active_item_id IS NULL) AND (state <> 'reserved' OR active_item_id IS NOT NULL)");
+            // Running sem item é sempre ocupação sintética, e a marca sintética só existe nesse caso: execução real
+            // tem item, e available/reserved/out_of_service nunca são sintéticas.
+            table.HasCheckConstraint(
+                "ck_machines_demo_occupied",
+                "is_demo_occupied = (state = 'running' AND active_item_id IS NULL)");
         });
 
         builder.HasKey(machine => machine.Id).HasName("pk_machines");
@@ -34,6 +39,7 @@ internal sealed class MachineConfiguration : IEntityTypeConfiguration<Machine>
             .HasConversion(LaundryColumns.MachineStateConverter);
         builder.Property(machine => machine.UpdatedAt).HasColumnName("updated_at");
         builder.Property(machine => machine.ActiveItemId).HasColumnName("active_item_id");
+        builder.Property(machine => machine.IsDemoOccupied).HasColumnName("is_demo_occupied").HasDefaultValue(false);
 
         builder.HasOne<BookingItem>()
             .WithMany()
