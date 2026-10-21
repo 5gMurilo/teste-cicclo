@@ -42,7 +42,12 @@ public sealed class PostgresCreateBookingSessions(IDbContextFactory<CiccloDbCont
     {
         private static readonly string[] OperationalStates = [.. ServiceAvailability.OperationalStates.Select(LaundryColumns.ToText)];
 
-        public IQueueSession Queue { get; } = new PostgresQueueSession(db);
+        private readonly PostgresQueueSession queue = new(db);
+
+        /// <summary>Itens inseridos nesta transação: seu booking confirma na revisão inicial mesmo com a ativação deles.</summary>
+        private readonly List<Guid> createdItemIds = [];
+
+        public IQueueSession Queue => queue;
 
         public Task<decimal> LockWalletAsync(Guid walletId, CancellationToken cancellationToken) => Translate(async () =>
         {
@@ -119,6 +124,7 @@ public sealed class PostgresCreateBookingSessions(IDbContextFactory<CiccloDbCont
         public Task AddAsync(Booking booking, IReadOnlyList<BookingItem> items, LedgerEntry debit, CancellationToken cancellationToken) => Translate(async () =>
         {
             db.Bookings.Add(booking);
+            createdItemIds.AddRange(items.Select(item => item.Id));
             db.BookingItems.AddRange(items);
             db.LedgerEntries.Add(debit);
             return await db.SaveChangesAsync(cancellationToken);
@@ -126,6 +132,13 @@ public sealed class PostgresCreateBookingSessions(IDbContextFactory<CiccloDbCont
 
         public async Task CommitAsync()
         {
+            // Bookings de outras compras alterados pela ativação (oferta vencida devolvida à fila) recebem a revisão
+            // nesta mesma transação; uma falha aqui ainda é rollback conhecido, não commit desconhecido.
+            await Translate(async () =>
+            {
+                await queue.IncrementRevisionsAsync(createdItemIds, CancellationToken.None);
+                return 0;
+            });
             try
             {
                 // Sem token: cancelar no meio do commit só tornaria o resultado desconhecido.

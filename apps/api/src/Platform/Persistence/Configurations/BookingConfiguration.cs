@@ -13,6 +13,7 @@ internal sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
         {
             table.HasCheckConstraint("ck_service_requests_total_amount_positive", "total_amount > 0");
             table.HasCheckConstraint("ck_service_requests_request_fingerprint_sha256", "request_fingerprint ~ '^[0-9a-f]{64}$'");
+            table.HasCheckConstraint("ck_service_requests_revision_positive", "revision > 0");
         });
 
         builder.HasKey(booking => booking.Id).HasName("pk_service_requests");
@@ -22,6 +23,8 @@ internal sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
         builder.Property(booking => booking.RequestFingerprint).HasColumnName("request_fingerprint").HasColumnType("text").IsRequired();
         builder.Property(booking => booking.TotalAmount).HasColumnName("total_amount").HasPrecision(12, 2);
         builder.Property(booking => booking.CreatedAt).HasColumnName("created_at");
+        // Default só para o backfill dos bookings existentes; compras novas gravam a revisão inicial explicitamente.
+        builder.Property(booking => booking.Revision).HasColumnName("revision").HasDefaultValue(BookingRevision.Initial);
 
         builder.HasOne<WalletAccount>()
             .WithMany()

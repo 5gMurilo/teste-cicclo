@@ -17,4 +17,7 @@ public sealed class Booking(Guid id, Guid walletId, Guid idempotencyKey, string 
     public decimal TotalAmount { get; private set; } = totalAmount;
 
     public DateTime CreatedAt { get; private set; } = createdAt;
+
+    /// <summary>Revisão do booking (<see cref="BookingRevision"/>); incrementada só pelos adaptadores, junto do commit.</summary>
+    public long Revision { get; private set; } = BookingRevision.Initial;
 }

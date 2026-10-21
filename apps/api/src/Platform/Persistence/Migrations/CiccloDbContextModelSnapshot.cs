@@ -43,6 +43,12 @@ namespace Cicclo.Api.Platform.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("request_fingerprint");
 
+                    b.Property<long>("Revision")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(1L)
+                        .HasColumnName("revision");
+
                     b.Property<decimal>("TotalAmount")
                         .HasPrecision(12, 2)
                         .HasColumnType("numeric(12,2)")
@@ -62,6 +68,8 @@ namespace Cicclo.Api.Platform.Persistence.Migrations
                     b.ToTable("service_requests", null, t =>
                         {
                             t.HasCheckConstraint("ck_service_requests_request_fingerprint_sha256", "request_fingerprint ~ '^[0-9a-f]{64}$'");
+
+                            t.HasCheckConstraint("ck_service_requests_revision_positive", "revision > 0");
 
                             t.HasCheckConstraint("ck_service_requests_total_amount_positive", "total_amount > 0");
                         });
