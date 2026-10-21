@@ -561,6 +561,95 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
         Assert.Equal(balance, await database.ScalarAsync<string>("SELECT balance::text FROM wallets"));
     }
 
+    // IDEM-03/IDEM-07 e design "Retries e commit desconhecido": a reconciliação bloqueia a wallet antes de buscar a
+    // chave. A concorrente com a mesma chave segura o lock sem confirmar até a reconciliação ser vista esperando por
+    // ele; a busca só acontece depois do commit dela e é a decisão final (replay ou conflito), nunca Inconclusive.
+    [Theory]
+    [InlineData(new[] { "wash" }, 1890L, "31.10", CreateBookingOutcome.Replayed)]
+    [InlineData(new[] { "dry" }, 2090L, "29.10", CreateBookingOutcome.Rejected)]
+    public async Task K12i_ReconciliationLocksTheWalletHeldByAConcurrentSameKeyPurchaseBeforeLookingUpTheKey(
+        string[] codes, long expected, string balance, CreateBookingOutcome outcome)
+    {
+        var database = await ReadyAsync();
+        var key = Guid.NewGuid();
+        var competitorIntent = Intent(codes, expected);
+        var competitorLocked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var competitorSessions = new ScriptedBookingSessions(new PostgresCreateBookingSessions(database.ContextFactory(CompetitorApp)))
+        {
+            AfterLockWallet = async attempt =>
+            {
+                if (attempt == 1)
+                {
+                    // Sem confirmar, a concorrente só segue quando o PostgreSQL mostra a reconciliação esperando este lock.
+                    competitorLocked.TrySetResult();
+                    await WaitUntilWaitingOnLockAsync(database, BookingApp);
+                }
+            },
+        };
+        Task<CreateBookingResult>? competitor = null;
+        var lookups = new List<string>();
+        var gated = new GatedBookingSessions(Real(database), async opening =>
+        {
+            // A reconsulta abre assim que a concorrente obtém o lock da wallet, antes de ela confirmar.
+            if (opening == 2)
+            {
+                await competitorLocked.Task.WaitAsync(SignalTimeout);
+            }
+        });
+        var sessions = new ScriptedBookingSessions(gated)
+        {
+            OnCommit = async (_, _) =>
+            {
+                // Com a wallet ainda bloqueada por esta transação, a concorrente entra na fila do lock; a conexão cai
+                // antes de o COMMIT chegar ao servidor e o descarte da sessão faz rollback, entregando o lock a ela.
+                competitor = UseCase(competitorSessions).ExecuteAsync(key, competitorIntent, CancellationToken.None);
+                await WaitUntilWaitingOnLockAsync(database, CompetitorApp);
+                throw new CreateBookingStoreException(CreateBookingStoreFailure.CommitOutcomeUnknown, "conexão perdida antes do commit");
+            },
+            OnFind = (attempt, found) =>
+            {
+                lock (lookups)
+                {
+                    lookups.Add($"{attempt}|{(found is null ? "not-found" : "found")}");
+                }
+
+                return found;
+            },
+        };
+
+        var result = await UseCase(sessions).ExecuteAsync(key, Intent(["wash"], 1890), CancellationToken.None).WaitAsync(SignalTimeout);
+        var other = await competitor!.WaitAsync(SignalTimeout);
+
+        Assert.Equal(CreateBookingOutcome.Created, other.Outcome);
+        Assert.Equal(1, competitorSessions.Opened);
+        Assert.Empty(competitorSessions.Failures);
+        Assert.Equal(2, sessions.Opened);
+        // A sessão de reconciliação só buscou a chave depois do commit da concorrente, por isso a encontrou.
+        Assert.Equal(["1|not-found", "2|found"], lookups);
+        var failure = Assert.IsType<CreateBookingStoreException>(Assert.Single(sessions.Failures));
+        Assert.Equal(CreateBookingStoreFailure.CommitOutcomeUnknown, failure.Failure);
+        Assert.Equal(outcome, result.Outcome);
+        if (outcome == CreateBookingOutcome.Replayed)
+        {
+            Assert.Null(result.Rejection);
+            Assert.Equal(other.Booking!.BookingId, result.Booking!.BookingId);
+            Assert.Equal(1890L, MoneyCents.FromDecimal(result.Booking.ChargedAmount));
+            Assert.Equal(3110L, MoneyCents.FromDecimal(result.Booking.RemainingBalance));
+            Assert.Equal(Describe(other.Booking), Describe(result.Booking));
+        }
+        else
+        {
+            Assert.Equal(BookingRejection.IdempotencyConflict, result.Rejection);
+            Assert.Null(result.Booking);
+        }
+
+        // Só a compra concorrente existe: a tentativa original não deixou linha nem débito, e a reconciliação nada gravou.
+        Assert.Equal($"{other.Booking!.BookingId}|{competitorIntent.Fingerprint}", (await database.RowsAsync("SELECT id, request_fingerprint FROM service_requests")).Single());
+        Assert.Equal(other.Booking.BookingId.ToString(), (await database.RowsAsync("SELECT request_id FROM service_request_items")).Single());
+        Assert.Equal($"{other.Booking.BookingId}|debit|{balance}", (await database.RowsAsync("SELECT request_id, kind, balance_after::text FROM wallet_transactions")).Single());
+        Assert.Equal(balance, await database.ScalarAsync<string>("SELECT balance::text FROM wallets"));
+    }
+
     // A16: numa intenção nova, serviço, capacidade e preço esperado são validados antes do saldo. Saldo 10.00
     // não cobre nem o total enviado (1800) nem o calculado (1890); 900 cobriria só o enviado.
     [Theory]
