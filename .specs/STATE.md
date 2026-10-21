@@ -45,10 +45,10 @@
 ## Handoff
 
 - **Feature**: `.specs/features/cicclo-mobile/spec.md`.
-- **Phase / Task**: Execute inline e sequencial (decisão do usuário: opção mais rápida). T2 (E1) concluída.
-- **Completed**: T1 (baseline, `08e6c7d`, E0 integrada por fast-forward em `mobile-worktree`); T2 (config pública validada, 14 casos em `src/shared/config/__tests__/env.test.ts`). 2/37 tarefas.
+- **Phase / Task**: Execute inline e sequencial (decisão do usuário: opção mais rápida). T3 (E1) concluída.
+- **Completed**: T1 (baseline, `08e6c7d`, E0 integrada por fast-forward em `mobile-worktree`); T2 (config pública validada, 14 casos em `src/shared/config/__tests__/env.test.ts`). T3 (ApiError, ProblemDetails e Retry-After, `src/shared/api/apiError.ts`, zod 4.6.7 exato). 3/37 tarefas.
 - **In-progress**: Nenhuma.
-- **Next step**: T3 (`apps/mobile/src/shared/api/apiError.ts`) na branch `feat/mobile-01-catalog-wallet`.
-- **Blockers**: C1/C2/C3 e CP1 não comprovados; N1 (T29) fica com o usuário (AD-005). Backend existe em branches locais (`feat/backend-e0*`, HEAD `a02a845`) com a base do bootstrap como ancestral; contratos reais só entram quando T6/T8/T17 os lerem.
+- **Next step**: T4 (`apps/mobile/src/shared/api/client.ts`) na branch `feat/mobile-01-catalog-wallet`.
+- **Blockers**: `tests/bootstrap.test.mjs` teste 6 falha localmente por ausência de `dotnet` (ambiental, anterior ao trabalho mobile). C1/C2/C3 e CP1 não comprovados; N1 (T29) fica com o usuário (AD-005). Backend existe em branches locais (`feat/backend-e0*`, HEAD `a02a845`) com a base do bootstrap como ancestral; contratos reais só entram quando T6/T8/T17 os lerem.
 - **Uncommitted files**: `.omc/` (não versionar).
 - **Branch**: `feat/mobile-01-catalog-wallet`.

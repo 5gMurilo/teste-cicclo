@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** em andamento. T1 (E0) e T2 concluídas em 2026-10-21; T3–T37 abertas.
+**Execução:** em andamento. T1 (E0) a T3 concluídas em 2026-10-21; T4–T37 abertas.
 
 ## Execution Protocol
 
@@ -138,7 +138,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Modelos de erro da spec; Zod instalado neste primeiro consumidor.
 **Requirement**: SAFE-01, SAFE-02, BUY-12, BUY-13.
 **What**: Definir erro tipado, parser de ProblemDetails desconhecido e deadline Retry-After por segundos/HTTP-date.
-**Done when**: [ ] Status/errorCode/traceId sanitizados são preservados; detail não dirige regra; payload malformado não vira sucesso ou saldo default; não classifica sozinho toda recusa financeira.
+**Done when**: [x] Status/errorCode/traceId sanitizados são preservados; detail não dirige regra; payload malformado não vira sucesso ou saldo default; não classifica sozinho toda recusa financeira.
 **Tests**: unit — teto de 8 casos: ProblemDetails válido, campos ausentes/tipo errado, erro desconhecido, detail alterado sem mudar classificação, Retry-After segundos/data/passado/inválido.
 **Gate**: Q + CC.
 **Commit**: `feat(api): normalize problem details and retry deadlines`
@@ -709,7 +709,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **2/37 tarefas executadas** (T1–T2 concluídas em 2026-10-21); demais checkboxes de Done when abertas.
+- Implementação: **3/37 tarefas executadas** (T1–T3 concluídas em 2026-10-21); demais checkboxes de Done when abertas.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1/C2/C3/CP1 não comprovadas; N1 não executado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.
