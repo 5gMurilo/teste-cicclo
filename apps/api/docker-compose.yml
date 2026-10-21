@@ -43,6 +43,8 @@ services:
     profiles: [app]
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      # Demonstração: habilita /api/v1/simulation (ocupar, concluir, falhar, restaurar), única forma de avançar máquinas sem login.
+      Laundry__DemoMode: "true"
       ConnectionStrings__Cicclo: Host=postgres;Port=5432;Database=cicclo;Username=cicclo
       PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in apps/api/.env or your shell}
       OpenTelemetry__OtlpEndpoint: ${CICCLO_OTLP_ENDPOINT:-}
