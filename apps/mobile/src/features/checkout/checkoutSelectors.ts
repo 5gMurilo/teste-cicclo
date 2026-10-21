@@ -13,7 +13,17 @@ export type SelectionProblem =
   | { kind: 'overflow' }
   | { kind: 'insufficient-balance' };
 
+export type SelectionLine = {
+  code: string;
+  name: string;
+  quantity: number;
+  /** Current catalog price, or null when the service is not in the catalog. */
+  unitPriceCents: number | null;
+};
+
 export type DerivedSelection = {
+  /** One line per selected service, in selection order. */
+  lines: SelectionLine[];
   /** One entry per occurrence: quantity 2 of `wash` is `['wash', 'wash']`. */
   serviceCodes: string[];
   quantity: number;
@@ -33,6 +43,7 @@ export function deriveSelection(
 ): DerivedSelection {
   const problems: SelectionProblem[] = [];
   const serviceCodes: string[] = [];
+  const lines: SelectionLine[] = [];
   let quantity = 0;
   let total: number | null = 0;
 
@@ -47,8 +58,15 @@ export function deriveSelection(
     quantity += count;
     for (let i = 0; i < count; i++) serviceCodes.push(code);
 
+    const service = catalog?.services.find((s) => s.code === code);
+    lines.push({
+      code,
+      name: service?.name ?? code,
+      quantity: count,
+      unitPriceCents: service?.unitPriceCents ?? null,
+    });
+
     if (!catalog) continue;
-    const service = catalog.services.find((s) => s.code === code);
     if (!service) {
       problems.push({ kind: 'unknown-service', code });
       total = null;
@@ -70,6 +88,7 @@ export function deriveSelection(
   if (availableCents !== null && availableCents < 0) problems.push({ kind: 'insufficient-balance' });
 
   return {
+    lines,
     serviceCodes,
     quantity,
     totalCents: total,

@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** em andamento. Última tarefa concluída: T14 (13/37 com Done when marcado); ver STATE.md.
+**Execução:** em andamento. Última tarefa concluída: T15 (14/37 com Done when marcado); ver STATE.md.
 
 ## Execution Protocol
 
@@ -275,7 +275,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Provider e seletores; screen introduzida no lugar do placeholder da rota checkout.
 **Requirement**: SEL-07, SEL-08, SEL-09, SEL-10, BUY-14, UX-01.
 **What**: Exibir quantidades, remover, preferência válida, total/estimativa distintos e aviso da futura cobrança imediata.
-**Done when**: [ ] Empty state volta à Home; preço alterado requer nova revisão; compra ainda não habilitada e isso é explícito ao usuário; sem rota de detalhe inexistente.
+**Done when**: [x] Empty state volta à Home; preço alterado requer nova revisão; compra ainda não habilitada e isso é explícito ao usuário; sem rota de detalhe inexistente.
 **Tests**: integration — teto de 7 casos: vazio/CTA, itens/total, preferência nula/válida, remoção preferida, mudança preço/elegibilidade, três rótulos financeiros e ausência de POST.
 **Gate**: F + CC.
 **Commit**: `feat(checkout): review quantities prices and execution preference`
@@ -709,7 +709,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **13/37 tarefas com Done when marcado** (última: T14); demais abertas ou pendentes de gate externo.
+- Implementação: **14/37 tarefas com Done when marcado** (última: T15); demais abertas ou pendentes de gate externo.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1/C2/C3/CP1 não comprovadas; N1 não executado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.

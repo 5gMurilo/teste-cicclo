@@ -40,7 +40,7 @@ describe('tab navigation', () => {
 
       await fireEvent.press(screen.getByLabelText('Checkout, tab, 3 of 3'));
       expect(app.getPathname()).toBe('/checkout');
-      expect(screen.getByText(/A contratação ainda não está habilitada/)).toBeOnTheScreen();
+      expect(screen.getByText('Nenhum serviço selecionado.')).toBeOnTheScreen();
 
       await fireEvent.press(screen.getByLabelText('Home, tab, 2 of 3'));
       expect(app.getPathname()).toBe('/');
