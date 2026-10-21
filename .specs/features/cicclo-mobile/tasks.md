@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** em andamento. T1 (E0) a T4 concluídas em 2026-10-21; T5–T37 abertas.
+**Execução:** em andamento. T1 (E0) a T5 concluídas em 2026-10-21; T6–T37 abertas.
 
 ## Execution Protocol
 
@@ -160,7 +160,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: app Expo existente; config pública; dependências Router e pares resolvidos pelo SDK 58.
 **Requirement**: NAV-01, NAV-02, BOOK-07, UX-01, UX-02.
 **What**: Migrar entrypoint/config, root e rotas finas numa única troca executável; tabs services/index/checkout com Home inicial e estados honestos temporários.
-**Done when**: [ ] Ordem/inicial corretas; sem lógica de domínio nas rotas; safe area sem duplicação; teste antigo migrado por requisito aprovado; sem catálogo fake.
+**Done when**: [x] Ordem/inicial corretas; sem lógica de domínio nas rotas; safe area sem duplicação; teste antigo migrado por requisito aprovado; sem catálogo fake.
 **Tests**: integration — teto de 4 casos de Router: Home inicial, ordem das tabs, navegação para cada aba, placeholders honestos sem POST; usar submódulo de testes compatível, fora da pasta app.
 **Gate**: B + CC; export é obrigatório por mudar entrypoint.
 **Tools**: Context7 para Expo Router e migração de testes; nenhuma atualização de Expo/RN por preferência.
@@ -709,7 +709,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **4/37 tarefas executadas** (T1–T4 concluídas em 2026-10-21); demais checkboxes de Done when abertas.
+- Implementação: **5/37 tarefas executadas** (T1–T5 concluídas em 2026-10-21); demais checkboxes de Done when abertas.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1/C2/C3/CP1 não comprovadas; N1 não executado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.
