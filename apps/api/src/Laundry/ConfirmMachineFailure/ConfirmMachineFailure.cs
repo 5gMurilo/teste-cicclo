@@ -1,4 +1,5 @@
 using Cicclo.Api.Bookings;
+using Cicclo.Api.Laundry.Notifications;
 using Cicclo.Api.Wallet;
 using Cicclo.Api.Wallet.ReadCaching;
 
@@ -26,8 +27,9 @@ public sealed record ConfirmMachineFailureResult(ConfirmMachineFailureOutcome Ou
 /// <see cref="FailAsync"/>). Numa transação, na ordem comum de locks wallet → máquinas do tipo → itens: só running
 /// falha. Execução real → item failed, máquina out_of_service e refund do preço histórico com crédito na mesma
 /// transação; ocupação sintética → out_of_service sem item, refund ou lançamento. A fila do tipo é reconciliada antes do
-/// commit e as métricas só contam depois dele. Complete e falha disputam os mesmos locks: só um desfecho por execução.
-/// Com refund, o cache de leitura da wallet é invalidado depois do commit; a ocupação sintética não muda saldo.
+/// commit e as métricas e avisos realtime (opcionais) só depois dele. Complete e falha disputam os mesmos locks: só um
+/// desfecho por execução. Com refund, o cache de leitura da wallet é invalidado depois do commit e antes dos avisos; a
+/// ocupação sintética não muda saldo.
 /// </summary>
 public sealed partial class ConfirmMachineFailure(
     ILaundrySessions sessions,
@@ -36,12 +38,14 @@ public sealed partial class ConfirmMachineFailure(
     RefundMetrics refundMetrics,
     TimeProvider time,
     WalletCacheInvalidation walletCache,
-    ILogger<ConfirmMachineFailure> logger)
+    ILogger<ConfirmMachineFailure> logger,
+    LaundryChangeNotifier? notifier = null)
 {
     public async Task<ConfirmMachineFailureResult> ExecuteAsync(Guid machineId, CancellationToken cancellationToken)
     {
         ConfirmMachineFailureResult result;
         IReadOnlyList<QueueChanges> changes;
+        IReadOnlyList<RevisedBooking> revised;
         await using (var session = await sessions.OpenAsync(cancellationToken))
         {
             await session.LockWalletAsync(DemoWallet.Id, cancellationToken);
@@ -62,6 +66,7 @@ public sealed partial class ConfirmMachineFailure(
             result = await FailAsync(session, machine, items, now, cancellationToken);
             changes = await coordinator.ReconcileAsync(session, [type], cancellationToken);
             await session.CommitAsync();
+            revised = session.CommittedRevisions;
         }
 
         laundryMetrics.RecordCommitted(changes);
@@ -69,6 +74,11 @@ public sealed partial class ConfirmMachineFailure(
         {
             await walletCache.AfterCommitAsync();
             refundMetrics.RecordCommitted(refund.Reason);
+        }
+
+        if (notifier is not null)
+        {
+            await notifier.NotifyAsync(FailureChanges(machineId, result, revised, changes));
         }
 
         LogFailed(machineId, result.ItemId, result.Refund?.Amount);
@@ -106,6 +116,11 @@ public sealed partial class ConfirmMachineFailure(
         await session.CreditRefundAsync(DemoWallet.Id, bookingId, running, plan.Amount, now, cancellationToken);
         return new(ConfirmMachineFailureOutcome.Failed, bookingId, running, plan);
     }
+
+    /// <summary>Avisos de uma falha confirmada: a máquina, o booking revisado, a fila do tipo e, com refund, a wallet.</summary>
+    public static CommittedLaundryChanges FailureChanges(
+        Guid machineId, ConfirmMachineFailureResult result, IReadOnlyList<RevisedBooking> revised, IReadOnlyList<QueueChanges> changes) =>
+        new() { Bookings = revised, Queues = changes, WalletChanged = result.Refund is not null, FailedMachineId = machineId };
 
     [LoggerMessage(EventId = 630, Level = LogLevel.Information, Message = "Falha da máquina {MachineId} confirmada (item {ItemId}, refund {Amount}).")]
     private partial void LogFailed(Guid machineId, Guid? itemId, decimal? amount);

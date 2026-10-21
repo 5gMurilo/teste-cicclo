@@ -1,4 +1,5 @@
 using Cicclo.Api.Bookings;
+using Cicclo.Api.Laundry.Notifications;
 using Cicclo.Api.Wallet;
 
 namespace Cicclo.Api.Laundry.ConfirmOffer;
@@ -27,10 +28,16 @@ public sealed record ConfirmOfferResult(ConfirmOfferOutcome Outcome, ItemPlaceme
 /// Confirma a oferta corrente de um item: wallet → máquinas do tipo → itens sob lock, instante capturado depois dos
 /// locks e prazo estrito now &lt; expiresAt. A confirmação válida grava início do item e máquina running no mesmo commit.
 /// Oferta vencida não é exceção: a mesma transação reconcilia o tipo (reentrada no fim da fila e próxima oferta) e
-/// confirma, e só então devolve Expired. As demais recusas não mudam nada.
+/// confirma, e só então devolve Expired. As demais recusas não mudam nada. Avisos realtime (opcionais) só depois do commit,
+/// que já liberou os locks.
 /// </summary>
 public sealed partial class ConfirmOffer(
-    ILaundrySessions sessions, QueueCoordinator coordinator, LaundryMetrics metrics, TimeProvider time, ILogger<ConfirmOffer> logger)
+    ILaundrySessions sessions,
+    QueueCoordinator coordinator,
+    LaundryMetrics metrics,
+    TimeProvider time,
+    ILogger<ConfirmOffer> logger,
+    LaundryChangeNotifier? notifier = null)
 {
     public async Task<ConfirmOfferResult> ExecuteAsync(Guid bookingId, Guid itemId, CancellationToken cancellationToken)
     {
@@ -59,15 +66,19 @@ public sealed partial class ConfirmOffer(
                 var current = await session.LockItemsAsync(location.MachineType, itemId, cancellationToken);
                 await session.CommitAsync();
                 metrics.RecordCommitted(changes);
+                await NotifyAsync(new() { Bookings = session.CommittedRevisions, Queues = changes });
                 LogExpired(itemId);
                 return new(ConfirmOfferOutcome.Expired, QueueCoordinator.Placement(itemId, current));
         }
 
         await session.StartAsync(itemId, item.MachineId!.Value, now, cancellationToken);
         await session.CommitAsync();
+        await NotifyAsync(new() { Bookings = session.CommittedRevisions });
         LogStarted(itemId, item.MachineId.Value);
         return new(ConfirmOfferOutcome.Started, new ItemPlacement(itemId, BookingItemStatus.InProgress, item.MachineId, item.ExpiresAt, null));
     }
+
+    private Task NotifyAsync(CommittedLaundryChanges changes) => notifier?.NotifyAsync(changes) ?? Task.CompletedTask;
 
     private static ItemPlacement Placement(LaundryItem item) => new(item.ItemId, item.Status, item.MachineId, item.ExpiresAt, null);
 

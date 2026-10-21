@@ -276,11 +276,14 @@ public sealed class PostgresLaundrySessions(IDbContextFactory<CiccloDbContext> c
                 await db.Database.ExecuteSqlAsync($"UPDATE machine_incidents SET status = 'confirmed' WHERE id = {incidentId} AND status = 'reported'", cancellationToken),
                 "relato aberto para confirmar");
 
+        public IReadOnlyList<RevisedBooking> CommittedRevisions { get; private set; } = [];
+
         public async Task CommitAsync()
         {
-            // A revisão dos bookings alterados confirma junto da mutação, ou não confirma.
-            await queue.IncrementRevisionsAsync([], CancellationToken.None);
+            // A revisão dos bookings alterados confirma junto da mutação, ou não confirma; só é exposta depois do commit.
+            var revised = await queue.IncrementRevisionsAsync([], CancellationToken.None);
             await transaction.CommitAsync(CancellationToken.None);
+            CommittedRevisions = revised;
         }
 
         public async ValueTask DisposeAsync()

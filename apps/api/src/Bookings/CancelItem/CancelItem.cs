@@ -1,4 +1,5 @@
 using Cicclo.Api.Laundry;
+using Cicclo.Api.Laundry.Notifications;
 using Cicclo.Api.Wallet;
 using Cicclo.Api.Wallet.ReadCaching;
 
@@ -26,8 +27,8 @@ public sealed record CancelItemResult(CancelItemOutcome Outcome, decimal? Refund
 /// Cancela uma execução ainda não iniciada numa única transação, na ordem comum de locks: wallet (mutex das escritas)
 /// → máquinas do tipo → itens. Sob os locks, valida o estado; marca cancelled, libera a máquina reservada, credita o
 /// preço histórico com um lançamento refund e reconcilia a fila do tipo (próximo elegível recebe a oferta) antes do
-/// commit. Item já cancelado é repetição sem crédito novo. Métricas e invalidação do cache de leitura da wallet só
-/// depois do commit, com a sessão já descartada.
+/// commit. Item já cancelado é repetição sem crédito novo. Métricas, invalidação do cache de leitura da wallet e avisos
+/// realtime (opcionais) só depois do commit, com a sessão já descartada; a invalidação precede os avisos.
 /// </summary>
 public sealed partial class CancelItem(
     ILaundrySessions sessions,
@@ -36,12 +37,16 @@ public sealed partial class CancelItem(
     RefundMetrics refundMetrics,
     TimeProvider time,
     WalletCacheInvalidation walletCache,
-    ILogger<CancelItem> logger)
+    ILogger<CancelItem> logger,
+    LaundryChangeNotifier? notifier = null)
 {
     public async Task<CancelItemResult> ExecuteAsync(Guid bookingId, Guid itemId, CancellationToken cancellationToken)
     {
         RefundPlan plan;
         IReadOnlyList<QueueChanges> changes;
+        IReadOnlyList<RevisedBooking> revised;
+        MachineType type;
+        bool leftQueue;
         await using (var session = await sessions.OpenAsync(cancellationToken))
         {
             await session.LockWalletAsync(DemoWallet.Id, cancellationToken);
@@ -69,14 +74,27 @@ public sealed partial class CancelItem(
             }
 
             plan = RefundPolicy.PlanCancellation(item.Status, refundable.UnitPrice);
+            (type, leftQueue) = (location.MachineType, item.Status == BookingItemStatus.Queued);
             await session.CancelWithRefundAsync(DemoWallet.Id, bookingId, itemId, item.Status, item.MachineId, plan.Amount, now, cancellationToken);
             changes = await coordinator.ReconcileAsync(session, [location.MachineType], cancellationToken);
             await session.CommitAsync();
+            revised = session.CommittedRevisions;
         }
 
         await walletCache.AfterCommitAsync();
         laundryMetrics.RecordCommitted(changes);
         refundMetrics.RecordCommitted(plan.Reason);
+        if (notifier is not null)
+        {
+            await notifier.NotifyAsync(new CommittedLaundryChanges
+            {
+                Bookings = revised,
+                Queues = changes,
+                QueueTypes = leftQueue ? [type] : [],
+                WalletChanged = true,
+            });
+        }
+
         LogCancelled(itemId, plan.Amount);
         return new(CancelItemOutcome.Cancelled, plan.Amount);
     }

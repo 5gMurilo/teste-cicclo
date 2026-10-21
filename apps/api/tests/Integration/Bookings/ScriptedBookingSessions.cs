@@ -83,6 +83,8 @@ public sealed class ScriptedBookingSessions(ICreateBookingSessions inner) : ICre
             return true;
         });
 
+        public IReadOnlyList<RevisedBooking> CommittedRevisions => inner.CommittedRevisions;
+
         public ValueTask DisposeAsync() => inner.DisposeAsync();
 
         private async Task<T> Observe<T>(Func<Task<T>> operation)

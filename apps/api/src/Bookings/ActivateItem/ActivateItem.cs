@@ -1,4 +1,5 @@
 using Cicclo.Api.Laundry;
+using Cicclo.Api.Laundry.Notifications;
 using Cicclo.Api.Wallet;
 
 namespace Cicclo.Api.Bookings.ActivateItem;
@@ -21,13 +22,15 @@ public enum ActivateItemOutcome
 /// <summary>
 /// Ativa um item pago e pendente numa transação de lavanderia: wallet (mutex das escritas) → item do booking → coordenador
 /// de fila (máquinas do tipo, itens, instante depois dos locks) → commit. Não debita nada: a cobrança aconteceu na compra.
-/// Métricas de fila só depois do commit.
+/// Métricas e avisos realtime (opcionais) só depois do commit.
 /// </summary>
-public sealed partial class ActivateItem(ILaundrySessions sessions, QueueCoordinator coordinator, LaundryMetrics metrics, ILogger<ActivateItem> logger)
+public sealed partial class ActivateItem(
+    ILaundrySessions sessions, QueueCoordinator coordinator, LaundryMetrics metrics, ILogger<ActivateItem> logger, LaundryChangeNotifier? notifier = null)
 {
     public async Task<ActivateItemOutcome> ExecuteAsync(Guid bookingId, Guid itemId, CancellationToken cancellationToken)
     {
         ActivationResult result;
+        IReadOnlyList<RevisedBooking> revised;
         await using (var session = await sessions.OpenAsync(cancellationToken))
         {
             await session.LockWalletAsync(DemoWallet.Id, cancellationToken);
@@ -48,11 +51,22 @@ public sealed partial class ActivateItem(ILaundrySessions sessions, QueueCoordin
             }
 
             await session.CommitAsync();
+            revised = session.CommittedRevisions;
         }
 
         if (result.Changes is { } changes)
         {
             metrics.RecordCommitted([changes]);
+        }
+
+        if (notifier is not null)
+        {
+            await notifier.NotifyAsync(new CommittedLaundryChanges
+            {
+                Bookings = revised,
+                Queues = result.Changes is { } queue ? [queue] : [],
+                QueueTypes = result.Outcome == ActivationOutcome.Activated && result.Type is { } type ? [type] : [],
+            });
         }
 
         LogActivated(itemId, result.Outcome, result.Item!.Status);

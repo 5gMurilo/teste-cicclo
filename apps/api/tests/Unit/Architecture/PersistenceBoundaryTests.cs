@@ -89,7 +89,8 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
                 typeof(Cicclo.Api.Laundry.Notifications.ILaundryNotifications), typeof(Cicclo.Api.Laundry.Notifications.BookingUpdatedPayload),
                 typeof(Cicclo.Api.Laundry.Notifications.QueueUpdatedPayload), typeof(Cicclo.Api.Laundry.Notifications.MachineOfferedPayload),
                 typeof(Cicclo.Api.Laundry.Notifications.MachineOfferExpiredPayload), typeof(Cicclo.Api.Laundry.Notifications.WalletUpdatedPayload),
-                typeof(Cicclo.Api.Laundry.Notifications.MachineFailedPayload),
+                typeof(Cicclo.Api.Laundry.Notifications.MachineFailedPayload), typeof(RevisedBooking),
+                typeof(Cicclo.Api.Laundry.Notifications.CommittedLaundryChanges), typeof(Cicclo.Api.Laundry.Notifications.LaundryChangeNotifier),
             },
             domainTypes.ToHashSet());
         var violations = domainTypes

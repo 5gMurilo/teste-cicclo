@@ -11,3 +11,6 @@ public static class BookingRevision
     /// <summary>Revisão de uma compra nova e, pelo backfill da migration, de todo booking anterior à E09.</summary>
     public const long Initial = 1;
 }
+
+/// <summary>Revisão atribuída a um booking pela transação, lida do próprio UPDATE; só vira fato depois do commit.</summary>
+public sealed record RevisedBooking(Guid BookingId, long Revision);

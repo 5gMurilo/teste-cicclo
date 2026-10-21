@@ -1,4 +1,5 @@
 using Cicclo.Api.Bookings;
+using Cicclo.Api.Laundry.Notifications;
 using Cicclo.Api.Wallet;
 using Cicclo.Api.Wallet.ReadCaching;
 
@@ -30,7 +31,8 @@ public sealed record ConfirmIncidentResult(ConfirmIncidentOutcome Outcome, Guid?
 /// ordem comum de locks wallet → máquinas do tipo → itens → incidente: só um relato aberto cuja máquina está running
 /// com o item in_progress dele falha a execução e passa a confirmed; relato já confirmado devolve o estado atual sem
 /// novo refund; relato de execução já concluída ou falha recusa sem reabrir o item. Com refund, o cache de leitura da
-/// wallet é invalidado depois do commit.
+/// wallet é invalidado depois do commit. Avisos realtime (opcionais) só depois do commit, os mesmos da falha confirmada,
+/// e depois da invalidação.
 /// </summary>
 public sealed partial class ConfirmIncident(
     ILaundrySessions sessions,
@@ -39,13 +41,15 @@ public sealed partial class ConfirmIncident(
     RefundMetrics refundMetrics,
     TimeProvider time,
     WalletCacheInvalidation walletCache,
-    ILogger<ConfirmIncident> logger)
+    ILogger<ConfirmIncident> logger,
+    LaundryChangeNotifier? notifier = null)
 {
     public async Task<ConfirmIncidentResult> ExecuteAsync(Guid incidentId, CancellationToken cancellationToken)
     {
         ConfirmMachineFailure.ConfirmMachineFailureResult failure;
         IReadOnlyList<QueueChanges> changes;
         IncidentLocation incident;
+        IReadOnlyList<RevisedBooking> revised;
         await using (var session = await sessions.OpenAsync(cancellationToken))
         {
             await session.LockWalletAsync(DemoWallet.Id, cancellationToken);
@@ -80,6 +84,7 @@ public sealed partial class ConfirmIncident(
             await session.ConfirmIncidentAsync(incidentId, cancellationToken);
             changes = await coordinator.ReconcileAsync(session, [location.MachineType], cancellationToken);
             await session.CommitAsync();
+            revised = session.CommittedRevisions;
         }
 
         laundryMetrics.RecordCommitted(changes);
@@ -87,6 +92,11 @@ public sealed partial class ConfirmIncident(
         {
             await walletCache.AfterCommitAsync();
             refundMetrics.RecordCommitted(refund.Reason);
+        }
+
+        if (notifier is not null)
+        {
+            await notifier.NotifyAsync(ConfirmMachineFailure.ConfirmMachineFailure.FailureChanges(incident.MachineId, failure, revised, changes));
         }
 
         LogConfirmed(incidentId, incident.ItemId, failure.Refund?.Amount);

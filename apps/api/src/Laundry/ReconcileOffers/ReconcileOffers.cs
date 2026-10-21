@@ -1,3 +1,5 @@
+using Cicclo.Api.Bookings;
+using Cicclo.Api.Laundry.Notifications;
 using Cicclo.Api.Wallet;
 
 namespace Cicclo.Api.Laundry.ReconcileOffers;
@@ -6,22 +8,31 @@ namespace Cicclo.Api.Laundry.ReconcileOffers;
 /// Reconciliação persistida das ofertas de todos os tipos numa transação: wallet → máquinas (tipo, id) → itens,
 /// ofertas vencidas devolvidas ao fim da fila e máquinas livres ofertadas aos próximos. Métricas só depois do commit.
 /// O mesmo algoritmo do coordenador serve a ativação e a confirmação vencida; o worker apenas chama este caso de uso.
+/// Avisos realtime (opcionais) também só depois do commit.
 /// </summary>
-public sealed partial class ReconcileOffers(ILaundrySessions sessions, QueueCoordinator coordinator, LaundryMetrics metrics, ILogger<ReconcileOffers> logger)
+public sealed partial class ReconcileOffers(
+    ILaundrySessions sessions, QueueCoordinator coordinator, LaundryMetrics metrics, ILogger<ReconcileOffers> logger, LaundryChangeNotifier? notifier = null)
 {
     private static readonly MachineType[] AllTypes = Enum.GetValues<MachineType>();
 
     public async Task<IReadOnlyList<QueueChanges>> ExecuteAsync(CancellationToken cancellationToken)
     {
         IReadOnlyList<QueueChanges> changes;
+        IReadOnlyList<RevisedBooking> revised;
         await using (var session = await sessions.OpenAsync(cancellationToken))
         {
             await session.LockWalletAsync(DemoWallet.Id, cancellationToken);
             changes = await coordinator.ReconcileAsync(session, AllTypes, cancellationToken);
             await session.CommitAsync();
+            revised = session.CommittedRevisions;
         }
 
         metrics.RecordCommitted(changes);
+        if (notifier is not null)
+        {
+            await notifier.NotifyAsync(new CommittedLaundryChanges { Bookings = revised, Queues = changes });
+        }
+
         foreach (var change in changes.Where(change => change.Expired.Count > 0 || change.Offers.Count > 0))
         {
             LogReconciled(change.Type, change.Expired.Count, change.Offers.Count);
