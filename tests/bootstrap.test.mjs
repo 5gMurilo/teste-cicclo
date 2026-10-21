@@ -147,3 +147,26 @@ test('local demo services stay on loopback and receive the password only as data
   assert.match(script, /run --rm --no-TTY bootstrap/);
   assert.doesNotMatch(script, /^\s*(source|\.)\s|\beval\b|down\b.*--volumes|volume rm/m);
 });
+
+test('optional redis cache stays opt-in, pinned, loopback-only and documented as eventual', () => {
+  const services = parse(text('apps/api/docker-compose.yml')).services;
+  const redis = services.redis;
+  assert.deepEqual(redis.profiles, ['cache']);
+  assert.match(redis.image, /^redis:8\.2\.10-bookworm@sha256:[0-9a-f]{64}$/);
+  assert.ok(redis.ports.every((port) => port.startsWith('127.0.0.1:')));
+  assert.equal(redis.volumes, undefined);
+  for (const name of ['postgres', 'bootstrap', 'api']) {
+    assert.equal(services[name].profiles?.includes('cache') ?? false, false);
+    assert.equal(Object.hasOwn(services[name].depends_on ?? {}, 'redis'), false);
+  }
+  for (const name of ['bootstrap', 'api']) assert.equal(services[name].environment.Caching__Enabled, '${CICCLO_CACHE_ENABLED:-false}');
+  const script = text('apps/api/scripts/start-demo.sh');
+  assert.match(script, /cache_enabled="\$\{CICCLO_CACHE_ENABLED:-false\}"/);
+  assert.match(script, /if \[\[ "\$cache_enabled" == true \]\]; then\n\s+step "Subindo o Redis opcional/);
+  const readme = text('README.md');
+  for (const term of ['Cache Redis opcional', 'CICCLO_CACHE_ENABLED=true apps/api/scripts/start-demo.sh', 'wallet:demo:v1', 'read-your-writes', 'TTL', 'cicclo_cache_operations_total']) {
+    assert.ok(readme.includes(term), `README missing ${term}`);
+  }
+  assert.ok(readme.includes('sem consistência forte'));
+  assert.doesNotMatch(readme, /(garante|oferece|com) consistência forte/);
+});
