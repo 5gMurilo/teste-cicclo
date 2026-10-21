@@ -6,7 +6,7 @@
 
 **Plataforma deste ensaio:** iOS (decisão do usuário em 2026-10-21, por ser mais simples de executar). O app é híbrido e o código é o mesmo nas duas plataformas, mas a spec cita Android (UX-02 e QUAL-02). O resultado vale como **"validado no iOS"**; o Android só será declarado validado se for ensaiado também (seção "Android, opcional" no fim).
 
-**Estado:** APROVADO PELO USUÁRIO NO iOS em relato global (2026-10-21, "Validado o iOS"), **sem registro por cenário**, aparelho, versão do iOS, leitor de tela ou texto ampliado. Android não ensaiado. Para detalhar, o usuário pode informar uma linha por cenário e os dados da identificação.
+**Estado:** APROVADO PELO USUÁRIO NO iOS. Relatos de 2026-10-21: "Validado o iOS" e, depois, "testei todos os cenários aqui e deu tudo certo". Sem observações por cenário, aparelho, versão do iOS nem detalhe do leitor de tela e do texto ampliado. Android não ensaiado, aceito por decisão do usuário (AD-007).
 
 ## Pré-requisitos
 
@@ -86,18 +86,18 @@ A compra real está habilitada (gate C2 provado contra a API real em 2026-10-21)
 
 ## Resultados
 
-**Relato global do usuário em 2026-10-21: "Validado o iOS".** É o único registro. O usuário não informou resultado por cenário; por isso nenhum cenário abaixo está marcado como aprovado individualmente.
+**Relatos do usuário em 2026-10-21: "Validado o iOS" e "testei todos os cenários aqui e deu tudo certo".** Os oito cenários constam como aprovados com base nesse segundo relato, que não traz observação individual. Fato observado pelo agente: a API da demo mostra uma contratação de secagem criada pelo app depois do primeiro relato (saldo 1020), compatível com o cenário de compra.
 
 | Cenário | Resultado | Observações |
 | --- | --- | --- |
-| 1. Abas e Home inicial | SEM REGISTRO POR CENÁRIO | Coberto apenas pelo relato global acima |
-| 2. Header e layout | SEM REGISTRO POR CENÁRIO | Coberto apenas pelo relato global acima |
-| 3. Compra controlada | SEM REGISTRO POR CENÁRIO | Coberto apenas pelo relato global acima |
-| 4. Seleção e badge | SEM REGISTRO POR CENÁRIO | Coberto apenas pelo relato global acima |
-| 5. Histórico e detalhe | SEM REGISTRO POR CENÁRIO | Coberto apenas pelo relato global acima |
-| 6. Rede e retry explícito | SEM REGISTRO POR CENÁRIO | Coberto apenas pelo relato global acima |
-| 7. Suspensão e retomada | SEM REGISTRO POR CENÁRIO | Coberto apenas pelo relato global acima |
-| 8. Acessibilidade e texto ampliado | SEM REGISTRO POR CENÁRIO | Coberto apenas pelo relato global acima |
+| 1. Abas e Home inicial | APROVADO (relato do usuário) | "Testei todos os cenários e deu tudo certo"; sem observação individual |
+| 2. Header e layout | APROVADO (relato do usuário) | "Testei todos os cenários e deu tudo certo"; sem observação individual |
+| 3. Compra controlada | APROVADO (relato do usuário) | "Testei todos os cenários e deu tudo certo"; sem observação individual |
+| 4. Seleção e badge | APROVADO (relato do usuário) | "Testei todos os cenários e deu tudo certo"; sem observação individual |
+| 5. Histórico e detalhe | APROVADO (relato do usuário) | "Testei todos os cenários e deu tudo certo"; sem observação individual |
+| 6. Rede e retry explícito | APROVADO (relato do usuário) | "Testei todos os cenários e deu tudo certo"; sem observação individual |
+| 7. Suspensão e retomada | APROVADO (relato do usuário) | "Testei todos os cenários e deu tudo certo"; sem observação individual |
+| 8. Acessibilidade e texto ampliado | APROVADO (relato do usuário) | "Testei todos os cenários e deu tudo certo"; sem observação individual |
 
 Falhas encontradas viram tarefas corretivas atômicas, cada uma com teste de regressão, e o cenário falho é reexecutado antes de fechar este gate.
 
@@ -112,5 +112,5 @@ Para declarar também o Android, repetir os oito cenários com: emulador Android
 ## Limites deste registro
 
 - O aprovado é a palavra do usuário sobre a execução, sem captura nem observações; vale como o gate N1 do AD-005 (executado pelo usuário), restrito ao iOS (AD-006).
-- Não há registro de que VoiceOver, Texto Maior, modo avião e o cenário de compra tenham sido exercitados um a um; nenhum cenário individual é afirmado.
+- O relato é global: não traz observação por cenário, aparelho, versão do iOS, nem confirma o detalhe do VoiceOver e do Texto Maior. Os resultados acima repetem o relato do usuário, sem evidência própria além da contratação observada na API.
 - Android, TalkBack e fonte 200% não foram ensaiados.
