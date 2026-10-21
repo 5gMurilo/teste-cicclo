@@ -22,6 +22,7 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
     private const string BookingApp = "cicclo-e02-booking";
     private const string OutageApp = "cicclo-e02-outage";
     private const string IntruderApp = "cicclo-e02-intruder";
+    private const string CompetitorApp = "cicclo-e02-competitor";
     private static readonly TimeSpan SignalTimeout = TimeSpan.FromSeconds(20);
 
     private const string StateSql =
@@ -484,6 +485,82 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
             "SELECT (SELECT count(*) FROM service_requests), (SELECT count(*) FROM wallet_transactions), (SELECT balance::text FROM wallets)")).Single());
     }
 
+    // IDEM-03/IDEM-07: entre o rollback da tentativa original e a reconsulta, outra chamada com a mesma chave
+    // confirma. A reconciliação acha uma compra que não é a desta tentativa: com a mesma intenção é replay sem
+    // novo débito; com intenção diferente é IDEMPOTENCY_CONFLICT sem mutação. Nunca Created com a compra alheia.
+    [Theory]
+    [InlineData(new[] { "wash" }, 1890L, "31.10", CreateBookingOutcome.Replayed)]
+    [InlineData(new[] { "dry" }, 2090L, "29.10", CreateBookingOutcome.Rejected)]
+    public async Task K12h_UnknownCommitReconciledAgainstAConcurrentPurchaseWithTheSameKeyHonoursTheFingerprint(
+        string[] codes, long expected, string balance, CreateBookingOutcome outcome)
+    {
+        var database = await ReadyAsync();
+        var key = Guid.NewGuid();
+        var competitorIntent = Intent(codes, expected);
+        Task<CreateBookingResult>? competitor = null;
+        IReadOnlyList<string>? afterCompetitor = null;
+        var lookups = new List<string>();
+        var gated = new GatedBookingSessions(Real(database), async opening =>
+        {
+            // A reconsulta só abre depois que a chamada concorrente confirmou.
+            if (opening == 2)
+            {
+                await competitor!.WaitAsync(SignalTimeout);
+                afterCompetitor = await database.RowsAsync(StateSql);
+            }
+        });
+        var sessions = new ScriptedBookingSessions(gated)
+        {
+            OnCommit = async (_, _) =>
+            {
+                // Com a wallet ainda bloqueada por esta transação, a concorrente com a mesma chave entra na fila do lock;
+                // a conexão cai antes de o COMMIT chegar ao servidor e o descarte da sessão faz rollback.
+                competitor = UseCase(new PostgresCreateBookingSessions(database.ContextFactory(CompetitorApp)))
+                    .ExecuteAsync(key, competitorIntent, CancellationToken.None);
+                await WaitUntilWaitingOnLockAsync(database, CompetitorApp);
+                throw new CreateBookingStoreException(CreateBookingStoreFailure.CommitOutcomeUnknown, "conexão perdida antes do commit");
+            },
+            OnFind = (attempt, found) =>
+            {
+                lock (lookups)
+                {
+                    lookups.Add($"{attempt}|{(found is null ? "not-found" : "found")}");
+                }
+
+                return found;
+            },
+        };
+
+        var result = await UseCase(sessions).ExecuteAsync(key, Intent(["wash"], 1890), CancellationToken.None).WaitAsync(SignalTimeout);
+        var other = await competitor!.WaitAsync(SignalTimeout);
+
+        Assert.Equal(CreateBookingOutcome.Created, other.Outcome);
+        Assert.Equal(2, sessions.Opened);
+        Assert.Equal(["1|not-found", "2|found"], lookups);
+        var failure = Assert.IsType<CreateBookingStoreException>(Assert.Single(sessions.Failures));
+        Assert.Equal(CreateBookingStoreFailure.CommitOutcomeUnknown, failure.Failure);
+        Assert.Equal(outcome, result.Outcome);
+        if (outcome == CreateBookingOutcome.Replayed)
+        {
+            Assert.Null(result.Rejection);
+            Assert.Equal(other.Booking!.BookingId, result.Booking!.BookingId);
+            Assert.Equal(1890L, MoneyCents.FromDecimal(result.Booking.ChargedAmount));
+            Assert.Equal(3110L, MoneyCents.FromDecimal(result.Booking.RemainingBalance));
+            Assert.Equal(Describe(other.Booking), Describe(result.Booking));
+        }
+        else
+        {
+            Assert.Equal(BookingRejection.IdempotencyConflict, result.Rejection);
+            Assert.Null(result.Booking);
+        }
+
+        // Só a compra concorrente existe: a tentativa original não deixou linha nem débito, e a reconciliação nada gravou.
+        Assert.Equal(afterCompetitor, await database.RowsAsync(StateSql));
+        Assert.Equal($"{other.Booking!.BookingId}|{competitorIntent.Fingerprint}", (await database.RowsAsync("SELECT id, request_fingerprint FROM service_requests")).Single());
+        Assert.Equal($"{other.Booking.BookingId}|debit|{balance}", (await database.RowsAsync("SELECT request_id, kind, balance_after::text FROM wallet_transactions")).Single());
+        Assert.Equal(balance, await database.ScalarAsync<string>("SELECT balance::text FROM wallets"));
+    }
+
     // A16: numa intenção nova, serviço, capacidade e preço esperado são validados antes do saldo. Saldo 10.00
     // não cobre nem o total enviado (1800) nem o calculado (1890); 900 cobriria só o enviado.
     [Theory]
@@ -589,5 +666,17 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
         }
 
         return null;
+    }
+
+    /// <summary>Executa um sinal antes de abrir cada sessão (1 = primeira), sem tocar na transação.</summary>
+    private sealed class GatedBookingSessions(ICreateBookingSessions inner, Func<int, Task> beforeOpen) : ICreateBookingSessions
+    {
+        private int opening;
+
+        public async Task<ICreateBookingSession> OpenAsync(CancellationToken cancellationToken)
+        {
+            await beforeOpen(Interlocked.Increment(ref opening));
+            return await inner.OpenAsync(cancellationToken);
+        }
     }
 }
