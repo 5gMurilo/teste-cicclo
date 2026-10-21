@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** P0 com 29/37 marcados: C1, C2 e C3 provados contra a API real; N1 aprovado pelo usuário no iOS (AD-006) em relato global, sem registro por cenário, por isso T29 fica `[~]`; Android sem ensaio; P1 (T31-T37) não iniciado.
+**Execução:** P0 com 28/37 marcados. C1, C2 e C3 provados contra a API real; N1 aprovado pelo usuário no iOS (AD-006) em relato global, sem registro por cenário, por isso T29 e T30 ficam `[~]` (T30 publicou o README e registrou os comandos, mas seu Done when exige N1 e prova de todos os P0, incluindo Android); P1 (T31-T37) não iniciado.
 
 ## Execution Protocol
 
@@ -450,7 +450,7 @@ Correções descobertas em T29 tornam-se tarefas corretivas atômicas identifica
 **Reuses**: Baseline, registro contratual, evidência nativa e README raiz preservado.
 **Requirement**: QUAL-01, QUAL-02; fechamento dos 50 requisitos P0.
 **What**: Documentar instalação/ambientes/fluxo/estado/idempotência/limites e linkar pela raiz, incluindo resultados reais dos gates e limitações P1/P2.
-**Done when**: [x] Onboarding reproduzido; comandos/URL por dispositivo corretos; recovery entre reinícios não é prometido; W e B registrados; todos P0 têm prova; após commit, disparar Verifier/sensor V sem perguntar se deve validar.
+**Done when**: [~] Onboarding reproduzido; comandos/URL por dispositivo corretos; recovery entre reinícios não é prometido; W e B registrados; todos P0 têm prova; após commit, disparar Verifier/sensor V sem perguntar se deve validar.
 **Tests**: manual — teto de 6 conferências: instalação/execução, exemplos de URL não secretos, comandos de qualidade, confirmação vs pré-reserva, idempotência/limite de reinício, mapa de capacidades/limitações; teste bootstrap de documentação preservado.
 **Gate**: D + B + W + N1 + CC; V é fechamento automático após commit.
 **Commit**: `docs(mobile): publish reproducible p0 setup and evidence`
@@ -709,8 +709,8 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **29/37 tarefas com Done when marcado**; T29 aguarda o detalhamento do N1 (relato do usuário), T31-T37 (P1) dependem de CP1.
+- Implementação: **28/37 tarefas com Done when marcado**; T29 e T30 aguardam o detalhamento do N1 e o Android; T31-T37 (P1) dependem de CP1.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
-- Integrações externas: C1/C2/C3/CP1 não comprovadas; N1 não executado; não inferir endpoints do handoff.
+- Integrações externas: C1, C2 e C3 provados contra a API real em 2026-10-21; N1 aprovado pelo usuário no iOS em relato global (AD-006); CP1 (P1) não comprovado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.
 - Próxima ação quando o usuário pedir implementar: reconciliar Git/STATE, ler implement.md, validar documentos, confirmar ferramentas/oferecer lotes e começar T1. Não abrir Plannotator por rotina.

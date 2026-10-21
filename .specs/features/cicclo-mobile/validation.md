@@ -1,89 +1,85 @@
 # Cicclo mobile: validação independente do escopo P0
 
 **Data:** 2026-10-21
-**Criado:** 2026-10-21. **Última atualização:** 2026-10-21 (verificação delta final).
+**Criado:** 2026-10-21. **Última atualização:** 2026-10-21 (reverificação do delta, rodada 2).
 **Spec:** `.specs/features/cicclo-mobile/spec.md`
-**Faixa Git:** `08e6c7d..HEAD`. Herdado: rodadas 1 a 4 verificaram até `cb9adcd` (PASS na rodada 4). **Delta desta rodada:** `cb9adcd..d67fcf7` (7 commits: log de desenvolvimento, mensagem de configuração, `anchor`, documentação iOS e registro do N1).
+**Faixa Git:** `08e6c7d..HEAD`. Herdado: rodadas 1 a 4 verificaram até `cb9adcd` (PASS da rodada 4). **Delta:** `cb9adcd..57b40ed` (log de desenvolvimento, mensagem de configuração, `anchor`, documentação iOS, registro do N1 e as correções dos dois itens da primeira verificação do delta).
 **Verifier:** agente independente (autor diferente do verificador). Nenhum código de produção ou teste foi alterado na árvore real; este arquivo é a única escrita. O teste ao vivo **não foi executado** (a demo está em 3110).
 
-Verdict: FAIL
+Verdict: PASS
 
-**Result**: FAIL
+**Result**: PASS
 
-Resumo: o escopo herdado de `cb9adcd` continua válido (PASS da rodada 4). Os gates do delta passam (32 suítes, 260 testes) e nenhum AC P0 foi quebrado pelo código novo. O FAIL decorre de dois itens do delta, ambos de correção pequena: (1) o mutante L1, **não equivalente**, sobreviveu: nenhum teste prova que o log de desenvolvimento fica mudo em produção (`__DEV__` falso); (2) o registro do N1 afirma mais do que o usuário disse ("Validado o iOS"): resultados "APROVADO" por cenário, "com VoiceOver e texto ampliado" e "no aparelho" no README, e T29 marcado `[x]` sem os registros que o próprio Done when exige. N1 no Android, P1, a compra após horas e a compra de 2 ou mais unidades ao vivo seguem PENDING-EXTERNAL.
+Condições do PASS atendidas: nenhum GAP de AC P0 (escopo herdado e delta); nenhum mutante não equivalente sobrevivente (L1, L2 e L2b, os do delta, morrem agora); gates verdes (32 suítes, 262 testes); o registro do N1 não afirma mais do que "Validado o iOS". Este PASS não declara a entrega concluída: Android, P1, a compra após horas e a compra de 2 ou mais unidades ao vivo seguem PENDING-EXTERNAL, e há recomendações abertas de baixa gravidade (T30, contagens, texto), listadas abaixo.
 
-## Delta `cb9adcd..d67fcf7`
+## Delta `cb9adcd..57b40ed`
 
-### Comandos executados (árvore real, HEAD `d67fcf7`)
+### Comandos executados (árvore real, HEAD `57b40ed`)
 
 | Comando | Resultado real |
 | --- | --- |
 | `pnpm --filter @cicclo/mobile typecheck` | exit 0 |
 | `pnpm --filter @cicclo/mobile lint` (`--max-warnings 0`) | exit 0, zero avisos |
-| `pnpm --filter @cicclo/mobile test` | exit 0: **32 suítes / 32 passaram; 260 testes / 260 passaram; 0 falhas; 0 ignorados** (+1 suíte `configError.test.tsx`, +6 testes: 3 de log em `client.test.ts`, 2 de `configError`, 1 de `navigation`) |
+| `pnpm --filter @cicclo/mobile test` | exit 0: **32 suítes / 32 passaram; 262 testes / 262 passaram; 0 falhas; 0 ignorados** (+8 desde `cb9adcd`: 5 de log em `client.test.ts`, 2 de `configError`, 1 de `navigation`) |
 | Grep `test.skip|it.skip|describe.skip|.only(|xit|xdescribe|test.todo|it.todo|TODO|FIXME|fit(|fdescribe` | Nenhuma ocorrência |
 | Teste ao vivo e `pnpm build` | Não executados (carteira demo; sem mudança de empacotamento) |
 
-### Revisão adversarial do código novo
+### Revisão do código novo (resumo; achados da primeira verificação do delta)
 
-| Pergunta | Achado | Evidência |
+| Pergunta | Achado |
+| --- | --- |
+| O log vaza dado sensível? | Não: só `kind`, `status`, `errorCode`, `traceId` e, para `ConfigError`, textos fixos de `env.ts`. Sem corpo, cabeçalhos, `Idempotency-Key` nem query (`client.test.ts:185-204`). Informativo: o caminho ainda traz o ID do booking e o `traceId` vai ao terminal em desenvolvimento |
+| Cancelamento, modo teste e produção ficam mudos? | **Agora sim, com prova.** Cancelamento: `client.test.ts:224` (L5 morto). Release (`__DEV__` falso): teste "stays silent in a release bundle, where __DEV__ is false", que força `globalThis.__DEV__ = false` e restaura no `finally` (L1 morto). Modo teste: teste "stays silent under Jest (NODE_ENV test) even in a development bundle" (L2 morto). Sem as duas guardas, 2 falhas (L2b morto) |
+| A mensagem de configuração aparece fora de configuração? | Não (`instanceof ConfigError`); L7, L13, L14, L15 e L16 morreram na primeira verificação do delta |
+| O retry some só em `ConfigError`? | Sim; L8, L9 e L10 morreram (L8 reconfirmado nesta rodada) |
+| Algum AC P0 quebrou? | Não: READ-02, READ-03, BOOK-06, SAFE-02 e UX-01 intactos. Precisão: com URL ausente o header mostra a instrução de configuração, sem retry (READ-03 não trata falha de configuração) |
+| `anchor` | Teste prova ausência do aviso e Home em `/`; L11 morto. L12 (remover `anchor`) segue equivalente para os ACs P0 |
+
+### Registro do N1: releitura linha a linha
+
+O usuário disse apenas "Validado o iOS". Arquivos relidos integralmente nas partes alteradas e nas vizinhas: `native-validation.md`, `README.md`, `tasks.md` (T29, T30, cabeçalho e "Estado inicial"), `STATE.md` (AD-006 e Handoff).
+
+| Local | Afirmação | Avaliação |
 | --- | --- | --- |
-| O log vaza dado sensível? | Não vaza corpo, cabeçalhos, `Idempotency-Key` nem query string: o `detail` é montado só com `kind`, `status`, `errorCode`, `traceId` (já sanitizados por `toApiError`) e, para `ConfigError`, `message`, que são textos fixos de `env.ts` (não interpolam o valor da URL, nem credenciais). **Observação informativa:** o caminho sem query ainda carrega o ID do booking (`/bookings/<uuid>`) e o `traceId` vai ao terminal; em desenvolvimento, não é segredo | `client.ts:40-56`; `client.test.ts:185-204` (`not.toMatch(/secret|key-123|page=1/)`) |
-| Requisições canceladas ficam silenciosas? | Sim, quando o chamador cancela (`options.signal?.aborted`). Timeout interno é logado (é falha real) | `client.ts:47`; `client.test.ts:224-232`; mutante L5 morto |
-| O modo teste e a produção ficam silenciosos? | **Teste: sem prova.** O teste de log força `NODE_ENV='development'` (`client.test.ts:176`) e nenhum teste afirma silêncio com `NODE_ENV='test'` nem com `__DEV__` falso. Mutantes L1, L2 e L2b sobreviveram. Em Jest `__DEV__` é verdadeiro, então só um teste que force `__DEV__ = false` prova a guarda de produção | `client.ts:46` |
-| A mensagem de configuração aparece quando a falha NÃO é de configuração? | Não: `isConfigError` é `instanceof ConfigError`, e a única origem é `parsePublicEnv`. Mutantes L7 (sempre verdadeiro), L13, L14, L15 e L16 (mensagem para qualquer erro) morrem nos testes de erro genérico | `env.ts:70-72`; testes de erro de Home, header, Serviços e detalhe |
-| O retry some só no `ConfigError`? | Sim. No header, Home, Serviços e detalhe o botão de retry só é omitido no ramo de configuração; os demais erros mantêm retry. L8 (sempre falso), L9 (retry mantido no header) e L10 (a consulta tenta de novo no `ConfigError`) morrem | `configError.test.tsx:22-30` |
-| Algum AC P0 quebrou? | Nenhum. READ-02 e READ-03 (carga e erro com retry) seguem COVERED em `header.test.tsx` e `AppHeader.test.tsx`. BOOK-06 (detalhe: o retorno a Serviços fica no rodapé fora do `Problem`) intacto. SAFE-02 intacto. UX-01: as mensagens novas têm `accessibilityRole="alert"`. **Precisão da spec:** READ-03 diz "saldo indisponível com ação de retry"; no caso de URL ausente o header mostra a instrução de configuração, sem retry, porque repetir não resolve. Não é GAP (a spec não trata falha de configuração), é lacuna de precisão | `AppHeader.tsx`, `balanceState.ts` |
-| `anchor` no lugar de `initialRouteName` | Teste prova que o aviso de depreciação some e que `/` abre a Home. L11 (volta ao `initialRouteName`) morre. L12 (remover `anchor`) sobrevive: o app sem link abre em `/`, então o efeito da âncora (pilha de volta a partir de um deep link) não pertence a nenhum AC P0 | `navigation.test.tsx:23-34`; `_layout.tsx:11` |
+| `native-validation.md`, "Estado" | "Aprovado pelo usuário no iOS em relato global... sem registro por cenário, aparelho, versão do iOS, leitor de tela ou texto ampliado" | Fiel |
+| `native-validation.md`, "Identificação" | Commit, URL e saldo: "não informado pelo usuário"; o commit `b80fe36` e as instruções com `127.0.0.1:5001` aparecem como registro do agente. Aparelho e versão: "não informado (havia um simulador iPhone 17 ligado)" | Fiel. O parêntese sobre o simulador ligado é observação do agente e não afirma que o ensaio o usou |
+| `native-validation.md`, "Resultados" | Cabeçalho: "o único registro é o relato global... nenhum cenário abaixo está marcado como aprovado individualmente"; os 8 cenários "SEM REGISTRO POR CENÁRIO" | Fiel (corrige o achado da primeira verificação do delta). Detalhe de redação: "relato global abaixo" deveria ser "acima" |
+| `native-validation.md`, "Limites" | Nenhum cenário individual afirmado; Android, TalkBack e fonte 200% não ensaiados | Fiel |
+| `native-validation.md`, "Plataforma deste ensaio" | "decisão do usuário... por ser mais simples de executar" | A decisão está em AD-006; o motivo é o registrado pelo coordenador e não foi verificado por este Verifier. Informativo |
+| `README.md`, estado e mapa de capacidades | "Aprovada pelo usuário no iOS, em relato global ("Validado o iOS"), sem registro por cenário; Android não ensaiado"; sem "aparelho", "VoiceOver" nem "texto ampliado" | Fiel |
+| `STATE.md` AD-006 e Handoff | "apenas em relato global, sem registro por cenário, aparelho, versão ou leitor de tela; por isso T29 fica `[~]`" | Fiel. Observações: "P0 implementado e verificado (T1 a T30)" antecipa a verificação, e a contagem "260 testes" está defasada (262) |
+| `tasks.md` T29 | `[~]` | Correto |
+| `tasks.md` T30 | `[x]` | **Não se sustenta com T29 `[~]`:** T30 "Depends on: T29", o Gate inclui "N1", e o Done when exige "todos P0 têm prova", o que é falso para UX-02 e o smoke Android de QUAL-02 (sem prova) e para o iOS (sem registro por cenário). Recomendação: T30 `[~]`, ou reescrever o Done when para "documentação publicada" |
+| `tasks.md`, "Estado inicial e retomada" (linha 714) | "C1/C2/C3/CP1 não comprovadas; N1 não executado" | Defasada desde a prova ao vivo e o relato do iOS; contradiz o restante. Baixa |
 
-### Registro do N1: o que o usuário disse e o que os documentos afirmam
+Nenhuma afirmação por cenário, aparelho, versão, VoiceOver ou texto ampliado restou nos quatro arquivos. UX-02 e o smoke Android de QUAL-02 seguem PENDING-EXTERNAL; a decisão do iOS no lugar do Android (AD-006) é do usuário.
 
-O usuário disse apenas "Validado o iOS". Verificação arquivo a arquivo:
+### Sensor do delta, rodada 2 (worktree descartável em `57b40ed`)
 
-| Local | Afirmação | Base | Avaliação |
+| Mutante | Descrição | Resultado | Teste que matou |
 | --- | --- | --- | --- |
-| `docs/native-validation.md:9` | "relato global... não detalha cenários, aparelho, versão do iOS nem o uso de VoiceOver e Texto Maior" | Fiel | OK |
-| `native-validation.md:106-110` ("Limites deste registro") | Palavra do usuário, sem evidência; não há registro de que VoiceOver, Texto Maior, modo avião e compra tenham sido exercitados; Android não ensaiado | Fiel | OK |
-| `native-validation.md:91-98` (tabela de Resultados) | Os oito cenários, um a um, "APROVADO (relato global do usuário)" | O usuário não aprovou cenários individuais; a linha 109 do mesmo arquivo admite que não há registro de cada um. O rótulo "relato global" atenua, mas oito linhas APROVADO contradizem o próprio critério do arquivo (linha 38: sem execução registrada é BLOCKED, nunca PASS) | **Afirmação sem base por cenário (cenários 3, 6, 7 e 8 em especial)** |
-| `native-validation.md:30,32,33,34` | Identificação: simulador "iPhone 17 ligado", commit `b80fe36`, URL `http://127.0.0.1:5001 (ou http://localhost:5001)`, saldo inicial 3110 | São inferências do agente, não do usuário; o arquivo marca "não informado" para aparelho, versão, leitor de tela, mas preenche URL e commit como se fossem dados do ensaio. A URL com "ou" admite o palpite | Inferência apresentada como identificação do ensaio (baixa) |
-| `README.md`, tabela "Estado desta entrega" | "Validação no aparelho com leitor de tela (N1): Aprovada pelo usuário no iOS... relato global sem detalhe por cenário; o Android não foi ensaiado" | "no aparelho" e "com leitor de tela" não foram ditos; o resto é qualificado | **Afirmação sem base ("aparelho", "leitor de tela")** |
-| `README.md`, "Mapa de capacidades" | "App no aparelho (iOS) com VoiceOver e texto ampliado: Aprovado pelo usuário (relato global)" | O usuário não mencionou aparelho, VoiceOver nem texto ampliado | **Afirmação sem base (a mais forte)** |
-| `.specs/STATE.md` AD-006 e Handoff | "N1 aprovado pelo usuário no iOS, relato global sem detalhe por cenário. Android não ensaiado" | Fiel; AD-006 registra o desvio da spec (Android) como consciente | OK |
-| `tasks.md` T29 `[x]` e T30 `[x]` | T29: "N1 executado pelo usuário e aprovado; registrar dispositivo/API/commit/data, fonte 200%, leitor de tela, gestos/safe areas, navegação e falhas de rede/background; ausência de aparelho é BLOCKED" | O Done when exige esses registros; dispositivo, versão, fonte e leitor de tela estão "não informado". `[x]` vale como "o usuário aprovou", não como o Done when cumprido | **T29 `[x]` excede a evidência**; deveria ficar `[~]` com a nota do relato global, ou o Done when ser reescrito |
-
-Correções sugeridas, só de texto: (a) trocar a tabela de Resultados por uma única linha "N1 iOS: aprovado em relato global; por cenário: sem registro"; (b) tirar "aparelho", "leitor de tela", "VoiceOver" e "texto ampliado" do README; (c) mover URL e commit para "inferido pelo agente" ou "não informado"; (d) T29 `[~]`. **A decisão de aceitar o iOS no lugar do Android é do usuário (AD-006) e não é questionada aqui;** UX-02 e o smoke Android de QUAL-02 continuam PENDING-EXTERNAL.
-
-### Sensor do delta (worktree descartável em `d67fcf7`)
-
-| Mutante | Descrição | Resultado | Teste que matou ou análise |
-| --- | --- | --- | --- |
-| L1 | log sem a guarda `__DEV__` (`client.ts:46`) | **SOBREVIVEU, não equivalente** | Em Jest `__DEV__` é verdadeiro e o teste de log força `NODE_ENV='development'`; nenhum teste define `__DEV__ = false`. Em release o app passaria a escrever método, caminho (com ID de booking), status, `errorCode` e `traceId` no console do aparelho. Correção: teste que force `__DEV__ = false` e `NODE_ENV='development'`, provoque uma falha e afirme `warn` não chamado |
-| L2 | log sem a guarda de modo teste | Sobreviveu | Só acrescenta ruído nos testes; a alegação "fora do Jest" não tem teste. Correção: um teste com `NODE_ENV='test'` e falha afirmando `warn` não chamado |
-| L2b | log sem nenhuma guarda | Sobreviveu | Mesma causa de L1 e L2 |
-| L12 | `anchor` removido | Sobreviveu, equivalente para os ACs P0 | Ver revisão adversarial |
-| L3 | log inclui o corpo | Morto | `client.test.ts:185` "logs only the classification and the path..." |
-| L4 | log inclui a `Idempotency-Key` | Morto | idem |
-| L5 | log de requisição cancelada | Morto | `client.test.ts:224` "does not log a request cancelled by the caller" |
-| L6 | log mantém a query string | Morto | idem (`page=1`) |
-| L7 | `isConfigError` sempre verdadeiro | Morto (8 falhas) | testes de erro de Home, header, Serviços, detalhe |
+| **L1** | log sem a guarda `__DEV__` | **Morto** | `client.test.ts` "stays silent in a release bundle, where __DEV__ is false" |
+| **L2** | log sem a guarda de modo teste | **Morto** | `client.test.ts` "stays silent under Jest (NODE_ENV test) even in a development bundle" |
+| **L2b** | log sem nenhuma guarda | **Morto** (2 falhas) | os dois testes acima |
+| L3 | log inclui o corpo | Morto | "logs only the classification and the path..." |
+| L5 | log de requisição cancelada | Morto | "does not log a request cancelled by the caller" |
+| L6 | log mantém a query string | Morto | idem L3 |
 | L8 | `isConfigError` sempre falso | Morto | `configError.test.tsx` (2) |
-| L9 | retry mantido no header em `ConfigError` | Morto | `configError.test.tsx:25` |
-| L10 | a consulta repete em `ConfigError` | Morto | `configError.test.tsx` (2) |
-| L11 | `anchor` revertido para `initialRouteName` | Morto | `navigation.test.tsx:23` |
-| L13 a L16 | mensagem de configuração para qualquer erro (Home, header, Serviços, detalhe) | Mortos | testes de erro genérico de cada tela |
-| M1, M4, N8 | regressão no caminho de compra (replay com chave nova, GET antigo sobrescrevendo o saldo, botão sem `disabled`) | Mortos | `useBookingRecovery.test.tsx` e `purchaseFlow.test.tsx`; `applyConfirmedBooking.test.tsx`; `lifecycle.test.tsx` e `purchaseFlow.test.tsx` |
+| L11 | `anchor` revertido para `initialRouteName` | Morto | `navigation.test.tsx` "anchors the tabs on Home..." |
+| M1 | replay com chave nova (regressão de compra) | Morto | `useBookingRecovery.test.tsx` e `purchaseFlow.test.tsx` |
+| N8 | botão de compra sem `disabled` (regressão) | Morto | `lifecycle.test.tsx` e `purchaseFlow.test.tsx` |
 
-**Resultado do sensor do delta:** 20 injetados, 16 mortos, 4 sobreviventes: L12 equivalente; L1, L2 e L2b formam um único buraco (guardas do log), com L1 não equivalente. **Sobreviventes não equivalentes: 1 conjunto (L1).**
+**Resultado:** 10 injetados, 10 mortos, 0 sobreviventes. L12 (remover `anchor`) permanece equivalente para os ACs P0 e não foi reinjetado. **Sobreviventes não equivalentes: 0.**
 
 ### Isolamento
 
-`git status --porcelain` da árvore real antes e depois do sensor: vazio nos dois, **idêntico**. Worktree descartável removido; sem `git stash`, reset ou rebase; teste ao vivo não executado.
+`git status --porcelain` da árvore real antes e depois: vazio nos dois, **idêntico**. Worktree descartável removido; sem `git stash`, reset ou rebase; teste ao vivo não executado.
 
 ## Pendente por dependência externa (à parte; não força FAIL)
 
 | Item | Situação |
 | --- | --- |
-| N1 no Android (TalkBack, fonte 200%, safe areas) | Não ensaiado. O iOS foi aprovado em relato global (AD-006); UX-02 e o smoke Android de QUAL-02 seguem sem prova. O `fetch` do React Native contra a API só teria sido exercitado pelo ensaio iOS do usuário, que não foi detalhado |
+| N1 no Android (TalkBack, fonte 200%, safe areas) | Não ensaiado. O iOS foi aprovado só em relato global, sem registro por cenário (AD-006). UX-02 e o smoke Android de QUAL-02 seguem sem prova |
 | QUEUE-01..10 (P1) | Não implementado, fora desta verificação |
 | Compra após horas (retenção da Idempotency-Key) | Inferida por leitura do backend; replay depois de horas nunca exercitado; `keyRetentionMs = null` |
 | Compra ao vivo de 2 ou mais unidades e preferência aceita | Não exercitada (a demo está em 3110) |
@@ -91,7 +87,7 @@ Correções sugeridas, só de texto: (a) trocar a tabela de Resultados por uma �
 
 ## Escopo herdado (verificado até `cb9adcd`, sem alteração nesta rodada)
 
-As seções seguintes são a verificação das rodadas 1 a 4. Citações `file:linha` valem para `cb9adcd`; os arquivos de teste e de produção desses ACs não mudaram no delta, exceto `navigation.test.tsx` (um teste acrescentado no fim do primeiro bloco, deslocando em 12 linhas as citações posteriores desse arquivo) e `client.test.ts`, `AppHeader.tsx`, `balanceState.ts`, `HomeScreen.tsx`, `BookingsScreen.tsx` e `BookingDetailsScreen.tsx` (ramos de configuração e log, sem tocar os ramos citados).
+As seções seguintes são a verificação das rodadas 1 a 4. Citações `file:linha` valem para `cb9adcd`; no delta mudaram `navigation.test.tsx` (um teste acrescentado no primeiro bloco, que desloca as citações posteriores) e `client.test.ts`, `AppHeader.tsx`, `balanceState.ts`, `HomeScreen.tsx`, `BookingsScreen.tsx` e `BookingDetailsScreen.tsx` (ramos de configuração e log, sem tocar os ramos citados).
 
 ## Reavaliação dos ACs com a API real (leitura crítica do teste ao vivo)
 
@@ -334,19 +330,18 @@ Os testes novos (`CheckoutProviderPurchase.test.tsx`) só alteraram o estado do 
 | Pending external | UX-02, QUAL-02 (smoke Android), UX-01 (leitor de tela), compra após horas |
 | Fora do escopo desta verificação | QUEUE-01..QUEUE-10 |
 
-## Planos de correção
+## Recomendações abertas (não bloqueiam o PASS)
 
-1. **L1 (única pendência de teste).** Em `client.test.ts`, um teste com `NODE_ENV='development'` e `globalThis.__DEV__ = false` (restaurando depois) que provoque uma falha de `requestJson` e afirme `warn` não chamado; e um com `NODE_ENV='test'` afirmando o mesmo. Mata L1, L2 e L2b.
-2. **Registro do N1 (texto).** Itens (a) a (d) da seção "Registro do N1".
-3. Herdadas, opcionais: caso para N4 (`canConfirm` durante `submitting`); corrigir a linha principal do `api-contract.md` que ainda escreve "201/200" e "429 `RATE_LIMIT_EXCEEDED`" como observados.
-
-Depois dessas correções basta reexecutar L1, L2 e L2b e reler os quatro arquivos de registro do N1.
+1. **T30 `[x]` não se sustenta com T29 `[~]`** (depende de T29, Gate N1, "todos P0 têm prova"): marcar `[~]` ou reescrever o Done when. Baixa-média, bookkeeping.
+2. Atualizar as contagens defasadas: `README.md:98` e `STATE.md` (Handoff) dizem 260 testes; são 262. Corrigir `tasks.md:714` ("C1/C2/C3/CP1 não comprovadas; N1 não executado"). Baixa.
+3. Trocar "relato global abaixo" por "acima" na tabela de Resultados; remover "verificado" de "P0 implementado e verificado" no Handoff enquanto T29 e T30 estiverem em aberto. Informativa.
+4. Herdadas, opcionais: caso para N4; linha principal do `api-contract.md` que ainda escreve "201/200" e "429 `RATE_LIMIT_EXCEEDED`" como observados.
 
 ## Resumo
 
-**Overall:** quase pronto (FAIL por um buraco de teste de baixa gravidade e por um registro de N1 que afirma além do relato).
+**Overall:** PASS para o escopo verificável localmente e pelo teste ao vivo lido; entrega P0 completa só com os itens PENDING-EXTERNAL resolvidos (Android) ou aceitos pelo usuário.
 
-**Escopo herdado de `cb9adcd`:** PASS da rodada 4 (48 de 50 ACs com evidência, 0 GAP; UX-02 e o smoke Android de QUAL-02 pendentes).
-**Delta:** nenhum AC P0 quebrado; READ-03 ganha uma precisão (configuração ausente); gates 32 suítes e 260 testes verdes.
-**Sensor do delta:** 16 de 20 mortos; não equivalente sobrevivente: L1 (e L2/L2b, mesma causa).
-**Gaps por gravidade:** média, registro do N1 (README "aparelho/VoiceOver/texto ampliado", tabela por cenário, T29 `[x]`); baixa, L1 e L2 (guardas do log sem teste); baixa, identificação do ensaio com URL e commit inferidos; informativa, ID de booking e `traceId` no log de desenvolvimento.
+**Escopo herdado de `cb9adcd`:** 48 de 50 ACs com evidência `file:linha`, 0 GAP; UX-02 e o smoke Android de QUAL-02 pendentes.
+**Delta:** nenhum AC P0 quebrado; gates verdes (32 suítes, 262 testes); registro do N1 fiel ao relato.
+**Sensor do delta:** 10 de 10 mortos nesta rodada (L1, L2 e L2b incluídos); 0 sobreviventes não equivalentes.
+**Gaps por gravidade:** baixa-média, T30 `[x]`; baixa, contagens e `tasks.md:714` defasados; informativa, redação e ID de booking/`traceId` no log de desenvolvimento.

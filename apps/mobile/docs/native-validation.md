@@ -90,14 +90,14 @@ A compra real está habilitada (gate C2 provado contra a API real em 2026-10-21)
 
 | Cenário | Resultado | Observações |
 | --- | --- | --- |
-| 1. Abas e Home inicial | SEM REGISTRO POR CENÁRIO | Coberto apenas pelo relato global abaixo |
-| 2. Header e layout | SEM REGISTRO POR CENÁRIO | Coberto apenas pelo relato global abaixo |
-| 3. Compra controlada | SEM REGISTRO POR CENÁRIO | Coberto apenas pelo relato global abaixo |
-| 4. Seleção e badge | SEM REGISTRO POR CENÁRIO | Coberto apenas pelo relato global abaixo |
-| 5. Histórico e detalhe | SEM REGISTRO POR CENÁRIO | Coberto apenas pelo relato global abaixo |
-| 6. Rede e retry explícito | SEM REGISTRO POR CENÁRIO | Coberto apenas pelo relato global abaixo |
-| 7. Suspensão e retomada | SEM REGISTRO POR CENÁRIO | Coberto apenas pelo relato global abaixo |
-| 8. Acessibilidade e texto ampliado | SEM REGISTRO POR CENÁRIO | Coberto apenas pelo relato global abaixo |
+| 1. Abas e Home inicial | SEM REGISTRO POR CENÁRIO | Coberto apenas pelo relato global acima |
+| 2. Header e layout | SEM REGISTRO POR CENÁRIO | Coberto apenas pelo relato global acima |
+| 3. Compra controlada | SEM REGISTRO POR CENÁRIO | Coberto apenas pelo relato global acima |
+| 4. Seleção e badge | SEM REGISTRO POR CENÁRIO | Coberto apenas pelo relato global acima |
+| 5. Histórico e detalhe | SEM REGISTRO POR CENÁRIO | Coberto apenas pelo relato global acima |
+| 6. Rede e retry explícito | SEM REGISTRO POR CENÁRIO | Coberto apenas pelo relato global acima |
+| 7. Suspensão e retomada | SEM REGISTRO POR CENÁRIO | Coberto apenas pelo relato global acima |
+| 8. Acessibilidade e texto ampliado | SEM REGISTRO POR CENÁRIO | Coberto apenas pelo relato global acima |
 
 Falhas encontradas viram tarefas corretivas atômicas, cada uma com teste de regressão, e o cenário falho é reexecutado antes de fechar este gate.
 
