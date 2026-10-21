@@ -2,6 +2,9 @@ using Cicclo.Api.Bookings;
 
 namespace Cicclo.Api.Laundry;
 
+/// <summary>Booking dono do item e tipo de máquina que o atende, descobertos sem lock.</summary>
+public sealed record ItemLocation(Guid BookingId, MachineType MachineType);
+
 /// <summary>Item de um tipo de máquina lido sob lock: fila (ticket/queued_at) e oferta corrente (máquina/prazo).</summary>
 public sealed record LaundryItem(Guid ItemId, BookingItemStatus Status, long? Ticket, DateTime? QueuedAt, Guid? MachineId, DateTime? ExpiresAt);
 
@@ -12,8 +15,11 @@ public sealed record LaundryItem(Guid ItemId, BookingItemStatus Status, long? Ti
 /// </summary>
 public interface IQueueSession
 {
-    /// <summary>Descoberta sem lock do tipo de máquina que atende o item; null se o item não existe.</summary>
-    Task<MachineType?> FindItemMachineTypeAsync(Guid itemId, CancellationToken cancellationToken);
+    /// <summary>
+    /// Descoberta sem lock do booking e do tipo de máquina do item; null se o item não existe. Só orienta quais locks
+    /// adquirir: o código de serviço e seu tipo de máquina são estáveis (wash↔washer, dry↔dryer).
+    /// </summary>
+    Task<ItemLocation?> LocateItemAsync(Guid itemId, CancellationToken cancellationToken);
 
     /// <summary>Bloqueia as máquinas do tipo em ordem de id e devolve seu estado atual.</summary>
     Task<IReadOnlyList<MachineSlot>> LockMachinesAsync(MachineType type, CancellationToken cancellationToken);
@@ -45,6 +51,9 @@ public interface ILaundrySession : IQueueSession, IAsyncDisposable
 {
     /// <summary>Bloqueia a wallet até o fim da transação; ausência dela é base não preparada.</summary>
     Task LockWalletAsync(Guid walletId, CancellationToken cancellationToken);
+
+    /// <summary>Oferta confirmada: to_be_confirmed → in_progress com started_at, e máquina reserved → running.</summary>
+    Task StartAsync(Guid itemId, Guid machineId, DateTime startedAt, CancellationToken cancellationToken);
 
     Task CommitAsync();
 }

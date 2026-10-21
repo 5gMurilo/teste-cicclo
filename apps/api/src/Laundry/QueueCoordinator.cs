@@ -34,11 +34,12 @@ public sealed class QueueCoordinator(TimeProvider time, IOptions<LaundryOptions>
 
     public async Task<ActivationResult> ActivateAsync(IQueueSession session, Guid itemId, CancellationToken cancellationToken)
     {
-        if (await session.FindItemMachineTypeAsync(itemId, cancellationToken) is not { } type)
+        if (await session.LocateItemAsync(itemId, cancellationToken) is not { } location)
         {
             return new(ActivationOutcome.NotFound, null, []);
         }
 
+        var type = location.MachineType;
         var machines = await session.LockMachinesAsync(type, cancellationToken);
         var items = (await session.LockItemsAsync(type, itemId, cancellationToken)).ToList();
         var now = OfferPolicy.DecisionInstant(time.GetUtcNow());
