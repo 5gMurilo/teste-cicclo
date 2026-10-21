@@ -33,11 +33,14 @@ afterEach(() => queryClient.clear());
 
 describe('shared header in the tab layout', () => {
   it('greets Visitante and shows the API balance 5000 as R$ 50,00 on every tab', async () => {
-    serveWallet(() => reply(200, WALLET));
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    serveWallet(() => held.then(() => reply(200, WALLET)));
 
     await renderRouter(APP_DIR);
 
     expect(screen.getByText('Carregando saldo…')).toBeOnTheScreen();
+    release();
     expect(await screen.findByText('R$ 50,00')).toBeOnTheScreen();
     expect(screen.getByRole('header', { name: 'Olá! Visitante' })).toBeOnTheScreen();
 

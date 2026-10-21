@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createContext,
   useCallback,
@@ -10,6 +10,7 @@ import {
 } from 'react';
 
 import { capabilities } from '../../shared/api/capabilities';
+import { useMobileLifecycle } from '../../shared/hooks/useMobileLifecycle';
 import { catalogOptions } from '../catalog/queries';
 import { walletOptions } from '../wallet/queries';
 import {
@@ -50,6 +51,10 @@ type CheckoutContextValue = {
   setPreference: (code: string | null) => void;
   clear: () => void;
   purchase: PurchaseControls;
+  /** True while the shown wallet/catalog cannot be trusted as current: offline, or re-reading after a return. */
+  readsRetained: boolean;
+  /** Re-reads wallet and catalog; additions and purchase stay blocked until both succeed. */
+  revalidate: () => void;
   /** Explicit new review: accepts the current catalog prices as the ones the user has seen. */
   acknowledgePriceChanges: () => void;
 };
@@ -72,19 +77,43 @@ function pruneSeenPrices(store: Store): Store {
 }
 
 export function CheckoutProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const wallet = useQuery(walletOptions());
   const catalog = useQuery(catalogOptions());
+
+  // After a foreground return or a reconnection nothing financial is trusted until both reads succeed again.
+  const [revalidation, setRevalidation] = useState<'ok' | 'pending' | 'failed'>('ok');
+  const revalidationRound = useRef(0);
+  const revalidate = useCallback(() => {
+    const round = ++revalidationRound.current;
+    setRevalidation('pending');
+    Promise.all([
+      queryClient.fetchQuery({ ...walletOptions(), staleTime: 0 }),
+      queryClient.fetchQuery({ ...catalogOptions(), staleTime: 0 }),
+    ]).then(
+      () => round === revalidationRound.current && setRevalidation('ok'),
+      () => round === revalidationRound.current && setRevalidation('failed'),
+    );
+  }, [queryClient]);
+  const { network } = useMobileLifecycle(revalidate);
 
   // The ref is the synchronous source of truth so two taps in one tick are validated one after the other.
   const storeRef = useRef<Store>(EMPTY_STORE);
   const [store, setStore] = useState<Store>(EMPTY_STORE);
 
-  const readiness: CheckoutReadiness =
+  const readsReadiness: CheckoutReadiness =
     wallet.isError || catalog.isError || (!wallet.isPending && !wallet.data) || (!catalog.isPending && !catalog.data)
       ? 'unavailable'
       : wallet.isPending || catalog.isPending
         ? 'loading'
         : 'ready';
+  const readiness: CheckoutReadiness =
+    network === 'offline' || revalidation === 'failed'
+      ? 'unavailable'
+      : network === 'unknown' || revalidation === 'pending'
+        ? 'loading'
+        : readsReadiness;
+  const readsRetained = network === 'offline' || revalidation !== 'ok';
 
   const commit = useCallback((next: Store) => {
     storeRef.current = next;
@@ -158,6 +187,8 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
       clear: () => {
         if (!purchasePending) dispatch({ type: 'clear' });
       },
+      readsRetained,
+      revalidate,
       purchase: {
         enabled: capabilities.purchase,
         state: submission.state,
@@ -181,7 +212,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
         commit({ ...current, seenPrices: { ...current.seenPrices, ...seenPrices } });
       },
     };
-  }, [store, catalog.data, wallet.data, readiness, add, dispatch, commit, submission, purchasePending]);
+  }, [store, catalog.data, wallet.data, readiness, readsRetained, revalidate, add, dispatch, commit, submission, purchasePending]);
 
   return <CheckoutContext.Provider value={value}>{children}</CheckoutContext.Provider>;
 }

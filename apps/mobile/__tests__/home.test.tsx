@@ -29,30 +29,36 @@ function reply({ status, body }: Reply): Promise<Response> {
   } as unknown as Response);
 }
 
+let gate: Promise<void> = Promise.resolve();
+
 function serve(services: (call: number) => Reply) {
   let servicesCalls = 0;
   globalThis.fetch = jest.fn(async (url: string | URL | Request, init?: RequestInit) => {
     calls.push({ url: String(url), method: init?.method ?? 'GET' });
-    return String(url).endsWith('/wallet')
-      ? reply({ status: 200, body: WALLET })
-      : reply(services(++servicesCalls));
+    if (String(url).endsWith('/wallet')) return reply({ status: 200, body: WALLET });
+    await gate;
+    return reply(services(++servicesCalls));
   }) as unknown as typeof fetch;
 }
 
 beforeEach(() => {
   process.env.EXPO_PUBLIC_API_URL = 'http://api.test:5001';
   calls.length = 0;
+  gate = Promise.resolve();
 });
 
 afterEach(() => queryClient.clear());
 
 describe('Home reading states', () => {
   it('shows loading first, then the services with API prices, and never posts', async () => {
+    let open: () => void = () => undefined;
+    gate = new Promise((resolve) => (open = resolve));
     serve(() => ({ status: 200, body: { services: [WASH, { ...DRY, unitPriceCents: 2500 }] } }));
 
     await renderRouter(APP_DIR);
 
     expect(screen.getByLabelText('Carregando serviços')).toBeOnTheScreen();
+    open();
     expect(await screen.findByText('Lavagem')).toBeOnTheScreen();
     expect(screen.getByText('R$ 18,90')).toBeOnTheScreen();
     expect(screen.getByText('Secagem')).toBeOnTheScreen();

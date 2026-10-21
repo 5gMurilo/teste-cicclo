@@ -5,13 +5,15 @@ type WalletQueryView = {
   data: Wallet | undefined;
   isPending: boolean;
   isError: boolean;
+  /** The app is offline or still re-reading after a return: a held balance is only a last known value. */
+  retained?: boolean;
 };
 
 const timeLabel = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
 /** Maps the authoritative wallet query to the header's display state; no default balance, ever. */
-export function toBalanceState({ data, isPending, isError }: WalletQueryView): BalanceState {
-  if (data && isError) {
+export function toBalanceState({ data, isPending, isError, retained = false }: WalletQueryView): BalanceState {
+  if (data && (isError || retained)) {
     return {
       status: 'stale',
       cents: data.balanceCents,

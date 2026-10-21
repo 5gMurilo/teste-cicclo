@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** em andamento. Última tarefa concluída: T26 (20/37 com Done when marcado); ver STATE.md.
+**Execução:** em andamento. Última tarefa concluída: T27 (21/37 com Done when marcado); ver STATE.md.
 
 ## Execution Protocol
 
@@ -412,7 +412,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: AppState, focusManager/onlineManager e expo-network instalado no primeiro uso; integração única no CheckoutProvider.
 **Requirement**: SAFE-03, SAFE-04, SAFE-05, SEL-03, BUY-02, BUY-09.
 **What**: Observar lifecycle/rede, limpar listeners e exigir revalidação de wallet/catalog antes de permitir seleção/compra após reconectar.
-**Done when**: [ ] undefined inicial não autoriza operação; header antigo é rotulado; reconexão/foreground refaz GETs e bloqueia compra até sucesso; zero POST sem gesto; subscriptions não duplicam.
+**Done when**: [x] undefined inicial não autoriza operação; header antigo é rotulado; reconexão/foreground refaz GETs e bloqueia compra até sucesso; zero POST sem gesto; subscriptions não duplicam.
 **Tests**: integration — teto de 8 casos: rede inicial indeterminada, offline, reconnect com GET diferido, erro de refetch, active/background, unmount, rerender sem duplicação, unknown continua exigindo verify explícito.
 **Gate**: F + CC.
 **Tools**: Context7 expo-network/Query lifecycle; sem instalar NetInfo também.
@@ -709,7 +709,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **20/37 tarefas com Done when marcado** (última: T26); demais abertas ou pendentes de gate externo.
+- Implementação: **21/37 tarefas com Done when marcado** (última: T27); demais abertas ou pendentes de gate externo.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1/C2/C3/CP1 não comprovadas; N1 não executado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.
