@@ -47,6 +47,8 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
         typeof(Cicclo.Api.Laundry.Simulation.CompleteMachineEndpoint), typeof(Cicclo.Api.Laundry.ReportIssue.ReportIssueEndpoint),
         typeof(Cicclo.Api.Laundry.Simulation.BreakdownMachineEndpoint), typeof(Cicclo.Api.Laundry.ConfirmIncident.ConfirmIncidentEndpoint),
         typeof(Cicclo.Api.Laundry.RestoreMachine.RestoreMachineEndpoint), typeof(Cicclo.Api.Wallet.ReadCaching.RedisWalletReadCache),
+        typeof(Cicclo.Api.Laundry.Notifications.LaundryHub), typeof(Cicclo.Api.Laundry.Notifications.LaundryNotificationPublisher),
+        typeof(Cicclo.Api.Laundry.Notifications.LaundryNotificationServices),
     ];
 
     [Fact]
@@ -83,6 +85,11 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
                 typeof(Cicclo.Api.Wallet.ReadCaching.IWalletReadCache), typeof(Cicclo.Api.Wallet.ReadCaching.WalletCacheEntry),
                 typeof(Cicclo.Api.Wallet.ReadCaching.WalletCacheOptions), typeof(Cicclo.Api.Wallet.ReadCaching.CachedWalletBalanceQuery),
                 typeof(Cicclo.Api.Wallet.ReadCaching.WalletCacheInvalidation), typeof(Cicclo.Api.Wallet.ReadCaching.WalletReadCaching),
+                typeof(Cicclo.Api.Laundry.Notifications.LaundryEventNames), typeof(Cicclo.Api.Laundry.Notifications.LaundryNotification),
+                typeof(Cicclo.Api.Laundry.Notifications.ILaundryNotifications), typeof(Cicclo.Api.Laundry.Notifications.BookingUpdatedPayload),
+                typeof(Cicclo.Api.Laundry.Notifications.QueueUpdatedPayload), typeof(Cicclo.Api.Laundry.Notifications.MachineOfferedPayload),
+                typeof(Cicclo.Api.Laundry.Notifications.MachineOfferExpiredPayload), typeof(Cicclo.Api.Laundry.Notifications.WalletUpdatedPayload),
+                typeof(Cicclo.Api.Laundry.Notifications.MachineFailedPayload),
             },
             domainTypes.ToHashSet());
         var violations = domainTypes
