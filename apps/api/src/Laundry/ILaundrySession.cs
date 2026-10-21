@@ -89,5 +89,11 @@ public interface ILaundrySession : IQueueSession, IAsyncDisposable
     Task<decimal> CancelWithRefundAsync(
         Guid walletId, Guid bookingId, Guid itemId, BookingItemStatus from, Guid? machineId, decimal amount, DateTime cancelledAt, CancellationToken cancellationToken);
 
+    /// <summary>Bloqueia (por último na ordem de locks) o relato aberto do item e devolve seu id; null se não há.</summary>
+    Task<Guid?> LockOpenIncidentAsync(Guid itemId, CancellationToken cancellationToken);
+
+    /// <summary>Novo relato reported do item na máquina da execução; não toca item, máquina, wallet nem lançamentos.</summary>
+    Task RecordIncidentAsync(Guid incidentId, Guid machineId, Guid itemId, string? description, DateTime reportedAt, CancellationToken cancellationToken);
+
     Task CommitAsync();
 }

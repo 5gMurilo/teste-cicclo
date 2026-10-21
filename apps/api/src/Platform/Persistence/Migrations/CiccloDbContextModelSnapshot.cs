@@ -218,6 +218,51 @@ namespace Cicclo.Api.Platform.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Cicclo.Api.Laundry.MachineIncident", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BookingItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("request_item_id");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<Guid>("MachineId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("machine_id");
+
+                    b.Property<DateTime>("ReportedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reported_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_machine_incidents");
+
+                    b.HasIndex("MachineId")
+                        .HasDatabaseName("ix_machine_incidents_machine_id");
+
+                    b.HasIndex(new[] { "BookingItemId" }, "ux_machine_incidents_item_reported")
+                        .IsUnique()
+                        .HasFilter("status = 'reported'");
+
+                    b.ToTable("machine_incidents", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_machine_incidents_description", "description IS NULL OR char_length(description) BETWEEN 1 AND 1000");
+
+                            t.HasCheckConstraint("ck_machine_incidents_status", "status IN ('reported', 'confirmed')");
+                        });
+                });
+
             modelBuilder.Entity("Cicclo.Api.Services.LaundryService", b =>
                 {
                     b.Property<string>("Code")
@@ -402,6 +447,23 @@ namespace Cicclo.Api.Platform.Persistence.Migrations
                         .HasForeignKey("ActiveItemId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_machines_service_request_items");
+                });
+
+            modelBuilder.Entity("Cicclo.Api.Laundry.MachineIncident", b =>
+                {
+                    b.HasOne("Cicclo.Api.Bookings.BookingItem", null)
+                        .WithMany()
+                        .HasForeignKey("BookingItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_machine_incidents_service_request_items");
+
+                    b.HasOne("Cicclo.Api.Laundry.Machine", null)
+                        .WithMany()
+                        .HasForeignKey("MachineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_machine_incidents_machines");
                 });
 
             modelBuilder.Entity("Cicclo.Api.Wallet.LedgerEntry", b =>

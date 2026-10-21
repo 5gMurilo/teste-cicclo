@@ -115,6 +115,8 @@ public sealed class BookingSchemaTests(PostgresFixture postgres)
         Assert.Equal(TestDatabase.MigrationIds, await database.RowsAsync("SELECT \"MigrationId\" FROM \"__EFMigrationsHistory\" ORDER BY 1"));
         Assert.Equal(
             [
+                "machine_incidents|fk_machine_incidents_machines|machines|r",
+                "machine_incidents|fk_machine_incidents_service_request_items|service_request_items|r",
                 "machines|fk_machines_service_request_items|service_request_items|r",
                 "service_request_items|fk_service_request_items_machines|machines|r",
                 "service_request_items|fk_service_request_items_service_requests|service_requests|r",
