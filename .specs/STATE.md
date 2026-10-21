@@ -45,11 +45,11 @@
 ## Handoff
 
 - **Feature**: `.specs/features/cicclo-mobile/spec.md`.
-- **Phase / Task**: Execute inline e sequencial. Última tarefa fechada: T25.
-- **Completed**: T1-T9, T11-T20 e T22 fechadas; T10, T21, T23, T24 e T25 implementadas e pendentes de gate com a API real. T25 = bookings/detailQuery.ts (id validado como UUID antes de qualquer GET, enabled=false e guarda no queryFn; 404 recuperável; schema compartilhado com a listagem por ser a mesma projeção) (20/37 com Done when marcado).
+- **Phase / Task**: Execute inline e sequencial. Última tarefa fechada: T26.
+- **Completed**: T1-T9, T11-T20 e T22 fechadas; T10, T21 e T23-T26 implementadas e pendentes de gate com a API real. T26 = BookingDetailsScreen + rota bookings/[id] (id inválido sem GET, 404, retry, estados por item, sem ações P1, sem texto de estorno, retorno a Serviços preserva a seleção); detailQuery reusa shouldRetryRead (20/37 com Done when marcado).
 - **In-progress**: Nenhuma.
-- **Next step**: T26 (BookingDetailsScreen + rota bookings/[id], retorno a Serviços).
+- **Next step**: T27 (useMobileLifecycle: AppState + expo-network, revalidação sem POST).
 - **Pendente da API real**: C1 (T10 e demo de E1/E2), integração por fast-forward de E1 e E2 em `mobile-worktree`; C2 (CTA real em T21), C3 (T22-T28), N1 (T29, com o usuário). Decisão do usuário (2026-10-21): implementar o código de todas as etapas E com fakes primeiro e deixar a interação real com a API para depois de todas elas.
 - **Blockers**: C1/C2/C3 não provados. `dotnet` não aparece no PATH desta sessão (há `docker` e `psql`). `tests/bootstrap.test.mjs` teste 6 falha localmente por isso.
-- **Branches** (atual: `feat/mobile-04-booking-tracking`): chore/mobile-00-baseline 08e6c7d; feat/mobile-01-catalog-wallet 6bd529c; feat/mobile-02-selection-review 0a34316; feat/mobile-03-safe-booking 9674db3; feat/mobile-04-booking-tracking 58ba545; mobile-worktree 08e6c7d.
+- **Branches** (atual: `feat/mobile-04-booking-tracking`): chore/mobile-00-baseline 08e6c7d; feat/mobile-01-catalog-wallet 6bd529c; feat/mobile-02-selection-review 0a34316; feat/mobile-03-safe-booking 9674db3; feat/mobile-04-booking-tracking 2fc737f; mobile-worktree 08e6c7d.
 - **Uncommitted files**: `.omc/` e `apps/mobile/.omc/` (estado de ferramenta, não versionar).

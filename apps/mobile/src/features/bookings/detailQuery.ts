@@ -2,6 +2,7 @@ import { queryOptions } from '@tanstack/react-query';
 import { z } from 'zod';
 
 import { requestJson } from '../../shared/api/client';
+import { shouldRetryRead } from '../../shared/api/queryClient';
 import { bookingsKey } from './queryKeys';
 import { bookingSchema, type Booking } from './schema';
 
@@ -33,6 +34,6 @@ export function bookingDetailOptions(bookingId: string) {
     queryFn: ({ signal }) => fetchBooking(bookingId, signal),
     enabled: isBookingId(bookingId),
     staleTime: DETAIL_STALE_TIME_MS,
-    retry: (failureCount, error) => !(error instanceof InvalidBookingIdError) && failureCount < 1,
+    retry: (failureCount, error) => !(error instanceof InvalidBookingIdError) && shouldRetryRead(failureCount, error),
   });
 }
