@@ -1,9 +1,11 @@
 # Cicclo
 
+**Criado em:** 2026-10-20 · **Última atualização:** 2026-10-21
+
 Monorepo pnpm + Turborepo com dois aplicativos independentes:
 
-- `apps/mobile`: React Native 0.88.0, Expo SDK 58 e TypeScript.
-- `apps/api`: C# e ASP.NET Core em .NET 10 LTS, com endpoint `GET /health`.
+- `apps/mobile`: React Native 0.88.0, Expo SDK 58 e TypeScript. Ainda não consome a API.
+- `apps/api`: C# e ASP.NET Core em .NET 10 LTS, com carteira demonstrativa, contratações de lavagem/secagem com débito idempotente, fila FIFO de máquinas com oferta de 60 s, cancelamento com estorno, simulação de máquinas e relato de defeito, sobre PostgreSQL 18.1.
 
 O workspace reconhece `apps/*` e `packages/*`. Não há pacotes compartilhados ainda; crie-os apenas quando houver código realmente compartilhado. Expo/React Native não oferecem uma linha LTS formal: o mobile usa a versão estável compatível do Expo. O .NET 10 tem suporte LTS até novembro de 2028.
 
@@ -19,6 +21,27 @@ O workspace reconhece `apps/*` e `packages/*`. Não há pacotes compartilhados a
 Para abrir o mobile, use Expo Go compatível com SDK 58 em dispositivo Android/iOS, um Android Emulator ou um iOS Simulator. Emuladores exigem Android Studio/SDK; o simulador iOS exige macOS com Xcode. Dispositivos físicos precisam alcançar o servidor Expo na rede local. Builds nativos locais exigem também as ferramentas da plataforma; não são necessários para exportar os bundles.
 
 O pnpm gerencia somente dependências JavaScript. O SDK .NET e o NuGet continuam responsáveis pela compilação e pelas dependências C#; o `package.json` da API apenas permite que o Turbo execute os comandos nativos.
+
+Versões fixadas do backend: runtime ASP.NET Core 10.0.13 (imagem `mcr.microsoft.com/dotnet/aspnet:10.0.13`), EF Core 10.0.13, Npgsql.EntityFrameworkCore.PostgreSQL 10.0.3, OpenTelemetry 1.20, PostgreSQL 18.1 (imagem `postgres:18.1`). Os testes usam xUnit 2.9.3 e Testcontainers.PostgreSql 4.16.0, com PostgreSQL real em container descartável (Docker ativo é obrigatório para a suíte .NET).
+
+| Porta (somente loopback) | Uso |
+| --- | --- |
+| 5001 | API em `pnpm dev`, `dotnet run` do roteiro e Compose (`API_PORT`) |
+| 5432 | PostgreSQL do Compose (`POSTGRES_PORT`) |
+| 8080 | Porta interna da API no container |
+| 8081 | Expo |
+
+## Início rápido do backend
+
+Com Docker e Compose v2 ativos, sem SDK .NET, na raiz:
+
+```sh
+cp apps/api/.env.example apps/api/.env   # depois troque POSTGRES_PASSWORD
+apps/api/scripts/start-demo.sh
+curl http://127.0.0.1:5001/api/v1/wallet
+```
+
+O script sobe o PostgreSQL, aplica migrations e `seed.sql` (bootstrap explícito), inicia a API e confere carteira e catálogo (seção "Demonstração local completa"). Em seguida, faça a compra e o replay da seção "Contratações". A API do Compose não liga `Laundry:DemoMode`: as rotas de simulação respondem 404 nela. O roteiro completo, com simulação, está em "Roteiro de demonstração (5 a 8 minutos)" e usa o SDK .NET. Para voltar ao estado inicial, use "Reset da demonstração".
 
 ## Instalação
 
@@ -169,6 +192,22 @@ As rotas sob `/api/v1/simulation` existem apenas quando o ambiente é `Developme
 - `POST /api/v1/simulation/incidents/{incidentId}/confirm` confirma um relato `reported` cuja execução ainda está em andamento (a máquina do relato `running` com o item `in_progress`) aplicando exatamente a mesma falha do `breakdown`, sem outro cálculo de estorno: item `failed`, máquina `out_of_service`, refund único do preço histórico (`reason=machine_failure`) e o relato passa a `confirmed`, tudo no mesmo commit. Responde 200 com `{ "incidentId": "...", "status": "confirmed", "machine": {...}, "item": {...} }`; repetir sobre um incidente já confirmado responde 200 com o estado atual, sem nova falha nem refund. Se a execução já foi concluída ou falhou (por exemplo, pelo `breakdown`, que não mexe em relatos), ou se o relato aponta outra máquina que não a da execução do item, responde 409 `INVALID_STATE_TRANSITION` sem mudança: o item não é reaberto e o relato continua `reported`, só como histórico, sem dívida financeira. Confirmação e `breakdown` da mesma execução disputam o mesmo lock: um único refund. `incidentId` que não é UUID responde 400 `VALIDATION_ERROR`; incidente inexistente, 404 `INCIDENT_NOT_FOUND`.
 - `POST /api/v1/simulation/machines/{machineId}/restore` devolve uma máquina `out_of_service` ao estado `available` numa única transação e, em seguida, o próximo item da fila do tipo, por ticket, recebe a oferta de 60 s nela no mesmo commit; sem fila, a máquina fica `available`. Itens `failed` ou `cancelled` não voltam à fila e nenhum item é reativado; não há compra, débito, refund nem lançamento. A resposta traz a máquina atual e o item que recebeu a oferta desta máquina (`null` sem fila). Restauração e outra promoção do mesmo tipo (por exemplo, a conclusão de outra lavadora) disputam o mesmo lock: cada item recebe uma única oferta. Máquina `available`, `reserved` ou `running`, inclusive uma restauração repetida, responde 409 `INVALID_STATE_TRANSITION` sem mudança. Falha ao promover o próximo desfaz também a restauração.
 
+### Resumo de endpoints e limites
+
+| Método e rota | Sucesso | Política de limite (padrão por minuto e IP) |
+| --- | --- | --- |
+| `GET /health`, `/health/live`, `/health/ready` | 200 / 503 | sem limite |
+| `GET /api/v1/wallet`, `GET /api/v1/services` | 200 | `Reads` (60) |
+| `POST /api/v1/bookings` | 201 / replay 200 | `BookingCreate` (5) |
+| `GET /api/v1/bookings/{bookingId}`, `GET /api/v1/bookings`, `GET /api/v1/wallet/transactions`, `GET /api/v1/machines` | 200 | `BookingReads` (30) |
+| `POST .../items/{itemId}/activate`, `POST .../items/{itemId}/confirm` | 200 (confirm vencido: 410) | `ItemCommands` (15) |
+| `POST .../items/{itemId}/cancel` | 200 | `ItemCancel` (10) |
+| `POST .../items/{itemId}/report-issue` | 202 | `IssueReports` (3) |
+| `POST /api/v1/simulation/...` (somente Development + DemoMode) | 200 | sem limite |
+| `GET /openapi/v1.json` (somente Development) | 200 | sem limite |
+
+Cada política é uma janela fixa de 1 minuto por endereço IP remoto, sem fila (`QueueLimit` 0), configurável por `RateLimiting:<Política>:PermitLimit`; ao exceder, 429 `RATE_LIMIT_EXCEEDED` com `Retry-After`. Todos os erros usam o mesmo `application/problem+json` descrito em "Consultas da demonstração"; 503 `DATABASE_UNAVAILABLE` nunca acompanha débito, crédito ou mudança de estado afirmados.
+
 ### Observabilidade
 
 A API escreve logs estruturados em JSON no console (um único provider), com `TraceId` e `SpanId` nos escopos. Um cabeçalho W3C `traceparent` recebido é continuado pelo trace da requisição. Traces e métricas HTTP vêm da instrumentação nativa do ASP.NET Core: as métricas usam rota normalizada (`/api/v1/wallet`), método e status, nunca IDs ou query string. O recurso identifica `service.name=cicclo.api`, `service.version` (versão do assembly, com commit quando disponível no build) e `deployment.environment.name`.
@@ -180,7 +219,7 @@ A API escreve logs estruturados em JSON no console (um único provider), com `Tr
 
 Com endpoint, logs, traces e métricas são enviados em protobuf para `v1/logs`, `v1/traces` e `v1/metrics` sob a URL base, em background, com filas limitadas (2048 itens) e timeout de 5 s por envio. Ao parar, a API envia o último lote com o mesmo prazo. Coletor fora do ar ou lento não altera as respostas nem a saúde. Exemplo com variáveis de ambiente: `OpenTelemetry__OtlpEndpoint=http://127.0.0.1:4318/`. Nenhum coletor ou dashboard faz parte do projeto. Não há spans de SQL.
 
-A compra gera o span `booking.create` (fonte `Cicclo.Api.Bookings`, filho do span HTTP, com `booking.outcome`, `booking.rejection` e `booking.id` como tags), logs estruturados correlacionados (eventos 100 a 106) e o contador `cicclo_bookings_total` do meter `Cicclo.Api.Bookings`, só com a dimensão `outcome` (`accepted` ou `rejected`). Um replay válido conta como `accepted`, porque a chamada foi aceita: o contador mede decisões, e o número de bookings e débitos únicos vem do ledger. Coletor OTLP fora do ar não impede nem desfaz a compra. Cada refund confirmado incrementa `cicclo_wallet_refunds_total` do meter `Cicclo.Api.Wallet`, só com a dimensão `reason` (`cancelled`); repetições e recusas não contam.
+A compra gera o span `booking.create` (fonte `Cicclo.Api.Bookings`, filho do span HTTP, com `booking.outcome`, `booking.rejection` e `booking.id` como tags), logs estruturados correlacionados (eventos 100 a 106) e o contador `cicclo_bookings_total` do meter `Cicclo.Api.Bookings`, só com a dimensão `outcome` (`accepted` ou `rejected`). Um replay válido conta como `accepted`, porque a chamada foi aceita: o contador mede decisões, e o número de bookings e débitos únicos vem do ledger. Coletor OTLP fora do ar não impede nem desfaz a compra. Cada refund confirmado incrementa `cicclo_wallet_refunds_total` do meter `Cicclo.Api.Wallet`, só com a dimensão `reason` (`cancelled` no cancelamento, `machine_failure` na falha confirmada pela simulação); repetições e recusas não contam.
 
 O meter `Cicclo.Api.Laundry` publica `cicclo_queue_wait_seconds` (histograma da espera entre `queued_at` e a oferta da máquina) e `cicclo_offers_expired_total` (ofertas vencidas devolvidas à fila), ambos só com a dimensão `machine_type` (`washer` ou `dryer`) e registrados somente depois do commit da transação que produziu o fato.
 
@@ -201,12 +240,18 @@ pnpm test:bootstrap
 - `build`: exporta bundles de Android e iOS para `apps/mobile/dist/` e compila a solução .NET em Release. **Não gera APK/IPA**, não assina e não publica aplicativos. Builds nativos e EAS ficam fora desta inicialização.
 - `lint`: ESLint no mobile e `dotnet format whitespace --verify-no-changes` na API, sem alterar fontes.
 - `typecheck`: TypeScript no mobile; os tipos C# são verificados pela compilação da API em `build`.
-- `test`: teste de renderização da tela mobile e teste HTTP de integração `/health`, sem modo watch.
+- `test`: teste de renderização da tela mobile e a suíte .NET completa (unitários, contratos OpenAPI/HTTP e integração com PostgreSQL 18.1 em Testcontainers, artefato publicado e scripts reais), sem modo watch. Exige Docker ativo; a suíte .NET leva vários minutos.
 - `test:bootstrap`: contratos do workspace, documentação e infraestrutura; execute depois de `build`, pois também verifica os artefatos gerados.
 
 As tarefas .NET não usam cache Turbo nesta base. O build do mobile pode restaurar `dist/` do cache; desenvolvimento e testes não usam cache. Os comandos da raiz preservam código de saída diferente de zero quando uma tarefa falha.
 
-O repositório não contém um script `scripts/smoke.mjs`; não há provas adicionais versionadas além dos comandos acima. Para o backend, `apps/api/scripts/start-demo.sh` sobe banco, bootstrap e API em containers e confere as consultas (seção "Demonstração local completa").
+O smoke versionado do backend é `apps/api/scripts/start-demo.sh`, que sobe banco, bootstrap e API em containers e confere as consultas (seção "Demonstração local completa"). O roteiro desta página é reproduzido de ponta a ponta por `apps/api/tests/Integration/Acceptance/DemonstrationAcceptanceTests.cs` (artefato publicado em `--bootstrap-demo` e `--reset-demo`, compra, replay, fila, prazo, reinício, cancelamento, defeito, restauração, PostgreSQL e coletor OTLP fora do ar), em container exclusivo:
+
+```sh
+dotnet test apps/api/tests/Cicclo.Api.Tests.csproj --configuration Release --filter 'Increment=E07'
+```
+
+Esses cenários integram as capacidades; os testes de cada capacidade continuam nas suas próprias classes.
 
 ## PostgreSQL local com Compose
 
@@ -261,6 +306,33 @@ docker compose -f apps/api/docker-compose.yml --env-file apps/api/.env down
 
 Recriar o container preserva o banco. Remover o volume (`down --volumes`) **apaga os dados locais**; não faça isso para simplesmente reiniciar serviços. Migrations e seed usam transações separadas: se o seed falhar depois das migrations, a estrutura permanece e o bootstrap pode ser repetido após corrigir o problema. Alterar a senha no `.env` também não altera automaticamente a senha de um usuário em um volume já inicializado.
 
+### Reset da demonstração
+
+O bootstrap nunca restaura saldo. Para voltar a 5000 centavos, preços 1890/2090 e máquinas livres, existe um modo explícito e separado, sem rota HTTP: `--reset-demo --confirm-reset <host:port/database>`. **Pare a API antes** (o worker roda no mesmo processo). Com as mesmas variáveis do bootstrap acima:
+
+```sh
+# Ctrl+C na API local, depois:
+dotnet run --project apps/api/src/Cicclo.Api.csproj --no-launch-profile -- --reset-demo --confirm-reset 127.0.0.1:5432/cicclo
+```
+
+No Compose da seção "Demonstração local completa", o mesmo comando roda na imagem do serviço `bootstrap`, onde o alvo é `postgres:5432/cicclo`:
+
+```sh
+docker compose -f apps/api/docker-compose.yml --env-file apps/api/.env stop api
+docker compose -f apps/api/docker-compose.yml --env-file apps/api/.env run --rm bootstrap --reset-demo --confirm-reset postgres:5432/cicclo
+docker compose -f apps/api/docker-compose.yml --env-file apps/api/.env up --detach api
+```
+
+Guardas, nesta ordem: ambiente `Development` e `Laundry:DemoMode=true`; connection string configurada; alvo igual ao banco `cicclo` num único host `localhost`, `127.0.0.1`, `::1` ou no serviço Compose `postgres`; confirmação idêntica ao alvo resolvido pelo driver (`host:port/database`, sem usuário nem senha; IPv6 entre colchetes); nenhuma conexão da API/worker aberta no banco (conexões com Application Name `cicclo.api`, o padrão da API). Recusado, o comando informa o alvo esperado e não altera nada. Autorizado, numa única transação esvazia apenas as sete tabelas da aplicação (`wallets`, `services`, `machines`, `service_requests`, `service_request_items`, `wallet_transactions`, `machine_incidents`, sem `CASCADE`) e reaplica o mesmo `seed.sql`; qualquer falha reverte as duas etapas. Schema, histórico de migrations, outras tabelas e o volume são preservados; nunca há `DROP DATABASE` nem `down --volumes`. A senha não é argumento e não aparece na saída.
+
+| Código de saída | Significado |
+| --- | --- |
+| 0 | Dados iniciais restaurados. |
+| 1 | Falha durante a remoção ou o reseed; tudo revertido. |
+| 2 | Recusado por uma das guardas (ambiente, alvo, confirmação ou API ativa). |
+
+O reset não encerra sessões nem garante exclusão contra clientes externos (por exemplo, `psql` aberto ou uma API configurada com outro Application Name): parar a API é responsabilidade de quem executa. É uma ferramenta de demo local, não uma forma de apagar ledger em produção.
+
 ## Demonstração local completa
 
 Pré-requisitos: Docker com Compose v2 (`docker compose`), daemon ativo e `curl` no host. O SDK .NET não é necessário: a API roda na imagem do `Dockerfile`. Com `apps/api/.env` preparado como na seção anterior, execute na raiz:
@@ -292,6 +364,56 @@ Conexões: no host, ferramentas usam `127.0.0.1:${POSTGRES_PORT}`; dentro do Com
 
 Falhas comuns: senha alterada no `.env` depois de criar o volume não muda a senha já gravada no banco (o bootstrap falha com erro de autenticação); outra máquina com o nome `washer-01` ou `dryer-01` faz o seed falhar sem alterar dados; readiness fora do prazo indica API sem acesso à base (consulte `docker compose -f apps/api/docker-compose.yml --env-file apps/api/.env logs api`). O script nunca remove volumes. Para parar, use `docker compose -f apps/api/docker-compose.yml --env-file apps/api/.env --profile app down`, sem `--volumes`.
 
+## Roteiro de demonstração (5 a 8 minutos)
+
+Roteiro executado de fato em PostgreSQL 18.1 do Compose, com a API local em Development e `Laundry:DemoMode=true` (necessária para a simulação). Usa `uuidgen` e `jq` no host. Se a API do Compose estiver ativa na porta 5001, pare-a antes (`docker compose -f apps/api/docker-compose.yml --env-file apps/api/.env stop api`). Com o banco já preparado pelo bootstrap (seção "Seed e volume"):
+
+```sh
+export ASPNETCORE_ENVIRONMENT=Development Laundry__DemoMode=true
+export ConnectionStrings__Cicclo='Host=127.0.0.1;Port=5432;Database=cicclo;Username=cicclo;Password=<senha do .env>'
+dotnet run --project apps/api/src/Cicclo.Api.csproj --no-launch-profile --urls http://127.0.0.1:5001
+```
+
+Em outro terminal:
+
+```sh
+API=http://127.0.0.1:5001; WASHER=00000000-0000-4000-8000-000000000101
+K1=$(uuidgen)
+BODY='{"serviceCodes":["wash","dry"],"preferredFirstServiceCode":"wash","expectedTotalCents":3980}'
+R=$(curl -s -X POST $API/api/v1/bookings -H 'Content-Type: application/json' -H "Idempotency-Key: $K1" -d "$BODY"); echo "$R"
+B1=$(echo "$R" | jq -r .bookingId)
+WASH=$(echo "$R" | jq -r '.items[] | select(.serviceCode=="wash") | .itemId')
+DRY=$(echo "$R" | jq -r '.items[] | select(.serviceCode=="dry") | .itemId')
+curl -s -i -X POST $API/api/v1/bookings -H 'Content-Type: application/json' -H "Idempotency-Key: $K1" -d "$BODY"
+curl -s -X POST $API/api/v1/bookings/$B1/items/$DRY/cancel
+R=$(curl -s -X POST $API/api/v1/bookings -H 'Content-Type: application/json' -H "Idempotency-Key: $(uuidgen)" -d '{"serviceCodes":["wash"],"expectedTotalCents":1890}'); echo "$R"
+B2=$(echo "$R" | jq -r .bookingId); WASH2=$(echo "$R" | jq -r '.items[0].itemId')
+curl -s -X POST $API/api/v1/bookings/$B1/items/$WASH/confirm
+INC=$(curl -s -X POST $API/api/v1/bookings/$B1/items/$WASH/report-issue -H 'Content-Type: application/json' -d '{"description":"barulho estranho"}' | jq -r .incidentId)
+curl -s -X POST $API/api/v1/simulation/incidents/$INC/confirm
+curl -s $API/api/v1/services
+curl -s -X POST $API/api/v1/simulation/machines/$WASHER/restore
+curl -s -X POST $API/api/v1/bookings/$B2/items/$WASH2/confirm
+curl -s -X POST $API/api/v1/simulation/machines/$WASHER/complete
+curl -s $API/api/v1/wallet/transactions
+```
+
+Resultados observados, na ordem:
+
+1. Compra `wash`+`dry`: **201**, `chargedAmountCents` 3980, `remainingBalanceCents` 1020; `wash` em `to_be_confirmed` na `washer-01` com `expiresAt` 60 s depois, `dry` em `pending_activation`.
+2. Mesmo POST com a mesma chave: **200**, mesmo `bookingId`, 3980/1020, sem segundo débito.
+3. Cancelamento do `dry`: 200, `refundedAmountCents` 2090, saldo 3110. Repetido: 200 com os mesmos valores, sem novo crédito.
+4. Nova compra `wash`: 201, saldo 1220, item `queued` com `queuePosition` 1 (lavadora reservada).
+5. Confirmação do primeiro `wash` dentro do prazo: 200 `in_progress`. Relato: 202 `reported`, sem mudar saldo.
+6. Confirmação do incidente: 200 `confirmed`, item `failed`, `washer-01` `out_of_service`, refund 1890, saldo 3110. O catálogo passa a `wash` com `canBeBooked: false` e `NO_OPERATIONAL_MACHINE`.
+7. Restauração: 200, `washer-01` `reserved` para o segundo `wash`, que recebe oferta de 60 s. Confirmação: 200 `in_progress`. Conclusão: 200, item `completed`, máquina `available`, sem lançamento.
+8. Histórico: `debit` 3980 (saldo 1020), `refund` 2090 (3110), `debit` 1890 (1220), `refund` 1890 (3110).
+9. Prazo: uma compra `dry` confirmada depois de `expiresAt` responde **410** `MACHINE_OFFER_EXPIRED`; sem ninguém à frente, o `detail` informa a nova oferta e o novo prazo.
+10. `GET /openapi/v1.json`: OpenAPI 3.1.1 com 19 operações. Com o PostgreSQL parado: `/health/live` e `/health` 200, `/health/ready` 503, carteira e compra 503 `DATABASE_UNAVAILABLE`; ao religar o banco, a readiness volta a 200 sem reiniciar a API. Com `OpenTelemetry__OtlpEndpoint` apontando para uma porta sem coletor, todo o roteiro acima respondeu igual.
+11. Reset com a API ativa: código 2, "1 conexão(ões) ativa(s) da API/worker (cicclo.api)". Com a API parada (`Ctrl+C`) e a confirmação `127.0.0.1:5432/cicclo`: código 0, saldo 50.00, nenhuma compra ou lançamento, máquinas `available`, 6 migrations preservadas.
+
+No Compose (`start-demo.sh`), compra e replay reproduzem os passos 1 e 2, a rota de simulação responde 404 (sem DemoMode) e o reset pelo serviço `bootstrap` recusa com a API ativa (2), recusa sem confirmação (2) e restaura com `postgres:5432/cicclo` depois de `stop api` (0); ao subir a API de novo, a carteira volta a 5000 e a lista de compras fica vazia.
+
 ## Imagem Docker da API
 
 Na raiz, use `apps/api` como contexto de build:
@@ -302,3 +424,44 @@ docker run --rm -p 127.0.0.1:5001:8080 cicclo-api:local
 ```
 
 O Dockerfile usa build multi-stage com SDK .NET fixado e runtime ASP.NET Core não-root. A imagem expõe a porta 8080 e responde em `http://localhost:5001/health` no mapeamento acima. Não depende de Node, pnpm ou banco no runtime. Não execute esse container e a API local simultaneamente na mesma porta 5001.
+
+## Decisões e trade-offs
+
+- **Monólito por capacidade.** Um único projeto ASP.NET Core organizado por negócio (`Wallet`, `Services`, `Bookings`, `Laundry`, `Platform`), com casos de uso separados de HTTP e EF Core. Sem mediador, repositório genérico, barramento de eventos ou Outbox: o volume de regras não justifica.
+- **PostgreSQL como única fonte de verdade.** Saldo, ledger, fila, ofertas, prazos e incidentes vivem no banco. Toda mutação abre uma transação curta e bloqueia na mesma ordem (wallet, serviços, máquinas, itens, incidentes) para evitar deadlock e dupla cobrança; restrições e índices únicos (débito por compra, refund por item, uma atribuição ativa por máquina, um relato aberto por item) são a segunda defesa.
+- **Idempotência por chave persistida só no sucesso.** A chave fica com a compra confirmada; recusas não a consomem. O replay é resolvido antes de revalidar preço, saldo ou capacidade, por isso responde 200 com a cobrança histórica mesmo depois de o catálogo mudar. Não existe consulta por chave: recuperar uma resposta perdida é repetir o POST.
+- **Prazo verificado no comando, não em timer.** A confirmação compara o instante do servidor com `expires_at` depois dos locks; o worker só reconcilia o que venceu sem confirmação. Reiniciar a API não perde fila nem oferta.
+- **Dinheiro em centavos inteiros na borda** (`int64`) e `numeric(12,2)` no banco, sem ponto flutuante.
+- **Limites simples.** Janela fixa por IP e por política, em memória, sem fila; adequado a uma instância de demonstração.
+- **Bootstrap e reset explícitos.** Migrations e `seed.sql` só rodam por `--bootstrap-demo`; o reset é outro modo, local e confirmado. A API em modo normal nunca altera schema nem restaura dados.
+- **Telemetria opcional.** OpenTelemetry nativo com exportação OTLP só quando configurada; a exportação nunca participa da transação.
+
+## Modelo de ameaça sem login
+
+A demonstração não tem autenticação: há uma única wallet, resolvida no servidor, e **qualquer cliente que alcance a porta da API opera essa wallet** (compra, cancela, relata defeito). Por isso:
+
+- banco e API publicam portas somente em `127.0.0.1`; a API não habilita CORS;
+- nenhum `walletId`/`userId` do cliente seleciona conta; corpos têm limite de 16 KiB, propriedades desconhecidas e tipos errados são recusados;
+- rotas de simulação (conclusão, falha, ocupação, restauração, confirmação de incidente) só existem em `Development` com `Laundry:DemoMode=true`; fora disso respondem 404 e não aparecem no OpenAPI. Elas não são uma API de administração de produção;
+- o reset não tem rota HTTP e exige ambiente, alvo local e confirmação explícitos;
+- erros não expõem SQL, stack trace ou connection string; a senha do banco chega como dado (`PGPASSWORD` ou connection string em variável de ambiente), nunca como argumento, e não aparece em logs;
+- limites por IP reduzem abuso acidental, mas não são proteção contra negação de serviço nem contra vários clientes atrás do mesmo IP (`X-Forwarded-For` é ignorado).
+
+Risco residual aceito: não exponha esta API em rede pública ou compartilhada. Login, multiusuário e autorização por conta estão fora do escopo.
+
+## Limitações conhecidas
+
+- **P2 não implementado.** Não há cache Redis de saldo nem notificações SignalR; o cliente consulta o estado por HTTP.
+- A API do Compose não liga `Laundry:DemoMode`: a simulação só funciona na API iniciada como em "Roteiro de demonstração" (ou em outro host Development com a flag).
+- O smoke de `start-demo.sh` confere só carteira e catálogo; compra, fila e simulação são conferidas pelo roteiro manual e pelos testes de aceitação.
+- O reset detecta somente conexões abertas com Application Name `cicclo.api`; não encerra sessões nem protege contra clientes externos ou uma API configurada com outro nome. Ele não reinicia a sequência `queue_ticket_seq` (só ordena a fila).
+- Leituras não expiram ofertas: uma oferta vencida aparece com `expiresAt` no passado até a próxima reconciliação (worker a cada 5 s) ou até um comando sobre a fila do tipo.
+- Paginação por `page`/`pageSize` (offset), sem cursor; inserções concorrentes podem deslocar itens entre páginas.
+- Commit com resultado desconhecido responde 503; a confirmação vem de repetir a compra com a mesma chave.
+- `cicclo_bookings_total` conta replays como `accepted` (mede decisões); compras e débitos únicos vêm do ledger. Não há spans de SQL nem coletor/dashboard no projeto; a exportação OTLP para um coletor real não faz parte do smoke.
+- Dentro do container, o Npgsql imprime `libgssapi_krb5.so.2: cannot open shared object file` ao procurar suporte Kerberos; a autenticação por senha não é afetada. No primeiro bootstrap, o EF Core registra um erro ao consultar `__EFMigrationsHistory` antes de criá-la; é o fluxo normal das migrations.
+- O aplicativo mobile ainda não consome a API.
+
+## Uso de IA
+
+Especificação, design incremental, plano de tarefas, código, testes e esta documentação foram produzidos com assistência de agentes de IA (Claude Code), sob decisões e aprovações explícitas do autor. Cada tarefa teve branch e commit próprios, testes no mesmo commit e gates de build, formatação e testes; cada incremento passa por uma verificação independente (agente diferente do autor) com evidência por critério e mutações comportamentais limitadas. Os artefatos de planejamento e verificação são locais e não são versionados. Os valores e comandos desta página vêm de execuções reais, não de exemplos inventados.

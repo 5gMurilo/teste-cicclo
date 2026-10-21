@@ -78,6 +78,17 @@ test('onboarding documentation covers the local workflow', () => {
   }
 });
 
+test('backend guide documents the verified demo, explicit reset and real limits', () => {
+  const readme = text('README.md');
+  for (const term of ['Início rápido do backend', 'Roteiro de demonstração', 'Reset da demonstração', '--reset-demo --confirm-reset', 'Modelo de ameaça', 'Limitações conhecidas', 'Uso de IA', 'Redis', 'SignalR']) {
+    assert.ok(readme.includes(term), `README missing ${term}`);
+  }
+  assert.doesNotMatch(readme, /smoke\.mjs/);
+  const referenced = [...readme.matchAll(/`((?:apps|tests)\/[^`\s]+\.(?:sh|cs|sql|yml|json|csproj|slnx|mjs))`/g)].map((match) => match[1]);
+  assert.ok(referenced.includes('apps/api/scripts/start-demo.sh'));
+  for (const path of referenced) assert.equal(existsSync(path), true, `README references missing ${path}`);
+});
+
 test('git hygiene excludes generated files and local secrets', () => {
   const paths = ['node_modules/example', '.turbo/cache/example', 'apps/mobile/.expo/example', 'apps/mobile/dist/example', 'apps/mobile/ios/example', 'apps/mobile/android/example', 'apps/api/src/bin/example', 'apps/api/src/obj/example', 'apps/api/.env'];
   for (const path of paths) {
