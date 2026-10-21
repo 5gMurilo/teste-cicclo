@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** em andamento. T1 (E0) a T8 concluídas em 2026-10-21; T9–T37 abertas.
+**Execução:** em andamento. T1 (E0) a T9 concluídas em 2026-10-21; T10–T37 abertas.
 
 ## Execution Protocol
 
@@ -207,7 +207,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Tipo público do catálogo, tokens/money; sem acessar Context ou HTTP.
 **Requirement**: READ-04, READ-06, UX-01.
 **What**: Apresentar nome/preço/estado textual; aceitar quantidades/callbacks opcionais para seleção futura sem fingir compra habilitada.
-**Done when**: [ ] Serviço indisponível tem motivo, não só cor; ação não aparece funcional sem callback; props pequenas e labels incluem serviço/preço.
+**Done when**: [x] Serviço indisponível tem motivo, não só cor; ação não aparece funcional sem callback; props pequenas e labels incluem serviço/preço.
 **Tests**: integration — teto de 4 casos: serviço disponível, indisponível/desativado, preço da prop e ação ausente/desabilitada; disabled não chama callback.
 **Gate**: F + CC.
 **Commit**: `feat(catalog): render accessible service cards`
@@ -709,7 +709,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **8/37 tarefas executadas** (T1–T8 concluídas em 2026-10-21); demais checkboxes de Done when abertas.
+- Implementação: **9/37 tarefas executadas** (T1–T9 concluídas em 2026-10-21); demais checkboxes de Done when abertas.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1/C2/C3/CP1 não comprovadas; N1 não executado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.
