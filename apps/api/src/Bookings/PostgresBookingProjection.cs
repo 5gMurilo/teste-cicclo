@@ -6,13 +6,30 @@ using Microsoft.EntityFrameworkCore;
 namespace Cicclo.Api.Bookings;
 
 /// <summary>
-/// Adaptador de leitura da projeção de booking: uma única instrução SQL (um snapshot do PostgreSQL) junta booking,
-/// saldo da wallet, itens e a posição derivada da fila por tipo de máquina (ticket, depois id). Somente a wallet demo;
-/// nunca escreve, expira ou promove nada.
+/// Adaptador de leitura da projeção de booking (detalhe, listagem, criação e replay): cada leitura é uma única instrução
+/// SQL (um snapshot do PostgreSQL) que junta booking, saldo da wallet, itens e a posição derivada da fila por tipo de
+/// máquina (ticket, depois id). Somente a wallet demo; nunca escreve, expira ou promove nada.
 /// </summary>
 public sealed class PostgresBookingProjection(CiccloDbContext db)
 {
-    public async Task<BookingView?> FindAsync(Guid bookingId, CancellationToken cancellationToken)
+    public async Task<BookingView?> FindAsync(Guid bookingId, CancellationToken cancellationToken) =>
+        (await QueryAsync(bookingId, 0, 1, cancellationToken)).SingleOrDefault();
+
+    /// <summary>
+    /// Página de bookings da wallet demo em ordem created_at desc, id desc; lê um booking a mais para indicar a próxima
+    /// página, no mesmo snapshot.
+    /// </summary>
+    public async Task<(IReadOnlyList<BookingView> Bookings, bool HasNextPage)> ListAsync(int page, int pageSize, CancellationToken cancellationToken)
+    {
+        var bookings = await QueryAsync(null, Platform.Http.Paging.Offset(page, pageSize), pageSize + 1, cancellationToken);
+        return ([.. bookings.Take(pageSize)], bookings.Count > pageSize);
+    }
+
+    /// <summary>
+    /// Uma única instrução: a página de bookings (ou o booking pedido), seus itens e a posição derivada, na ordem
+    /// created_at desc, id desc e, dentro do booking, service_code e id.
+    /// </summary>
+    private async Task<List<BookingView>> QueryAsync(Guid? bookingId, long offset, int limit, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(db.Database.GetConnectionString()))
         {
@@ -22,10 +39,17 @@ public sealed class PostgresBookingProjection(CiccloDbContext db)
         var rows = await db.Database
             .SqlQuery<Row>(
                 $"""
+                WITH page AS (
+                    SELECT id FROM service_requests
+                    WHERE wallet_id = {DemoWallet.Id} AND (CAST({bookingId} AS uuid) IS NULL OR id = {bookingId})
+                    ORDER BY created_at DESC, id DESC
+                    OFFSET {offset} LIMIT {limit}
+                )
                 SELECT r.id AS "BookingId", r.total_amount AS "ChargedAmount", r.created_at AS "CreatedAt", w.balance AS "Balance",
                        i.id AS "ItemId", i.service_code AS "ServiceCode", i.unit_price AS "UnitPrice", i.status AS "Status",
                        i.machine_id AS "MachineId", i.expires_at AS "ExpiresAt", q.position::int AS "QueuePosition"
-                FROM service_requests r
+                FROM page
+                JOIN service_requests r ON r.id = page.id
                 JOIN wallets w ON w.id = r.wallet_id
                 JOIN service_request_items i ON i.request_id = r.id
                 LEFT JOIN (
@@ -33,31 +57,31 @@ public sealed class PostgresBookingProjection(CiccloDbContext db)
                     FROM service_request_items qi JOIN services s ON s.code = qi.service_code
                     WHERE qi.status = 'queued'
                 ) q ON q.id = i.id
-                WHERE r.id = {bookingId} AND r.wallet_id = {DemoWallet.Id}
-                ORDER BY i.service_code COLLATE "C", i.id
+                ORDER BY r.created_at DESC, r.id DESC, i.service_code COLLATE "C", i.id
                 """)
             .ToListAsync(cancellationToken);
-        if (rows.Count == 0)
-        {
-            return null;
-        }
-
-        var first = rows[0];
-        return new BookingView(
-            first.BookingId,
-            first.ChargedAmount,
-            first.Balance,
-            first.CreatedAt,
-            [
-                .. rows.Select(row => BookingItemView.FromPersisted(
-                    row.ItemId,
-                    row.ServiceCode,
-                    row.UnitPrice,
-                    BookingItemConfiguration.ParseStatus(row.Status),
-                    row.MachineId,
-                    row.QueuePosition,
-                    row.ExpiresAt)),
-            ]);
+        return
+        [
+            .. rows.GroupBy(row => row.BookingId).Select(booking =>
+            {
+                var first = booking.First();
+                return new BookingView(
+                    first.BookingId,
+                    first.ChargedAmount,
+                    first.Balance,
+                    first.CreatedAt,
+                    [
+                        .. booking.Select(row => BookingItemView.FromPersisted(
+                            row.ItemId,
+                            row.ServiceCode,
+                            row.UnitPrice,
+                            BookingItemConfiguration.ParseStatus(row.Status),
+                            row.MachineId,
+                            row.QueuePosition,
+                            row.ExpiresAt)),
+                    ]);
+            }),
+        ];
     }
 
     private sealed class Row

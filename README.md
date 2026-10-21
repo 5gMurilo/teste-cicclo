@@ -143,7 +143,9 @@ curl -i -X POST http://localhost:5001/api/v1/bookings \
 - A leitura não expira ofertas nem promove a fila: uma oferta vencida aparece com `expiresAt` no passado até a reconciliação.
 - `bookingId` que não é UUID responde 400 `VALIDATION_ERROR`; booking inexistente ou de outra wallet responde 404 `BOOKING_NOT_FOUND`.
 
-As leituras de contratações têm política própria: janela fixa de 1 minuto por IP, `RateLimiting:BookingReads:PermitLimit` (padrão 30), separada do limite de wallet e catálogo.
+`GET /api/v1/bookings?page=1&pageSize=20` lista os bookings da wallet demo como `{ "items": [...], "page": 1, "pageSize": 20, "hasNextPage": false }`, cada item com a mesma projeção do detalhe. A ordem é `createdAt` decrescente e `bookingId` decrescente (estável com instantes empatados). `page` é 1-based (padrão 1) e `pageSize` vai de 1 a 100 (padrão 20); fora disso, ou com valor não inteiro, a resposta é 400 `VALIDATION_ERROR`. Uma página além do fim responde 200 com `items` vazio.
+
+As leituras de contratações (detalhe e listagem) compartilham uma política própria: janela fixa de 1 minuto por IP, `RateLimiting:BookingReads:PermitLimit` (padrão 30), separada do limite de wallet e catálogo.
 
 ### Observabilidade
 

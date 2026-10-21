@@ -54,7 +54,7 @@ public sealed class OpenApiDocumentTests(WebApplicationFactory<Program> factory)
 
         var document = OpenApiContract.Read(json).Document!;
         Assert.Equal(
-            ["/api/v1/bookings: POST", "/api/v1/bookings/{bookingId}: GET", "/api/v1/services: GET", "/api/v1/wallet: GET", "/health: GET", "/health/live: GET", "/health/ready: GET"],
+            ["/api/v1/bookings: GET,POST", "/api/v1/bookings/{bookingId}: GET", "/api/v1/services: GET", "/api/v1/wallet: GET", "/health: GET", "/health/live: GET", "/health/ready: GET"],
             document.Paths.OrderBy(path => path.Key, StringComparer.Ordinal).Select(path => $"{path.Key}: {string.Join(',', path.Value.Operations!.Keys.Select(method => method.Method))}"));
         foreach (var future in new[] { "simulation", "machines", "transactions", "activate", "confirm\"", "cancel" })
         {
