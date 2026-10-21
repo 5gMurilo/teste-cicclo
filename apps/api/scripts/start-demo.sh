@@ -6,6 +6,8 @@
 #   CICCLO_ENV_FILE        arquivo de ambiente do Compose (padrão: apps/api/.env)
 #   CICCLO_READY_TIMEOUT   segundos de espera por /health/ready (padrão: 60)
 #   COMPOSE_PROJECT_NAME   projeto Compose (padrão: cicclo, definido no docker-compose.yml)
+#   CICCLO_CACHE_ENABLED   true sobe o Redis opcional (perfil cache) e liga Caching__Enabled na API (padrão: false).
+#                          Lida só do ambiente de quem chama; o valor do .env é ignorado por este script.
 #
 # Códigos de saída: 0 sucesso; 1 falha de execução (Compose, bootstrap, readiness ou smoke); 2 pré-requisito ou configuração ausente.
 set -euo pipefail
@@ -13,6 +15,7 @@ set -euo pipefail
 api_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 env_file="${CICCLO_ENV_FILE:-$api_dir/.env}"
 ready_timeout="${CICCLO_READY_TIMEOUT:-60}"
+cache_enabled="${CICCLO_CACHE_ENABLED:-false}"
 
 step() { printf '==> %s\n' "$*"; }
 fail() { printf 'ERRO: %s\n' "$2" >&2; exit "$1"; }
@@ -24,6 +27,9 @@ docker compose version >/dev/null 2>&1 || fail 2 "pré-requisito ausente: Docker
 docker info >/dev/null 2>&1 || fail 2 "Docker daemon inacessível. Inicie o Docker e execute novamente."
 [[ -f "$env_file" ]] || fail 2 "arquivo de ambiente '$env_file' não encontrado. Copie apps/api/.env.example para apps/api/.env e defina POSTGRES_PASSWORD."
 [[ "$ready_timeout" =~ ^[1-9][0-9]*$ ]] || fail 2 "CICCLO_READY_TIMEOUT deve ser um inteiro positivo de segundos."
+[[ "$cache_enabled" == true || "$cache_enabled" == false ]] || fail 2 "CICCLO_CACHE_ENABLED deve ser true ou false."
+# Exportado, prevalece sobre o .env na interpolação do Compose: o cache só liga por pedido explícito nesta chamada.
+export CICCLO_CACHE_ENABLED="$cache_enabled"
 
 compose() { docker compose --project-directory "$api_dir" --env-file "$env_file" "$@"; }
 
@@ -39,6 +45,14 @@ compose build api || fail 1 "falha ao construir a imagem da API."
 step "Executando bootstrap one-shot (migrations e depois seed.sql)"
 if ! compose run --rm --no-TTY bootstrap; then
   fail 1 "bootstrap falhou; a API não foi iniciada e nenhum dado foi apagado. Veja a saída acima."
+fi
+
+if [[ "$cache_enabled" == true ]]; then
+  step "Subindo o Redis opcional (perfil cache)"
+  # Redis não é pré-requisito: se não ficar saudável, a API sobe igual e lê o saldo do PostgreSQL.
+  if ! compose --profile cache up --detach --wait redis; then
+    printf 'AVISO: %s\n' "Redis não ficou saudável; a API sobe sem cache efetivo e lê o saldo do PostgreSQL. Confira REDIS_PASSWORD em '$env_file'." >&2
+  fi
 fi
 
 step "Iniciando a API"
@@ -64,4 +78,5 @@ for check in '/api/v1/wallet "balanceCents"' '/api/v1/services "unitPriceCents"'
   printf '%s %s\n' "$path" "$body"
 done
 
-step "Demo pronta em $base_url (wallet, services, /health/ready e /openapi/v1.json)"
+if [[ "$cache_enabled" == true ]]; then cache_state="ligado"; else cache_state="desligado"; fi
+step "Demo pronta em $base_url (wallet, services, /health/ready e /openapi/v1.json; cache Redis $cache_state)"

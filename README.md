@@ -22,12 +22,13 @@ Para abrir o mobile, use Expo Go compatível com SDK 58 em dispositivo Android/i
 
 O pnpm gerencia somente dependências JavaScript. O SDK .NET e o NuGet continuam responsáveis pela compilação e pelas dependências C#; o `package.json` da API apenas permite que o Turbo execute os comandos nativos.
 
-Versões fixadas do backend: runtime ASP.NET Core 10.0.13 (imagem `mcr.microsoft.com/dotnet/aspnet:10.0.13`), EF Core 10.0.13, Npgsql.EntityFrameworkCore.PostgreSQL 10.0.3, OpenTelemetry 1.20, PostgreSQL 18.1 (imagem `postgres:18.1`). Os testes usam xUnit 2.9.3 e Testcontainers.PostgreSql 4.16.0, com PostgreSQL real em container descartável (Docker ativo é obrigatório para a suíte .NET).
+Versões fixadas do backend: runtime ASP.NET Core 10.0.13 (imagem `mcr.microsoft.com/dotnet/aspnet:10.0.13`), EF Core 10.0.13, Npgsql.EntityFrameworkCore.PostgreSQL 10.0.3, OpenTelemetry 1.20, PostgreSQL 18.1 (imagem `postgres:18.1`). Os testes usam xUnit 2.9.3 e Testcontainers.PostgreSql 4.16.0, com PostgreSQL real em container descartável (Docker ativo é obrigatório para a suíte .NET). O cache Redis opcional (seção "Cache Redis opcional") usa StackExchange.Redis 3.4.5 e a imagem `redis:8.2.10-bookworm` fixada por digest; seus testes usam Testcontainers.Redis 4.16.0.
 
 | Porta (somente loopback) | Uso |
 | --- | --- |
 | 5001 | API em `pnpm dev`, `dotnet run` do roteiro e Compose (`API_PORT`) |
 | 5432 | PostgreSQL do Compose (`POSTGRES_PORT`) |
+| 6379 | Redis opcional do perfil `cache` (`REDIS_PORT`), só quando ligado |
 | 8080 | Porta interna da API no container |
 | 8081 | Expo |
 
@@ -253,6 +254,12 @@ dotnet test apps/api/tests/Cicclo.Api.Tests.csproj --configuration Release --fil
 
 Esses cenários integram as capacidades; os testes de cada capacidade continuam nas suas próprias classes.
 
+O cache opcional tem seu próprio smoke, `apps/api/tests/Integration/Operation/OptionalCacheOperationTests.cs`, que executa `start-demo.sh` com e sem o perfil `cache` em projetos Compose exclusivos (seção "Cache Redis opcional"):
+
+```sh
+dotnet test apps/api/tests/Cicclo.Api.Tests.csproj --configuration Release --filter 'Increment=E08&Task=T3'
+```
+
 ## PostgreSQL local com Compose
 
 O Compose em `apps/api/docker-compose.yml` define o banco `postgres` e, no perfil `app`, os serviços `bootstrap` e `api`, usados pelo script da seção "Demonstração local completa". Sem perfil, os comandos abaixo sobem **apenas o banco**. Prepare uma senha local:
@@ -364,6 +371,61 @@ Conexões: no host, ferramentas usam `127.0.0.1:${POSTGRES_PORT}`; dentro do Com
 
 Falhas comuns: senha alterada no `.env` depois de criar o volume não muda a senha já gravada no banco (o bootstrap falha com erro de autenticação); outra máquina com o nome `washer-01` ou `dryer-01` faz o seed falhar sem alterar dados; readiness fora do prazo indica API sem acesso à base (consulte `docker compose -f apps/api/docker-compose.yml --env-file apps/api/.env logs api`). O script nunca remove volumes. Para parar, use `docker compose -f apps/api/docker-compose.yml --env-file apps/api/.env --profile app down`, sem `--volumes`.
 
+## Cache Redis opcional
+
+Extensão **desligada por padrão** (`Caching:Enabled=false`): desligada, a API não cria conexão Redis, e o início rápido, o `start-demo.sh` sem flag e o roteiro não precisam de Redis. Ligada, ela guarda só a projeção de `GET /api/v1/wallet` (`balanceCents`, `currency`, `updatedAt`) na chave `wallet:demo:v1`, com TTL contado a partir de cada gravação. O PostgreSQL continua a única fonte de verdade: compra, replay, cancelamento, refund, preço, capacidade e readiness nunca leem o cache. Cada compra, cancelamento, falha confirmada ou reset que muda o saldo remove a chave depois do commit; o GET seguinte lê o PostgreSQL e grava a projeção de novo.
+
+Para ligar na demonstração em containers, acrescente ao `apps/api/.env` uma senha só com letras e dígitos (ela compõe a string de conexão `Caching:Redis`) e peça o cache na própria chamada do script:
+
+```sh
+echo "REDIS_PASSWORD=$(openssl rand -hex 24)" >> apps/api/.env
+CICCLO_CACHE_ENABLED=true apps/api/scripts/start-demo.sh
+```
+
+Com a flag, o script sobe o serviço `redis` do perfil Compose `cache` antes da API e termina com `cache Redis ligado`. O serviço usa a imagem fixada por digest, publica a porta `REDIS_PORT` só no loopback, exige a senha (sem ela, `redis-cli` recebe `NOAUTH`), roda sem persistência e sem volume e não é dependência de nenhum outro serviço. Se o Redis não ficar saudável (por exemplo, sem `REDIS_PASSWORD`), o script imprime um `AVISO` e segue: a API sobe e lê o saldo do PostgreSQL. O script considera só a variável da chamada: `CICCLO_CACHE_ENABLED` no `.env` é ignorada por ele, para que o cache nunca ligue sem pedido explícito. Para voltar ao padrão, rode o script sem a variável (a API volta com `Caching__Enabled=false`) e pare o Redis:
+
+```sh
+apps/api/scripts/start-demo.sh
+docker compose -f apps/api/docker-compose.yml --env-file apps/api/.env --profile cache stop redis
+```
+
+| Configuração (variável no Compose) | Padrão | Efeito |
+| --- | --- | --- |
+| `Caching:Enabled` (`CICCLO_CACHE_ENABLED`) | `false` | `true` registra o adaptador Redis; `false` não cria conexão nem valida as demais opções. |
+| `Caching:Redis` | `redis:6379,password=<REDIS_PASSWORD>` | Configuração do StackExchange.Redis, obrigatória com o cache ligado; nunca aparece em logs. |
+| `Caching:TimeToLiveSeconds` (`CICCLO_CACHE_TTL_SECONDS`) | 30 | De 1 a 3600, contado da gravação no relógio do Redis. |
+| `Caching:OperationTimeoutMilliseconds` | 500 | De 50 a 5000; espera máxima de cada operação, conexão incluída. |
+
+Com o cache ligado, opções fora da faixa ou `Caching:Redis` vazio são recusados pela validação de opções no startup da API. O serviço `bootstrap` recebe as mesmas flags de liga/desliga, de modo que o reset pelo Compose também remove a chave. Na API local do roteiro (`dotnet run`), as mesmas chaves valem como variáveis de ambiente (`Caching__Enabled=true`, `Caching__Redis='127.0.0.1:<REDIS_PORT>,password=<senha>'`); esse caminho não faz parte do smoke.
+
+Para observar miss, hit e TTL com a demo ligada:
+
+```sh
+curl -s http://127.0.0.1:5001/api/v1/wallet
+docker compose -f apps/api/docker-compose.yml --env-file apps/api/.env exec redis redis-cli GET wallet:demo:v1
+docker compose -f apps/api/docker-compose.yml --env-file apps/api/.env exec redis redis-cli PTTL wallet:demo:v1
+```
+
+Comportamento observado no smoke (`OptionalCacheOperationTests`, imagem real da API, um projeto Compose por cenário):
+
+1. Sem a flag, mesmo com `CICCLO_CACHE_ENABLED=true` no `.env`: só `postgres` e `api` em execução, `Caching__Enabled=false` no container da API, carteira 5000. `config --services` sem perfil lista só `postgres`; `api` e `bootstrap` dependem só de `postgres`.
+2. Com a flag: o smoke do script faz o miss e grava `{"balanceCents":5000,"currency":"BRL",...}` com PTTL até 30000 ms, única chave no Redis. Um `UPDATE` direto no banco para 45.00 não aparece no GET (hit, 5000). A compra de `wash` responde 201 com restante 2610, calculado pelo PostgreSQL; a chave é removida depois do commit e o GET seguinte mostra 2610.
+3. Com a flag e sem `REDIS_PASSWORD`: o Redis encerra com `REDIS_PASSWORD ausente`, o script avisa e termina com código 0; live/ready `Healthy`, carteira 5000, compra 201 com restante 3110 e log de degradação.
+4. Redis parado com a API em execução: live/ready `Healthy`, carteira 5000 e compra 201 com restante 3110 pelo PostgreSQL, um lançamento no ledger e Warning `EventId` 800 sem a senha. Ao religar o Redis (vazio), a mesma API volta a gravar a chave, sem reinício.
+5. Script repetido e reset pelo serviço `bootstrap`: repetir o script não apaga chaves; o reset remove só `wallet:demo:v1`, preserva chaves alheias (`wallet:demo:v2`, `outro:sistema`) e restaura o seed; a API religada mostra 5000.
+6. TTL reduzido para 5 s: depois de uma gravação nova, um `UPDATE` direto para 12.34 deixa o GET em 5000 até a gravação expirar; em seguida o GET mostra 1234 e regrava a chave.
+
+Limitações (leitura eventual, sem consistência forte):
+
+- **Sem read-your-writes.** Depois de um comando, o valor autoritativo é o da resposta do próprio comando (`remainingBalanceCents`, `refundedAmountCents`) ou do histórico; o GET da wallet pode estar antigo até a invalidação ou o TTL.
+- **Mudanças fora da API não invalidam.** SQL manual ou outro processo só aparecem no GET depois do TTL.
+- **Corrida de repopulação.** Um leitor que consultou o PostgreSQL antes de um commit pode gravar a projeção antiga depois da invalidação; o TTL conta dessa gravação tardia, não do commit. O cenário é reproduzido em `apps/api/tests/Integration/WalletCaching/CachedWalletReadsTests.cs` (K09).
+- **Invalidação best-effort.** Se ela falhar, o comando já confirmado mantém sua resposta, sem novo débito ou refund; a API registra Warning `EventId` 801 e o GET pode ficar antigo até o TTL.
+- **PostgreSQL fora.** Um hit válido ainda pode responder 200 com o snapshot antigo até o TTL, enquanto `/health/ready` e os comandos respondem 503; isso não indica banco pronto (o OpenAPI do GET descreve essa diferença).
+- **Redis fora**, antes ou depois do boot: GET, compra e saúde seguem pelo PostgreSQL; cada operação de cache espera no máximo o orçamento (500 ms por padrão) e registra Warning `EventId` 800.
+- **Escopo local.** Uma instância sem persistência, TLS ou ACL além da senha; não é configuração de produção. Nada executa `FLUSHALL`/`FLUSHDB`.
+- **Telemetria.** O contador `cicclo_cache_operations_total` (meter `Cicclo.Api.Wallet`) tem só as dimensões `operation` (`read`, `write`, `invalidate`) e `outcome` (`hit`, `miss`, `invalid`, `ok`, `error`, `timeout`) e sai pelo OTLP quando configurado; os logs 800/801 trazem operação, desfecho e tipo do erro, sem senha nem endpoint. A exportação OTLP desse contador a partir do container não faz parte do smoke; ela é verificada em processo pelos testes de `apps/api/tests/Integration/WalletCaching/`.
+
 ## Roteiro de demonstração (5 a 8 minutos)
 
 Roteiro executado de fato em PostgreSQL 18.1 do Compose, com a API local em Development e `Laundry:DemoMode=true` (necessária para a simulação). Usa `uuidgen` e `jq` no host. Se a API do Compose estiver ativa na porta 5001, pare-a antes (`docker compose -f apps/api/docker-compose.yml --env-file apps/api/.env stop api`). Com o banco já preparado pelo bootstrap (seção "Seed e volume"):
@@ -451,7 +513,7 @@ Risco residual aceito: não exponha esta API em rede pública ou compartilhada. 
 
 ## Limitações conhecidas
 
-- **P2 não implementado.** Não há cache Redis de saldo nem notificações SignalR; o cliente consulta o estado por HTTP.
+- **Cache Redis opcional e eventual.** Desligado por padrão e fora do caminho-base; limitações em "Cache Redis opcional". Não há notificações SignalR neste ramo: o cliente consulta o estado por HTTP.
 - A API do Compose não liga `Laundry:DemoMode`: a simulação só funciona na API iniciada como em "Roteiro de demonstração" (ou em outro host Development com a flag).
 - O smoke de `start-demo.sh` confere só carteira e catálogo; compra, fila e simulação são conferidas pelo roteiro manual e pelos testes de aceitação.
 - O reset detecta somente conexões abertas com Application Name `cicclo.api`; não encerra sessões nem protege contra clientes externos ou uma API configurada com outro nome. Ele não reinicia a sequência `queue_ticket_seq` (só ordena a fila).

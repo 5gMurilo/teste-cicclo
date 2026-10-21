@@ -30,6 +30,9 @@ services:
       ConnectionStrings__Cicclo: Host=postgres;Port=5432;Database=cicclo;Username=cicclo
       # A senha vai ao Npgsql como dado em PGPASSWORD, nunca concatenada na connection string.
       PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in apps/api/.env or your shell}
+      # Mesmas flags da API: com o cache ligado, --reset-demo também remove a chave wallet:demo:v1 depois do commit.
+      Caching__Enabled: ${CICCLO_CACHE_ENABLED:-false}
+      Caching__Redis: redis:6379,password=${REDIS_PASSWORD:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -43,11 +46,40 @@ services:
       ConnectionStrings__Cicclo: Host=postgres;Port=5432;Database=cicclo;Username=cicclo
       PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in apps/api/.env or your shell}
       OpenTelemetry__OtlpEndpoint: ${CICCLO_OTLP_ENDPOINT:-}
+      # Cache Redis opcional (E08), desligado por padrão. A API nunca depende do serviço redis para subir:
+      # com Redis fora, o GET da wallet lê o PostgreSQL e registra a degradação.
+      Caching__Enabled: ${CICCLO_CACHE_ENABLED:-false}
+      Caching__Redis: redis:6379,password=${REDIS_PASSWORD:-}
+      Caching__TimeToLiveSeconds: ${CICCLO_CACHE_TTL_SECONDS:-30}
     ports:
       - "127.0.0.1:${API_PORT:-5001}:8080"
     depends_on:
       postgres:
         condition: service_healthy
+
+  # Opcional (E08): cache da projeção de saldo. Só existe com o perfil `cache` (start-demo.sh com CICCLO_CACHE_ENABLED=true).
+  # Sem persistência nem volume: reiniciar o Redis apaga apenas o cache; o PostgreSQL continua autoritativo.
+  redis:
+    image: redis:8.2.10-bookworm@sha256:e5f23377739f95a2f530b9c99f93accb4f634577f09d00a7d8e0638f2fdf69e0
+    profiles: [cache]
+    environment:
+      # Senha como dado: lida pelo redis-cli (healthcheck, exec) e repassada ao redis-server sem interpolação no comando.
+      REDISCLI_AUTH: ${REDIS_PASSWORD:-}
+    command:
+      - sh
+      - -c
+      - >-
+        [ -n "$$REDISCLI_AUTH" ] || { echo "REDIS_PASSWORD ausente: defina-a em apps/api/.env para usar o perfil cache." >&2; exit 2; };
+        exec docker-entrypoint.sh redis-server --requirepass "$$REDISCLI_AUTH" --save "" --appendonly no
+    tmpfs:
+      - /data
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -qx PONG"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
 
 volumes:
   postgres-data:
