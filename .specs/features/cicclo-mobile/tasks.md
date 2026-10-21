@@ -76,15 +76,17 @@ Nenhuma tarefa que altera comportamento transfere sua cobertura para outra taref
 
 ### Branches e integração local
 
+> Nomes finais das branches (2026-10-21): a numeração E0 a E6 foi retirada, ficando `tipo/descrição`, e cada branch é publicada como PR empilhado sobre a anterior.
+
 | Etapa | Branch nova | Tarefas | Saída |
 | --- | --- | --- | --- |
-| E0 | `chore/mobile-00-baseline` | T1 | C0, B, S |
-| E1 | `feat/mobile-01-catalog-wallet` | T2–T10 | B + C1 |
-| E2 | `feat/mobile-02-selection-review` | T11–T16 | B + demo C1 sem débito |
-| E3 | `feat/mobile-03-safe-booking` | T17–T21 | B + C2 + demo compra/replay |
-| E4 | `feat/mobile-04-booking-tracking` | T22–T28 | B + C3 + demo leitura/lifecycle |
-| E5 | `chore/mobile-05-p0-readiness` | T29–T30 | B + W + N1 + V P0 |
-| E6 | `feat/mobile-06-service-lifecycle` | T31–T37 | CP1 + B + W + demo P1 + V P1 |
+| E0 | `docs/mobile-delivery-baseline` | T1 | C0, B, S |
+| E1 | `feat/mobile-catalog-and-wallet-reading` | T2–T10 | B + C1 |
+| E2 | `feat/mobile-service-selection-and-review` | T11–T16 | B + demo C1 sem débito |
+| E3 | `feat/mobile-safe-booking-purchase` | T17–T21 | B + C2 + demo compra/replay |
+| E4 | `feat/mobile-booking-tracking` | T22–T28 | B + C3 + demo leitura/lifecycle |
+| E5 | `chore/mobile-p0-validation-and-evidence` | T29–T30 | B + W + N1 + V P0 |
+| E6 | `feat/mobile-service-lifecycle` | T31–T37 | CP1 + B + W + demo P1 + V P1 |
 
 Default operacional detalhado para futura execução: usar a branch local **`mobile-worktree` como integração**, sem alterar `main` ou o outro worktree. Em T1, criar E0 diretamente do bootstrap commitado vigente, levando somente os documentos de planejamento deste worktree após conferir que não há colisão. Assim se preserva o histórico original sem copiar código nem cherry-pickar o monorepo.
 
