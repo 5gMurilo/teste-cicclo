@@ -22,6 +22,8 @@ namespace Cicclo.Api.Platform.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.HasSequence("queue_ticket_seq");
+
             modelBuilder.Entity("Cicclo.Api.Bookings.Booking", b =>
                 {
                     b.Property<Guid>("Id")
@@ -75,10 +77,34 @@ namespace Cicclo.Api.Platform.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("request_id");
 
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<Guid?>("MachineId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("machine_id");
+
+                    b.Property<DateTime?>("OfferedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("offered_at");
+
+                    b.Property<long?>("QueueTicket")
+                        .HasColumnType("bigint")
+                        .HasColumnName("queue_ticket");
+
+                    b.Property<DateTime?>("QueuedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("queued_at");
+
                     b.Property<string>("ServiceCode")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("service_code");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -96,12 +122,30 @@ namespace Cicclo.Api.Platform.Persistence.Migrations
                     b.HasIndex("BookingId")
                         .HasDatabaseName("ix_service_request_items_request_id");
 
+                    b.HasIndex("MachineId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_service_request_items_active_machine")
+                        .HasFilter("status IN ('to_be_confirmed', 'in_progress')");
+
+                    b.HasIndex("QueueTicket")
+                        .IsUnique()
+                        .HasDatabaseName("ux_service_request_items_queue_ticket");
+
                     b.HasIndex("ServiceCode")
                         .HasDatabaseName("ix_service_request_items_service_code");
 
+                    b.HasIndex("ServiceCode", "Status", "QueueTicket")
+                        .HasDatabaseName("ix_service_request_items_queue");
+
                     b.ToTable("service_request_items", null, t =>
                         {
-                            t.HasCheckConstraint("ck_service_request_items_status", "status IN ('pending_activation')");
+                            t.HasCheckConstraint("ck_service_request_items_assignment", "(status IN ('to_be_confirmed', 'in_progress')) = (machine_id IS NOT NULL)\nAND (status IN ('to_be_confirmed', 'in_progress')) = (offered_at IS NOT NULL)\nAND (status IN ('to_be_confirmed', 'in_progress')) = (expires_at IS NOT NULL)\nAND (offered_at IS NULL OR (expires_at > offered_at AND offered_at >= queued_at))");
+
+                            t.HasCheckConstraint("ck_service_request_items_queue_entry", "(status = 'pending_activation') = (queue_ticket IS NULL) AND (status = 'pending_activation') = (queued_at IS NULL)");
+
+                            t.HasCheckConstraint("ck_service_request_items_started", "(status = 'in_progress') = (started_at IS NOT NULL) AND (started_at IS NULL OR (started_at >= offered_at AND started_at < expires_at))");
+
+                            t.HasCheckConstraint("ck_service_request_items_status", "status IN ('pending_activation', 'queued', 'to_be_confirmed', 'in_progress')");
 
                             t.HasCheckConstraint("ck_service_request_items_unit_price_positive", "unit_price > 0");
                         });
@@ -112,6 +156,10 @@ namespace Cicclo.Api.Platform.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<Guid?>("ActiveItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("active_item_id");
 
                     b.Property<string>("MachineType")
                         .IsRequired()
@@ -135,6 +183,10 @@ namespace Cicclo.Api.Platform.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_machines");
 
+                    b.HasIndex("ActiveItemId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_machines_active_item_id");
+
                     b.HasIndex("Name")
                         .IsUnique()
                         .HasDatabaseName("ux_machines_name");
@@ -144,6 +196,8 @@ namespace Cicclo.Api.Platform.Persistence.Migrations
 
                     b.ToTable("machines", null, t =>
                         {
+                            t.HasCheckConstraint("ck_machines_active_item", "(state IN ('reserved', 'running') OR active_item_id IS NULL) AND (state <> 'reserved' OR active_item_id IS NOT NULL)");
+
                             t.HasCheckConstraint("ck_machines_machine_type", "machine_type IN ('washer', 'dryer')");
 
                             t.HasCheckConstraint("ck_machines_state", "state IN ('available', 'reserved', 'running', 'out_of_service')");
@@ -307,12 +361,27 @@ namespace Cicclo.Api.Platform.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_service_request_items_service_requests");
 
+                    b.HasOne("Cicclo.Api.Laundry.Machine", null)
+                        .WithMany()
+                        .HasForeignKey("MachineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_service_request_items_machines");
+
                     b.HasOne("Cicclo.Api.Services.LaundryService", null)
                         .WithMany()
                         .HasForeignKey("ServiceCode")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_service_request_items_services");
+                });
+
+            modelBuilder.Entity("Cicclo.Api.Laundry.Machine", b =>
+                {
+                    b.HasOne("Cicclo.Api.Bookings.BookingItem", null)
+                        .WithMany()
+                        .HasForeignKey("ActiveItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_machines_service_request_items");
                 });
 
             modelBuilder.Entity("Cicclo.Api.Wallet.LedgerEntry", b =>
