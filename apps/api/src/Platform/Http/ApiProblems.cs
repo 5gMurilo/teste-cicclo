@@ -34,6 +34,8 @@ public static class ApiProblems
 
     public const string MachineNotFound = "MACHINE_NOT_FOUND";
 
+    public const string IncidentNotFound = "INCIDENT_NOT_FOUND";
+
     public const string InvalidStateTransition = "INVALID_STATE_TRANSITION";
 
     public const string MachineOfferExpired = "MACHINE_OFFER_EXPIRED";

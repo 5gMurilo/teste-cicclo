@@ -62,6 +62,10 @@ internal sealed class HookedLaundrySessions(ILaundrySessions inner, Func<Task> b
         public Task RecordIncidentAsync(Guid incidentId, Guid machineId, Guid itemId, string? description, DateTime reportedAt, CancellationToken cancellationToken) =>
             inner.RecordIncidentAsync(incidentId, machineId, itemId, description, reportedAt, cancellationToken);
 
+        public Task<IncidentLocation?> LocateIncidentAsync(Guid incidentId, CancellationToken cancellationToken) => inner.LocateIncidentAsync(incidentId, cancellationToken);
+
+        public Task ConfirmIncidentAsync(Guid incidentId, CancellationToken cancellationToken) => inner.ConfirmIncidentAsync(incidentId, cancellationToken);
+
         public async Task CommitAsync()
         {
             await beforeCommit();

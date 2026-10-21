@@ -249,6 +249,19 @@ public sealed class PostgresLaundrySessions(IDbContextFactory<CiccloDbContext> c
                     cancellationToken),
                 "relato do item");
 
+        public async Task<IncidentLocation?> LocateIncidentAsync(Guid incidentId, CancellationToken cancellationToken)
+        {
+            var incidents = await db.Database
+                .SqlQuery<IncidentLocation>($"SELECT machine_id AS \"MachineId\", request_item_id AS \"ItemId\" FROM machine_incidents WHERE id = {incidentId}")
+                .ToListAsync(cancellationToken);
+            return incidents.Count == 0 ? null : incidents.Single();
+        }
+
+        public async Task ConfirmIncidentAsync(Guid incidentId, CancellationToken cancellationToken) =>
+            PostgresQueueSession.Expect(
+                await db.Database.ExecuteSqlAsync($"UPDATE machine_incidents SET status = 'confirmed' WHERE id = {incidentId} AND status = 'reported'", cancellationToken),
+                "relato aberto para confirmar");
+
         public Task CommitAsync() => transaction.CommitAsync(CancellationToken.None);
 
         public async ValueTask DisposeAsync()

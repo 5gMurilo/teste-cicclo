@@ -43,6 +43,9 @@ public interface IQueueSession
     Task OfferAsync(Guid itemId, Guid machineId, DateTime offeredAt, DateTime expiresAt, CancellationToken cancellationToken);
 }
 
+/// <summary>Máquina e item a que um incidente está ligado, descobertos sem lock (vínculos imutáveis do relato).</summary>
+public sealed record IncidentLocation(Guid MachineId, Guid ItemId);
+
 /// <summary>Preço histórico do item e valor do refund já lançado para ele (null se nenhum).</summary>
 public sealed record RefundableItem(decimal UnitPrice, decimal? RefundedAmount);
 
@@ -104,6 +107,15 @@ public interface ILaundrySession : IQueueSession, IAsyncDisposable
 
     /// <summary>Novo relato reported do item na máquina da execução; não toca item, máquina, wallet nem lançamentos.</summary>
     Task RecordIncidentAsync(Guid incidentId, Guid machineId, Guid itemId, string? description, DateTime reportedAt, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Descoberta sem lock da máquina e do item de um incidente; null se ele não existe. Só orienta quais locks adquirir:
+    /// o incidente é bloqueado por último, por <see cref="LockOpenIncidentAsync"/>.
+    /// </summary>
+    Task<IncidentLocation?> LocateIncidentAsync(Guid incidentId, CancellationToken cancellationToken);
+
+    /// <summary>Relato reported → confirmed; não toca item, máquina, wallet nem lançamentos (a falha é aplicada à parte).</summary>
+    Task ConfirmIncidentAsync(Guid incidentId, CancellationToken cancellationToken);
 
     Task CommitAsync();
 }
