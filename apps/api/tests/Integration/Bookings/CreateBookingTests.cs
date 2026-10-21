@@ -311,6 +311,59 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
         Assert.Equal(before, await database.RowsAsync(StateSql));
     }
 
+    // IDEM-02 (replay devolve o mesmo bookingId, a cobrança histórica, os itens e o saldo atual) e IDEM-07 (resposta
+    // perdida recuperada pela chave) numa wallet com duas compras: A (`wash`, chave A) confirmada normalmente e B
+    // (`dry`, chave B) recuperada pela reconciliação depois de perder a resposta do commit. A projeção de cada uma
+    // traz só os próprios itens, nunca os da outra compra da mesma wallet.
+    [Fact]
+    public async Task K11c_ReplayAndReconciliationProjectOnlyTheirOwnPurchaseWhenTheWalletHasAnother()
+    {
+        var database = await ReadyAsync();
+        var keyA = Guid.NewGuid();
+        var keyB = Guid.NewGuid();
+        var created = await UseCase(Real(database)).ExecuteAsync(keyA, Intent(["wash"], 1890), CancellationToken.None);
+        Assert.Equal(CreateBookingOutcome.Created, created.Outcome);
+        var sessions = new ScriptedBookingSessions(Real(database))
+        {
+            OnCommit = async (_, commit) =>
+            {
+                await commit();
+                throw new CreateBookingStoreException(CreateBookingStoreFailure.CommitOutcomeUnknown, "resposta do commit perdida");
+            },
+        };
+
+        var reconciled = await UseCase(sessions).ExecuteAsync(keyB, Intent(["dry"], 2090), CancellationToken.None);
+
+        Assert.Equal(CreateBookingOutcome.Created, reconciled.Outcome);
+        Assert.Equal(2, sessions.Opened);
+        var bookingA = created.Booking!;
+        var bookingB = reconciled.Booking!;
+        Assert.Equal(await database.ScalarAsync<Guid>($"SELECT id FROM service_requests WHERE idempotency_key = '{keyB}'"), bookingB.BookingId);
+        Assert.Equal(2090L, MoneyCents.FromDecimal(bookingB.ChargedAmount));
+        Assert.Equal(1020L, MoneyCents.FromDecimal(bookingB.RemainingBalance));
+        Assert.Equal(
+            await database.RowsAsync($"SELECT id, service_code, unit_price::text, 'PendingActivation' FROM service_request_items WHERE request_id = '{bookingB.BookingId}'"),
+            bookingB.Items.Select(item => string.Create(CultureInfo.InvariantCulture, $"{item.ItemId}|{item.ServiceCode}|{item.UnitPrice}|{item.Status}")));
+        Assert.Equal(["dry|20.90|PendingActivation"], bookingB.Items.Select(item => string.Create(CultureInfo.InvariantCulture, $"{item.ServiceCode}|{item.UnitPrice}|{item.Status}")));
+        var before = await database.RowsAsync(StateSql);
+
+        var replayA = await UseCase(Real(database)).ExecuteAsync(keyA, Intent(["wash"], 1890), CancellationToken.None);
+        var replayB = await UseCase(Real(database)).ExecuteAsync(keyB, Intent(["dry"], 2090), CancellationToken.None);
+
+        Assert.Equal(CreateBookingOutcome.Replayed, replayA.Outcome);
+        Assert.Equal(bookingA.BookingId, replayA.Booking!.BookingId);
+        Assert.Equal(1890L, MoneyCents.FromDecimal(replayA.Booking.ChargedAmount));
+        Assert.Equal(1020L, MoneyCents.FromDecimal(replayA.Booking.RemainingBalance));
+        Assert.Equal(bookingA.CreatedAt, replayA.Booking.CreatedAt);
+        Assert.Equal(bookingA.Items, replayA.Booking.Items);
+        Assert.Equal(["wash|18.90|PendingActivation"], replayA.Booking.Items.Select(item => string.Create(CultureInfo.InvariantCulture, $"{item.ServiceCode}|{item.UnitPrice}|{item.Status}")));
+        Assert.Equal(CreateBookingOutcome.Replayed, replayB.Outcome);
+        Assert.Equal(Describe(bookingB), Describe(replayB.Booking!));
+        Assert.Equal(before, await database.RowsAsync(StateSql));
+        Assert.Equal("2|2|2|10.20", (await database.RowsAsync(
+            "SELECT (SELECT count(*) FROM service_requests), (SELECT count(*) FROM service_request_items), (SELECT count(*) FROM wallet_transactions), (SELECT balance::text FROM wallets)")).Single());
+    }
+
     [Fact]
     public async Task K12a_PurchaseHoldingTheCapacityLockCompletesBeforeAConcurrentOutage()
     {
