@@ -17,6 +17,10 @@ public sealed class TestDatabase(string connectionString)
     public CiccloDbContext CreateContext() =>
         new(new DbContextOptionsBuilder<CiccloDbContext>().UseNpgsql(ConnectionString).Options);
 
+    /// <summary>Fábrica de contextos cujas conexões aparecem em pg_stat_activity com o nome indicado.</summary>
+    public IDbContextFactory<CiccloDbContext> ContextFactory(string applicationName) =>
+        new NamedContextFactory(new NpgsqlConnectionStringBuilder(ConnectionString) { ApplicationName = applicationName }.ConnectionString);
+
     public async Task MigrateAsync()
     {
         await using var context = CreateContext();
@@ -82,5 +86,11 @@ public sealed class TestDatabase(string connectionString)
     {
         using var context = new CiccloDbContext(new DbContextOptionsBuilder<CiccloDbContext>().UseNpgsql().Options);
         return [.. context.Database.GetMigrations()];
+    }
+
+    private sealed class NamedContextFactory(string connectionString) : IDbContextFactory<CiccloDbContext>
+    {
+        public CiccloDbContext CreateDbContext() =>
+            new(new DbContextOptionsBuilder<CiccloDbContext>().UseNpgsql(connectionString).Options);
     }
 }

@@ -20,4 +20,10 @@ public enum BookingRejection
 
     /// <summary>PRICE_CHANGED: o total esperado pelo cliente difere do total calculado no servidor.</summary>
     PriceChanged,
+
+    /// <summary>WALLET_INSUFFICIENT_BALANCE: o débito condicional não encontrou saldo suficiente.</summary>
+    InsufficientBalance,
+
+    /// <summary>IDEMPOTENCY_CONFLICT: a chave já confirmou uma intenção com outro fingerprint.</summary>
+    IdempotencyConflict,
 }
