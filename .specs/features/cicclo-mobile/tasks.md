@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** em andamento. Última tarefa concluída: T15 (14/37 com Done when marcado); ver STATE.md.
+**Execução:** em andamento. Última tarefa concluída: T16 (15/37 com Done when marcado); ver STATE.md.
 
 ## Execution Protocol
 
@@ -286,7 +286,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Quantidade derivada pública do checkout; navegação da T5.
 **Requirement**: NAV-01, NAV-02, SEL-06, SEL-11, UX-01.
 **What**: Conectar badge e nome acessível sem recalcular a regra de quantidade no layout.
-**Done when**: [ ] Zero oculta badge; duas unidades do mesmo serviço contam 2; ordem/inicial das tabs e seleção preservadas; E2 demonstra seleção real sem débito.
+**Done when**: [x] Zero oculta badge; duas unidades do mesmo serviço contam 2; ordem/inicial das tabs e seleção preservadas; E2 demonstra seleção real sem débito.
 **Tests**: integration — teto de 4 casos: zero, múltiplas ocorrências, remoção e navegação completa mantendo seleção/header.
 **Gate**: F + B no fechamento E2 + C1 + CC.
 **Commit**: `feat(navigation): expose accessible checkout item counts`
@@ -709,7 +709,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **14/37 tarefas com Done when marcado** (última: T15); demais abertas ou pendentes de gate externo.
+- Implementação: **15/37 tarefas com Done when marcado** (última: T16); demais abertas ou pendentes de gate externo.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1/C2/C3/CP1 não comprovadas; N1 não executado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.

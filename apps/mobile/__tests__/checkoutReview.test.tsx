@@ -3,6 +3,7 @@ import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-li
 import { queryClient } from '../src/shared/api/queryClient';
 
 const APP_DIR = './src/app';
+const CHECKOUT_TAB = /^Checkout.*tab, 3 of 3$/;
 const nbsp = (text: string) => text.replace(/R\$ /g, 'R$ ');
 
 const service = (code: string, name: string, unitPriceCents: number, over: Record<string, unknown> = {}) => ({
@@ -55,7 +56,7 @@ async function openCheckoutWith(...names: string[]) {
   for (const name of names) {
     await fireEvent.press(screen.getByRole('button', { name: new RegExp(`^Adicionar ${name}`) }));
   }
-  await fireEvent.press(screen.getByLabelText('Checkout, tab, 3 of 3'));
+  await fireEvent.press(screen.getByLabelText(CHECKOUT_TAB));
   return app;
 }
 

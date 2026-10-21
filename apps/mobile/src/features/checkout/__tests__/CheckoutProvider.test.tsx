@@ -8,6 +8,7 @@ import { queryClient as appQueryClient } from '../../../shared/api/queryClient';
 import { createTestQueryClient } from '../../../test/queryClient';
 import { CheckoutProvider, useCheckout } from '../CheckoutProvider';
 
+const CHECKOUT_TAB = /^Checkout.*tab, 3 of 3$/;
 const service = (code: string, unitPriceCents: number, over: Record<string, unknown> = {}) => ({
   code,
   name: code,
@@ -80,7 +81,7 @@ describe('CheckoutProvider', () => {
       expect(await screen.findByText('readiness ready')).toBeOnTheScreen();
 
       await fireEvent.press(screen.getByRole('button', { name: 'add wash' }));
-      await fireEvent.press(screen.getByLabelText('Checkout, tab, 3 of 3'));
+      await fireEvent.press(screen.getByLabelText(CHECKOUT_TAB));
 
       expect(screen.getByText('quantity 1')).toBeOnTheScreen();
     } finally {

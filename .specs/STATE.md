@@ -45,10 +45,10 @@
 ## Handoff
 
 - **Feature**: `.specs/features/cicclo-mobile/spec.md`.
-- **Phase / Task**: Execute inline e sequencial. Última tarefa fechada: T15.
-- **Completed**: T1-T9 e T11-T15 fechadas; T10 pendente de C1. T15 = CheckoutScreen (revisão, preferência, 3 rótulos financeiros, aviso de cobrança imediata/simulação, sem CTA de compra); provider rastreia preços vistos (priceChanges/acknowledgePriceChanges) (14/37 com Done when marcado).
+- **Phase / Task**: Execute inline e sequencial. Última tarefa fechada: T16.
+- **Completed**: T1-T9 e T11-T16 fechadas (E2 completa em código: gate B 138 testes e export Android/iOS); T10 e o fechamento de E1/E2 pendentes de C1. T16 = badge do Checkout com nome acessível (15/37 com Done when marcado).
 - **In-progress**: Nenhuma.
-- **Next step**: T16 (badge acessível da aba Checkout). API real fica para depois por decisão do usuário.
+- **Next step**: Parado no combinado: tudo que depende da API real aguarda o usuário avisar que a API está no docker. Ao retomar: provar C1 (demo Home/Checkout sem débito), fechar T10, integrar E1 e E2 por fast-forward, e seguir para E3 (T17+).
 - **Blockers**: C1 não provado (nenhuma execução contra a API real). `tests/bootstrap.test.mjs` teste 6 falha localmente por ausência de `dotnet` (ambiental, anterior ao trabalho mobile). C1/C2/C3 e CP1 não comprovados; N1 (T29) fica com o usuário (AD-005). Backend existe em branches locais (`feat/backend-e0*`, HEAD `a02a845`) com a base do bootstrap como ancestral; contratos reais só entram quando T6/T8/T17 os lerem.
 - **Uncommitted files**: `.omc/` (não versionar).
 - **Branch**: `feat/mobile-01-catalog-wallet`.
