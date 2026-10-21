@@ -61,10 +61,10 @@
 ## Handoff
 
 - **Feature**: `.specs/features/cicclo-mobile/spec.md`.
-- **Phase / Task**: Execute inline e sequencial. Última tarefa fechada: T33.
-- **Completed**: P0 fechado; T31 e T33 pendentes da prova CP1; T32 fechada. T33 = confirmItem.ts (hasLiveOffer, guarda local no zero sem enviar, 410/409 do servidor refazem a leitura, nada de in_progress local) e Confirmar com o OfferCountdown no detalhe; ligado só com capabilities.itemCommands.confirm (31/37 com Done when marcado).
+- **Phase / Task**: Execute inline e sequencial. Última tarefa fechada: T34.
+- **Completed**: P0 fechado; T31, T33 e T34 pendentes da prova CP1; T32 fechada. T34 = cancelItem.ts (elegibilidade central em status.ts, pergunta antes de cancelar, estorno só do que a resposta confirma, saldo do cache só com resposta válida, erro sem crédito) e wallet/cache.ts compartilhado com a compra (31/37 com Done when marcado).
 - **In-progress**: Nenhuma.
-- **Next step**: T34 (cancelar antes do início, com estorno só quando a API confirmar).
+- **Next step**: T35 (relatar problema sem prometer estorno).
 - **Blockers**: nenhum para P0. `dotnet` fora do PATH da sessão do agente (workspace e testes de bootstrap que compilam a API falham por isso; não é do mobile).
-- **Branches** (atual: `feat/mobile-06-service-lifecycle`): chore/mobile-00-baseline 08e6c7d; chore/mobile-05-p0-readiness 1a4ff65; feat/mobile-01-catalog-wallet 6bd529c; feat/mobile-02-selection-review 0a34316; feat/mobile-03-safe-booking 9674db3; feat/mobile-04-booking-tracking ad3d9a8; feat/mobile-06-service-lifecycle c7d6580; mobile-worktree f3ac3ca.
+- **Branches** (atual: `feat/mobile-06-service-lifecycle`): chore/mobile-00-baseline 08e6c7d; chore/mobile-05-p0-readiness 1a4ff65; feat/mobile-01-catalog-wallet 6bd529c; feat/mobile-02-selection-review 0a34316; feat/mobile-03-safe-booking 9674db3; feat/mobile-04-booking-tracking ad3d9a8; feat/mobile-06-service-lifecycle 6bf2569; mobile-worktree f3ac3ca.
 - **Uncommitted files**: `.omc/` e `apps/mobile/.omc/` (estado de ferramenta, não versionar).

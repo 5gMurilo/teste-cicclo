@@ -12,6 +12,7 @@ jest.mock('../src/shared/api/capabilities', () => ({
 }));
 
 const APP_DIR = './src/app';
+const nbsp = (text: string) => text.replace(/R\$ /g, 'R$\u00a0');
 const BOOKING_ID = '00000000-0000-4000-8000-000000000001';
 const ITEM_ID = '10000000-0000-4000-8000-000000000001';
 const MACHINE_ID = '20000000-0000-4000-8000-000000000009';
@@ -49,6 +50,7 @@ let detail: Reply;
 let posts: { url: string; body: string | undefined }[];
 let commandReply: (url: string) => Reply | Promise<Reply>;
 let gets: number;
+let walletBalance: number;
 
 function response({ status, body, headers = {} }: Reply): Response {
   const lower = Object.fromEntries(Object.entries(headers).map(([k, v]) => [k.toLowerCase(), v]));
@@ -64,6 +66,7 @@ beforeEach(() => {
   process.env.EXPO_PUBLIC_API_URL = 'http://api.test:5001';
   posts = [];
   gets = 0;
+  walletBalance = 3110;
   detail = { status: 200, body: booking(item('pending_activation')) };
   commandReply = () => ({ status: 200, body: item('queued', { queuePosition: 1 }) });
   globalThis.fetch = jest.fn(async (url: string | URL | Request, init?: RequestInit) => {
@@ -73,7 +76,7 @@ beforeEach(() => {
       return response(await commandReply(target));
     }
     if (target.endsWith('/wallet')) {
-      return response({ status: 200, body: { balanceCents: 3110, currency: 'BRL', updatedAt: '2026-10-21T12:00:00Z' } });
+      return response({ status: 200, body: { balanceCents: walletBalance, currency: 'BRL', updatedAt: '2026-10-21T12:00:00Z' } });
     }
     if (target.endsWith('/services')) return response({ status: 200, body: { services: [] } });
     if (/\/bookings\?/.test(target)) return response({ status: 200, body: { items: [], page: 1, pageSize: 20, hasNextPage: false } });
@@ -244,5 +247,109 @@ describe('T33: confirm an eligible machine offer', () => {
     expect(posts).toHaveLength(1);
     finish({ status: 200, body: item('in_progress', { machineId: MACHINE_ID }) });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Confirmar wash' })).toBeEnabled());
+  });
+});
+
+describe('T34: cancel before start, refund only when confirmed', () => {
+  const cancelBody = (refundedAmountCents: number | undefined, remaining = 5000) => ({
+    item: item('cancelled'),
+    ...(refundedAmountCents === undefined ? {} : { refundedAmountCents }),
+    remainingBalanceCents: remaining,
+  });
+  const startCancel = async () => {
+    await fireEvent.press(screen.getByRole('button', { name: 'Cancelar wash' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Confirmar cancelamento de wash' }));
+  };
+
+  it.each([
+    ['pending_activation', {}],
+    ['queued', { queuePosition: 1 }],
+    ['to_be_confirmed', { machineId: MACHINE_ID, expiresAt: '2099-01-01T00:00:00Z' }],
+  ])('offers cancel for an item that is %s', async (status, extra) => {
+    detail = { status: 200, body: booking(item(status, extra)) };
+    await openDetail();
+
+    expect(await screen.findByRole('button', { name: 'Cancelar wash' })).toBeOnTheScreen();
+  });
+
+  it.each(['in_progress', 'completed', 'cancelled', 'failed'])('never offers cancel for an item that is %s', async (status) => {
+    detail = { status: 200, body: booking(item(status, status === 'in_progress' ? { machineId: MACHINE_ID } : {})) };
+    await openDetail();
+    await screen.findByRole('header', { name: 'Contratação 00000000' });
+
+    expect(screen.queryByRole('button', { name: /^Cancelar wash/ })).toBeNull();
+    expect(posts).toHaveLength(0);
+  });
+
+  it('asks first, and keeping the item sends nothing', async () => {
+    detail = { status: 200, body: booking(item('queued', { queuePosition: 1 })) };
+    await openDetail();
+    await screen.findByText('Na fila');
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Cancelar wash' }));
+    expect(screen.getByText(/O estorno só é mostrado depois da confirmação do servidor/)).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('button', { name: 'Manter wash' }));
+
+    expect(posts).toHaveLength(0);
+    expect(screen.getByRole('button', { name: 'Cancelar wash' })).toBeOnTheScreen();
+  });
+
+  it('shows the refund the API confirmed and the balance it returned, only after the response', async () => {
+    detail = { status: 200, body: booking(item('queued', { queuePosition: 1 })) };
+    commandReply = () => {
+      walletBalance = 5000;
+      return { status: 200, body: cancelBody(1890, 5000) };
+    };
+    await openDetail();
+    await screen.findByText('Na fila');
+    await waitFor(() => expect(queryClient.getQueryData(['wallet'])).toMatchObject({ balanceCents: 3110 }));
+    detail = { status: 200, body: booking(item('cancelled')) };
+
+    await startCancel();
+
+    expect(await screen.findByText(`Execução cancelada. Estorno confirmado: ${nbsp('R$ 18,90')}.`)).toBeOnTheScreen();
+    expect(posts[0].url).toBe(commandUrl('cancel'));
+    await waitFor(() => expect(screen.getByText('Cancelado')).toBeOnTheScreen());
+    await waitFor(() => expect(queryClient.getQueryData(['wallet'])).toMatchObject({ balanceCents: 5000 }));
+  });
+
+  it('does not claim a refund when the response has no proof of one', async () => {
+    detail = { status: 200, body: booking(item('queued', { queuePosition: 1 })) };
+    commandReply = () => ({ status: 200, body: cancelBody(undefined) });
+    await openDetail();
+    await screen.findByText('Na fila');
+
+    await startCancel();
+
+    expect(await screen.findByText(/Não foi possível concluir a ação/)).toBeOnTheScreen();
+    expect(screen.queryByText(/Estorno confirmado/)).toBeNull();
+  });
+
+  it('on an error gives no credit and shows the real state after the refetch', async () => {
+    detail = { status: 200, body: booking(item('queued', { queuePosition: 1 })) };
+    commandReply = () => ({ status: 409, body: { errorCode: 'INVALID_STATE_TRANSITION' } });
+    await openDetail();
+    await screen.findByText('Na fila');
+    detail = { status: 200, body: booking(item('in_progress', { machineId: MACHINE_ID })) };
+
+    await startCancel();
+
+    expect(await screen.findByText(/O estado da execução mudou/)).toBeOnTheScreen();
+    expect(queryClient.getQueryData(['wallet'])).toMatchObject({ balanceCents: 3110 });
+    await waitFor(() => expect(screen.getByText('Em execução')).toBeOnTheScreen());
+    expect(screen.queryByText(/Estorno/)).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Cancelar wash/ })).toBeNull();
+  });
+
+  it('shows no refund text when the API credited nothing', async () => {
+    detail = { status: 200, body: booking(item('pending_activation')) };
+    commandReply = () => ({ status: 200, body: cancelBody(0, 3110) });
+    await openDetail();
+    await screen.findByText('Paga, aguardando ativação');
+
+    await startCancel();
+
+    expect(await screen.findByText('Execução cancelada.')).toBeOnTheScreen();
+    expect(screen.queryByText(/Estorno confirmado/)).toBeNull();
   });
 });

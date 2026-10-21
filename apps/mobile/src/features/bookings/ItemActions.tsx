@@ -2,8 +2,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { formatBRL } from '../../shared/lib/money';
 import { colors, spacing } from '../../shared/theme/tokens';
 import { canActivate, useActivateItem } from './activateItem';
+import { canCancel, useCancelItem } from './cancelItem';
 import { OfferCountdown } from './components/OfferCountdown';
 import { confirmEnabled, useConfirmItem } from './confirmItem';
 import { commandErrorMessage, type CommandState } from './itemCommand';
@@ -15,6 +17,8 @@ export function ItemActions({ bookingId, item }: { bookingId: string; item: Book
   const queryClient = useQueryClient();
   const activate = useActivateItem(bookingId);
   const confirm = useConfirmItem(bookingId);
+  const cancel = useCancelItem(bookingId);
+  const [askingCancel, setAskingCancel] = useState(false);
   // The deadline we already saw expire: from then on the offer cannot be confirmed from this screen.
   const [expiredDeadline, setExpiredDeadline] = useState<string | null>(null);
   const offerExpired = item.expiresAt !== null && expiredDeadline === item.expiresAt;
@@ -47,6 +51,39 @@ export function ItemActions({ bookingId, item }: { bookingId: string; item: Book
           onPress={() => void activate.run(item.itemId)}
         />
       ) : null}
+      {canCancel(item.status) ? (
+        askingCancel ? (
+          <View style={styles.actions}>
+            <Text style={styles.note}>
+              Cancelar esta execução? O estorno só é mostrado depois da confirmação do servidor.
+            </Text>
+            <ActionButton
+              label={`Confirmar cancelamento de ${item.serviceCode}`}
+              busy={isPendingFor(cancel.state, item.itemId)}
+              disabled={cancel.state.status === 'pending'}
+              onPress={() => {
+                void cancel.run(item.itemId);
+                setAskingCancel(false);
+              }}
+            />
+            <ActionButton label={`Manter ${item.serviceCode}`} onPress={() => setAskingCancel(false)} />
+          </View>
+        ) : (
+          <ActionButton
+            label={`Cancelar ${item.serviceCode}`}
+            disabled={cancel.state.status === 'pending'}
+            onPress={() => setAskingCancel(true)}
+          />
+        )
+      ) : null}
+      {cancel.state.status === 'done' && cancel.state.itemId === item.itemId ? (
+        <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.note}>
+          {cancel.state.result.refundedAmountCents > 0
+            ? `Execução cancelada. Estorno confirmado: ${formatBRL(cancel.state.result.refundedAmountCents)}.`
+            : 'Execução cancelada.'}
+        </Text>
+      ) : null}
+      <Failure state={cancel.state} itemId={item.itemId} />
       <Failure state={activate.state} itemId={item.itemId} />
       <Failure state={confirm.state} itemId={item.itemId} />
     </View>
@@ -95,4 +132,5 @@ const styles = StyleSheet.create({
   disabled: { opacity: 0.5 },
   buttonText: { fontSize: 14, fontWeight: '600', color: colors.text },
   error: { fontSize: 14, color: colors.danger },
+  note: { fontSize: 14, color: colors.text },
 });
