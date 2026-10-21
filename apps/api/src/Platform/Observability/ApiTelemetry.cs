@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using Cicclo.Api.Bookings;
 using Cicclo.Api.Laundry;
 using Microsoft.Extensions.Options;
 using OpenTelemetry;
@@ -37,6 +38,9 @@ public static class ApiTelemetry
 
     public const int MaxExportBatchSize = 512;
 
+    /// <summary>Spans de negócio da compra (booking.create).</summary>
+    public const string CreateBookingActivities = "Cicclo.Api.Bookings";
+
     public static WebApplicationBuilder AddApiTelemetry(this WebApplicationBuilder builder)
     {
         builder.Logging.AddJsonConsole(console =>
@@ -58,8 +62,8 @@ public static class ApiTelemetry
             .ConfigureResource(resource => resource
                 .AddService(ServiceName, serviceVersion: Version)
                 .AddAttributes([new("deployment.environment.name", builder.Environment.EnvironmentName)]))
-            .WithTracing(tracing => tracing.AddAspNetCoreInstrumentation())
-            .WithMetrics(metrics => metrics.AddAspNetCoreInstrumentation().AddMeter(LaundryMetrics.MeterName))
+            .WithTracing(tracing => tracing.AddAspNetCoreInstrumentation().AddSource(CreateBookingActivities))
+            .WithMetrics(metrics => metrics.AddAspNetCoreInstrumentation().AddMeter(LaundryMetrics.MeterName, BookingMetrics.MeterName))
             .WithLogging();
 
         if (endpoint is not null)

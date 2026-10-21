@@ -30,6 +30,24 @@ public static class ApiProblems
 
     public const string BookingNotFound = "BOOKING_NOT_FOUND";
 
+    public const string InvalidServiceSelection = "INVALID_SERVICE_SELECTION";
+
+    public const string ServiceNotFound = "SERVICE_NOT_FOUND";
+
+    public const string ServiceDisabled = "SERVICE_DISABLED";
+
+    public const string NoOperationalMachine = "NO_OPERATIONAL_MACHINE";
+
+    public const string PriceChanged = "PRICE_CHANGED";
+
+    public const string WalletInsufficientBalance = "WALLET_INSUFFICIENT_BALANCE";
+
+    public const string IdempotencyConflict = "IDEMPOTENCY_CONFLICT";
+
+    public const string PayloadTooLarge = "PAYLOAD_TOO_LARGE";
+
+    public const string UnsupportedMediaType = "UNSUPPORTED_MEDIA_TYPE";
+
     public static IResult Validation(HttpContext context, IDictionary<string, string[]> errors) =>
         Create(context, StatusCodes.Status400BadRequest, ValidationError, "Requisição inválida", "Um ou mais campos são inválidos.", errors);
 
@@ -41,6 +59,22 @@ public static class ApiProblems
             ValidationError,
             "Requisição inválida",
             "Parâmetro de rota, query ou cabeçalho com formato inválido.");
+
+    public static IResult TooLarge(HttpContext context) =>
+        Create(
+            context,
+            StatusCodes.Status413PayloadTooLarge,
+            PayloadTooLarge,
+            "Corpo da requisição muito grande",
+            $"O corpo excede o limite de {HttpBoundary.MaxRequestBodyBytes} bytes.");
+
+    public static IResult Unsupported(HttpContext context) =>
+        Create(
+            context,
+            StatusCodes.Status415UnsupportedMediaType,
+            UnsupportedMediaType,
+            "Tipo de mídia não suportado",
+            "Envie o corpo como application/json.");
 
     public static IResult NotFound(HttpContext context, string errorCode, string title, string detail) =>
         Create(context, StatusCodes.Status404NotFound, errorCode, title, detail);

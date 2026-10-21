@@ -1,3 +1,4 @@
+using Cicclo.Api.Laundry;
 using Cicclo.Api.Wallet;
 
 namespace Cicclo.Api.Bookings.CreateBooking;
@@ -21,12 +22,15 @@ public interface ICreateBookingSessions
 
 /// <summary>
 /// Uma transação de compra. Contrato comum a toda implementação: as chamadas seguem a ordem de locks
-/// wallet → serviços por código → máquinas por tipo/id; nada é visível a outras transações antes de
+/// wallet → serviços por código → máquinas por tipo/id → itens; nada é visível a outras transações antes de
 /// <see cref="CommitAsync"/>; descartar a sessão sem commit desfaz tudo. Falhas com significado para o
 /// caso de uso chegam como <see cref="CreateBookingStoreException"/>; as demais propagam sem tradução.
 /// </summary>
 public interface ICreateBookingSession : IAsyncDisposable
 {
+    /// <summary>Operações de fila/oferta na mesma transação, para a ativação inicial confirmar junto do débito.</summary>
+    IQueueSession Queue { get; }
+
     /// <summary>Bloqueia a linha da wallet até o fim da transação e devolve o saldo atual.</summary>
     Task<decimal> LockWalletAsync(Guid walletId, CancellationToken cancellationToken);
 

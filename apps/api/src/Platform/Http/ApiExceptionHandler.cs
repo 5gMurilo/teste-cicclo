@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Cicclo.Api.Platform.Persistence;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
@@ -30,10 +31,10 @@ public sealed partial class ApiExceptionHandler(ILogger<ApiExceptionHandler> log
         }
 
         // Binding inválido (RouteHandlerOptions.ThrowOnBadRequest): erro do cliente, não falha do sistema.
-        if (exception is BadHttpRequestException { StatusCode: StatusCodes.Status400BadRequest })
+        if (exception is BadHttpRequestException bad && BadRequest(httpContext, bad) is { } problem)
         {
-            LogBadRequest(httpContext.Request.Path);
-            await ApiProblems.InvalidParameter(httpContext).ExecuteAsync(httpContext);
+            LogBadRequest(httpContext.Request.Path, bad.StatusCode);
+            await problem.ExecuteAsync(httpContext);
             return true;
         }
 
@@ -48,6 +49,24 @@ public sealed partial class ApiExceptionHandler(ILogger<ApiExceptionHandler> log
         await ApiProblems.Internal(httpContext).ExecuteAsync(httpContext);
         return true;
     }
+
+    /// <summary>
+    /// JSON malformado, campo desconhecido ou tipo incorreto vira VALIDATION_ERROR com o caminho do campo (sem a mensagem
+    /// do serializador, que expõe tipos .NET); parâmetro inválido, 413 e 415 usam os problemas padronizados.
+    /// </summary>
+    private static IResult? BadRequest(HttpContext context, BadHttpRequestException exception) => exception.StatusCode switch
+    {
+        StatusCodes.Status400BadRequest when exception.InnerException is JsonException json => ApiProblems.Validation(
+            context,
+            new Dictionary<string, string[]> { [JsonField(json.Path)] = ["JSON malformado, campo não aceito ou valor com tipo incorreto."] }),
+        StatusCodes.Status400BadRequest => ApiProblems.InvalidParameter(context),
+        StatusCodes.Status413PayloadTooLarge => ApiProblems.TooLarge(context),
+        StatusCodes.Status415UnsupportedMediaType => ApiProblems.Unsupported(context),
+        _ => null,
+    };
+
+    private static string JsonField(string? path) =>
+        string.IsNullOrEmpty(path) || path == "$" ? "body" : path.StartsWith("$.", StringComparison.Ordinal) ? path[2..] : path;
 
     internal static bool IsDatabaseUnavailable(Exception exception) => exception switch
     {
@@ -69,8 +88,8 @@ public sealed partial class ApiExceptionHandler(ILogger<ApiExceptionHandler> log
     [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = "Requisição {Path} cancelada pelo cliente.")]
     private partial void LogRequestAborted(string path);
 
-    [LoggerMessage(EventId = 4, Level = LogLevel.Information, Message = "Requisição {Path} recusada no binding de parâmetros.")]
-    private partial void LogBadRequest(string path);
+    [LoggerMessage(EventId = 4, Level = LogLevel.Information, Message = "Requisição {Path} recusada na leitura de parâmetros ou corpo ({Status}).")]
+    private partial void LogBadRequest(string path, int status);
 
     [LoggerMessage(EventId = 2, Level = LogLevel.Warning, Message = "Banco de dados indisponível ao atender {Path}.")]
     private partial void LogDatabaseUnavailable(Exception exception, string path);

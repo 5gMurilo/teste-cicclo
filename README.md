@@ -82,7 +82,7 @@ curl http://localhost:5001/api/v1/services
 - serviço ativo sem máquina do tipo em `available`, `reserved` ou `running`: `canBeBooked: false` e `NO_OPERATIONAL_MACHINE`;
 - máquinas reservadas ou em execução continuam contando como capacidade operacional.
 
-`canBeBooked` é **informativo**: o futuro comando de compra revalidará serviço, capacidade e preço no servidor no momento da contratação. A API ainda não oferece compra nesta etapa. Wallet e catálogo compartilham o mesmo limite de leituras.
+`canBeBooked` é **informativo**: o comando de compra (`POST /api/v1/bookings`, seção "Contratações") revalida serviço, capacidade e preço no servidor no momento da contratação. Wallet e catálogo compartilham o mesmo limite de leituras.
 
 Erros usam `application/problem+json` com `type` `urn:cicclo:problem:<slug>`, `errorCode`, `traceId` e `errors` (null quando não há erro de campo):
 
@@ -95,6 +95,32 @@ Erros usam `application/problem+json` com `type` `urn:cicclo:problem:<slug>`, `e
 O limite de leituras é uma janela fixa de 1 minuto por endereço IP remoto, sem fila, configurável por `RateLimiting:Reads:PermitLimit` (padrão 60). Cabeçalhos como `X-Forwarded-For` não são considerados. Os endpoints de saúde não entram nesse limite.
 
 ### Contratações
+
+Compra com débito imediato e idempotente:
+
+```sh
+curl -i -X POST http://localhost:5001/api/v1/bookings \
+  -H 'Content-Type: application/json' \
+  -H 'Idempotency-Key: 5e17f77b-a19f-49e4-98c4-2503e24fc2a9' \
+  -d '{"serviceCodes":["wash","dry"],"preferredFirstServiceCode":"wash","expectedTotalCents":3980}'
+```
+
+- `serviceCodes` (obrigatório, 1 a 10, repetições são execuções distintas, a ordem não importa), `expectedTotalCents` (obrigatório, inteiro positivo: o total que o cliente confirmou) e `preferredFirstServiceCode` (opcional; omitido ou `null` é ausência de preferência). Propriedades desconhecidas, tipos incorretos e corpo acima de 16 KiB são recusados.
+- O servidor calcula o total com os preços atuais; se diferir de `expectedTotalCents`, responde 409 `PRICE_CHANGED` com o total atual no `detail`, sem cobrar.
+- Numa única transação: débito condicional da wallet, booking, itens com preço histórico, débito no ledger e ativação inicial. Compra de um item ativa esse item; lote com preferência ativa a primeira ocorrência do serviço preferido; lote sem preferência fica todo `pending_activation`. Ativar é entrar na fila FIFO do tipo de máquina e, com máquina livre e sem fila anterior, receber oferta de 60 s (`to_be_confirmed`). Qualquer falha antes do commit desfaz tudo.
+- `Idempotency-Key` (UUID, obrigatório) identifica a intenção. A primeira confirmação responde **201** com `Location: /api/v1/bookings/{bookingId}`. Repetir a mesma chave com a mesma intenção (ordem dos códigos e preferência omitida/`null` não importam) responde **200** com o mesmo booking, a cobrança histórica, o estado atual dos itens e o saldo **atual**, sem novo débito, mesmo que preço, capacidade ou saldo tenham mudado depois. Outra intenção com a mesma chave responde 409 `IDEMPOTENCY_CONFLICT`. Recusas não consomem a chave. Para recuperar uma resposta perdida, repita o POST com a mesma chave e o mesmo corpo; não existe consulta por chave.
+- A resposta usa a mesma projeção do `GET /api/v1/bookings/{bookingId}` abaixo.
+
+| Status | errorCode | Quando |
+| --- | --- | --- |
+| 400 | `VALIDATION_ERROR` | `Idempotency-Key` ausente ou não UUID, corpo ausente/`null`/malformado, campo desconhecido, tipo incorreto, `expectedTotalCents` ausente ou não positivo, código `null`. `errors` aponta o campo quando ele é conhecido. |
+| 400 | `INVALID_SERVICE_SELECTION` | `serviceCodes` ausente, vazio, com mais de 10 códigos ou preferência fora do lote. |
+| 404 | `SERVICE_NOT_FOUND` | Algum código não existe no catálogo; o lote inteiro é recusado. |
+| 409 | `SERVICE_DISABLED`, `NO_OPERATIONAL_MACHINE`, `PRICE_CHANGED`, `WALLET_INSUFFICIENT_BALANCE`, `IDEMPOTENCY_CONFLICT` | Recusa de negócio sem débito nem compra parcial. |
+| 413 | `PAYLOAD_TOO_LARGE` | Corpo acima de 16 KiB. |
+| 415 | `UNSUPPORTED_MEDIA_TYPE` | Corpo sem `Content-Type: application/json`. |
+| 429 | `RATE_LIMIT_EXCEEDED` | Mais de `RateLimiting:BookingCreate:PermitLimit` compras por minuto do mesmo IP (padrão 5), com `Retry-After`. |
+| 503 | `DATABASE_UNAVAILABLE` | Banco indisponível, base demo não preparada ou commit sem confirmação; repita com a mesma chave. |
 
 `GET /api/v1/bookings/{bookingId}` devolve o estado autoritativo de um booking da wallet demo, lido num único snapshot do PostgreSQL:
 
@@ -128,7 +154,9 @@ A API escreve logs estruturados em JSON no console (um único provider), com `Tr
 | `OpenTelemetry:Enabled` | `true` | `false` desliga traces, métricas e exportação; os logs JSON no console continuam. |
 | `OpenTelemetry:OtlpEndpoint` | ausente | URL base http(s) de um coletor OTLP/HTTP, por exemplo `http://127.0.0.1:4318/`. Sem ela nada é exportado, nem para `localhost`. Valor inválido impede o startup. |
 
-Com endpoint, logs, traces e métricas são enviados em protobuf para `v1/logs`, `v1/traces` e `v1/metrics` sob a URL base, em background, com filas limitadas (2048 itens) e timeout de 5 s por envio. Ao parar, a API envia o último lote com o mesmo prazo. Coletor fora do ar ou lento não altera as respostas nem a saúde. Exemplo com variáveis de ambiente: `OpenTelemetry__OtlpEndpoint=http://127.0.0.1:4318/`. Nenhum coletor ou dashboard faz parte do projeto. Ainda não há spans ou métricas de compra ou SQL.
+Com endpoint, logs, traces e métricas são enviados em protobuf para `v1/logs`, `v1/traces` e `v1/metrics` sob a URL base, em background, com filas limitadas (2048 itens) e timeout de 5 s por envio. Ao parar, a API envia o último lote com o mesmo prazo. Coletor fora do ar ou lento não altera as respostas nem a saúde. Exemplo com variáveis de ambiente: `OpenTelemetry__OtlpEndpoint=http://127.0.0.1:4318/`. Nenhum coletor ou dashboard faz parte do projeto. Não há spans de SQL.
+
+A compra gera o span `booking.create` (fonte `Cicclo.Api.Bookings`, filho do span HTTP, com `booking.outcome`, `booking.rejection` e `booking.id` como tags), logs estruturados correlacionados (eventos 100 a 106) e o contador `cicclo_bookings_total` do meter `Cicclo.Api.Bookings`, só com a dimensão `outcome` (`accepted` ou `rejected`). Um replay válido conta como `accepted`, porque a chamada foi aceita: o contador mede decisões, e o número de bookings e débitos únicos vem do ledger. Coletor OTLP fora do ar não impede nem desfaz a compra.
 
 O meter `Cicclo.Api.Laundry` publica `cicclo_queue_wait_seconds` (histograma da espera entre `queued_at` e a oferta da máquina) e `cicclo_offers_expired_total` (ofertas vencidas devolvidas à fila), ambos só com a dimensão `machine_type` (`washer` ou `dryer`) e registrados somente depois do commit da transação que produziu o fato.
 
@@ -226,7 +254,7 @@ O script, em ordem:
 5. inicia a API somente depois do bootstrap concluído;
 6. aguarda `GET /health/ready` com prazo finito e confere `GET /api/v1/wallet` e `GET /api/v1/services`, imprimindo as respostas.
 
-Na base nova, a saída mostra `balanceCents` 5000 e os preços 2090 (`dry`) e 1890 (`wash`). Repetir o script preserva saldo, preços e estados já alterados: o seed só insere o que falta. A demo fica em `http://127.0.0.1:5001` (porta `API_PORT` do `.env`), com OpenAPI em `/openapi/v1.json`. Ainda não há compra; o catálogo só informa se o serviço seria contratável.
+Na base nova, a saída mostra `balanceCents` 5000 e os preços 2090 (`dry`) e 1890 (`wash`). Repetir o script preserva saldo, preços e estados já alterados: o seed só insere o que falta. A demo fica em `http://127.0.0.1:5001` (porta `API_PORT` do `.env`), com OpenAPI em `/openapi/v1.json`. O smoke do script confere só as consultas; a compra (seção "Contratações") pode ser feita em seguida com `curl` na mesma porta.
 
 | Código de saída | Significado |
 | --- | --- |

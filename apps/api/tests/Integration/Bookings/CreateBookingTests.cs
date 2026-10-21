@@ -42,12 +42,14 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
         """;
 
     [Theory]
-    [InlineData("K01", new[] { "wash" }, 1890L, 3110L, "31.10")]
-    [InlineData("K02", new[] { "dry" }, 2090L, 2910L, "29.10")]
-    [InlineData("K03", new[] { "wash", "dry" }, 3980L, 1020L, "10.20")]
-    [InlineData("K04", new[] { "wash", "wash" }, 3780L, 1220L, "12.20")]
+    // E04 (QUEUE-01/03): a compra de um único item o ativa na mesma transação (máquina livre sem fila: oferta);
+    // lote sem preferência fica todo pending_activation.
+    [InlineData("K01", new[] { "wash" }, 1890L, 3110L, "31.10", "ToBeConfirmed", "to_be_confirmed")]
+    [InlineData("K02", new[] { "dry" }, 2090L, 2910L, "29.10", "ToBeConfirmed", "to_be_confirmed")]
+    [InlineData("K03", new[] { "wash", "dry" }, 3980L, 1020L, "10.20", "PendingActivation", "pending_activation")]
+    [InlineData("K04", new[] { "wash", "wash" }, 3780L, 1220L, "12.20", "PendingActivation", "pending_activation")]
     public async Task K01_K04_PurchaseDebitsTheCatalogTotalAndPersistsBookingItemsAndLedger(
-        string scenario, string[] codes, long totalCents, long remainingCents, string remaining)
+        string scenario, string[] codes, long totalCents, long remainingCents, string remaining, string status, string persistedStatus)
     {
         var database = await ReadyAsync();
         var key = Guid.NewGuid();
@@ -60,7 +62,7 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
         Assert.Equal(totalCents, MoneyCents.FromDecimal(booking.ChargedAmount));
         Assert.Equal(remainingCents, MoneyCents.FromDecimal(booking.RemainingBalance));
         Assert.Equal(
-            codes.Order(StringComparer.Ordinal).Select(code => code == "wash" ? "wash|18.90|PendingActivation" : "dry|20.90|PendingActivation"),
+            codes.Order(StringComparer.Ordinal).Select(code => code == "wash" ? $"wash|18.90|{status}" : $"dry|20.90|{status}"),
             booking.Items.Select(item => string.Create(CultureInfo.InvariantCulture, $"{item.ServiceCode}|{item.UnitPrice}|{item.Status}")));
         Assert.Equal(codes.Length, booking.Items.Select(item => item.ItemId).Distinct().Count());
         Assert.Equal(DateTimeKind.Utc, booking.CreatedAt.Kind);
@@ -68,7 +70,7 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
         var charged = booking.ChargedAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
         Assert.Equal($"{booking.BookingId}|{key}|{charged}|{intent.Fingerprint}", (await database.RowsAsync("SELECT id, idempotency_key, total_amount::text, request_fingerprint FROM service_requests")).Single());
         Assert.Equal(
-            booking.Items.Select(item => string.Create(CultureInfo.InvariantCulture, $"{item.ItemId}|{booking.BookingId}|{item.ServiceCode}|{item.UnitPrice:0.00}|pending_activation")).Order(StringComparer.Ordinal),
+            booking.Items.Select(item => string.Create(CultureInfo.InvariantCulture, $"{item.ItemId}|{booking.BookingId}|{item.ServiceCode}|{item.UnitPrice:0.00}|{persistedStatus}")).Order(StringComparer.Ordinal),
             await database.RowsAsync("SELECT id, request_id, service_code, unit_price::text, status FROM service_request_items ORDER BY id::text"));
         Assert.Equal(
             $"{booking.BookingId}|debit|{charged}|{remaining}|True",
@@ -342,9 +344,9 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
         Assert.Equal(2090L, MoneyCents.FromDecimal(bookingB.ChargedAmount));
         Assert.Equal(1020L, MoneyCents.FromDecimal(bookingB.RemainingBalance));
         Assert.Equal(
-            await database.RowsAsync($"SELECT id, service_code, unit_price::text, 'PendingActivation' FROM service_request_items WHERE request_id = '{bookingB.BookingId}'"),
+            await database.RowsAsync($"SELECT id, service_code, unit_price::text, 'ToBeConfirmed' FROM service_request_items WHERE request_id = '{bookingB.BookingId}' AND status = 'to_be_confirmed'"),
             bookingB.Items.Select(item => string.Create(CultureInfo.InvariantCulture, $"{item.ItemId}|{item.ServiceCode}|{item.UnitPrice}|{item.Status}")));
-        Assert.Equal(["dry|20.90|PendingActivation"], bookingB.Items.Select(item => string.Create(CultureInfo.InvariantCulture, $"{item.ServiceCode}|{item.UnitPrice}|{item.Status}")));
+        Assert.Equal(["dry|20.90|ToBeConfirmed"], bookingB.Items.Select(item => string.Create(CultureInfo.InvariantCulture, $"{item.ServiceCode}|{item.UnitPrice}|{item.Status}")));
         var before = await database.RowsAsync(StateSql);
 
         var replayA = await UseCase(Real(database)).ExecuteAsync(keyA, Intent(["wash"], 1890), CancellationToken.None);
@@ -356,7 +358,7 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
         Assert.Equal(1020L, MoneyCents.FromDecimal(replayA.Booking.RemainingBalance));
         Assert.Equal(bookingA.CreatedAt, replayA.Booking.CreatedAt);
         Assert.Equal(bookingA.Items, replayA.Booking.Items);
-        Assert.Equal(["wash|18.90|PendingActivation"], replayA.Booking.Items.Select(item => string.Create(CultureInfo.InvariantCulture, $"{item.ServiceCode}|{item.UnitPrice}|{item.Status}")));
+        Assert.Equal(["wash|18.90|ToBeConfirmed"], replayA.Booking.Items.Select(item => string.Create(CultureInfo.InvariantCulture, $"{item.ServiceCode}|{item.UnitPrice}|{item.Status}")));
         Assert.Equal(CreateBookingOutcome.Replayed, replayB.Outcome);
         Assert.Equal(Describe(bookingB), Describe(replayB.Booking!));
         Assert.Equal(before, await database.RowsAsync(StateSql));
@@ -378,7 +380,8 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
                 await release.Task;
             },
         };
-        var purchase = UseCase(sessions).ExecuteAsync(Guid.NewGuid(), Intent(["dry"], 2090), CancellationToken.None);
+        // Lote sem preferência (E04): itens pendentes, sem reservar a secadora, para a indisponibilidade ser possível.
+        var purchase = UseCase(sessions).ExecuteAsync(Guid.NewGuid(), Intent(["wash", "dry"], 3980), CancellationToken.None);
         await paused.Task.WaitAsync(SignalTimeout);
 
         var outage = ExecuteAsAsync(database, OutageApp, $"UPDATE machines SET state = 'out_of_service', updated_at = now() WHERE id = '{DemoData.DryerId}'");
@@ -389,7 +392,7 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
         await outage.WaitAsync(SignalTimeout);
 
         Assert.Equal(CreateBookingOutcome.Created, result.Outcome);
-        Assert.Equal("29.10|1|out_of_service", (await database.RowsAsync(
+        Assert.Equal("10.20|1|out_of_service", (await database.RowsAsync(
             $"SELECT (SELECT balance::text FROM wallets), (SELECT count(*) FROM service_request_items WHERE service_code = 'dry'), (SELECT state FROM machines WHERE id = '{DemoData.DryerId}')")).Single());
     }
 
@@ -960,7 +963,7 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
         var key = Guid.NewGuid();
         var intent = Intent(["wash"], 1890);
 
-        var created = await new CreateBooking(Real(database), clock, NullLogger<CreateBooking>.Instance).ExecuteAsync(key, intent, CancellationToken.None);
+        var created = await BookingApi.UseCase(Real(database), clock).ExecuteAsync(key, intent, CancellationToken.None);
 
         Assert.Equal(CreateBookingOutcome.Created, created.Outcome);
         var expected = new DateTime(2026, 10, 21, 12, 34, 56, DateTimeKind.Utc).AddTicks(1_234_560);
@@ -1001,7 +1004,7 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
             await walletLock.ExecuteNonQueryAsync();
         }
 
-        var purchase = new CreateBooking(Real(database), clock, NullLogger<CreateBooking>.Instance)
+        var purchase = BookingApi.UseCase(Real(database), clock)
             .ExecuteAsync(Guid.NewGuid(), Intent(["wash"], 1890), CancellationToken.None);
         await WaitUntilWaitingOnLockAsync(database, BookingApp);
         Assert.False(purchase.IsCompleted);
@@ -1047,7 +1050,7 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
     }
 
     private static CreateBooking UseCase(ICreateBookingSessions sessions) =>
-        new(sessions, TimeProvider.System, NullLogger<CreateBooking>.Instance);
+        BookingApi.UseCase(sessions, TimeProvider.System);
 
     private static PostgresCreateBookingSessions Real(TestDatabase database) => new(database.ContextFactory(BookingApp));
 

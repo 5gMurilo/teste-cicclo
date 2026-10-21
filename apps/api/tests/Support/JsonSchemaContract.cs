@@ -10,8 +10,11 @@ namespace Cicclo.Api.Tests.Support;
 /// </summary>
 public static class JsonSchemaContract
 {
-    public static string ResponsePointer(string path, string status, string mediaType = "application/json") =>
-        $"#/paths/{Escape(path)}/get/responses/{status}/content/{Escape(mediaType)}/schema";
+    public static string ResponsePointer(string path, string status, string mediaType = "application/json", string method = "get") =>
+        $"#/paths/{Escape(path)}/{method}/responses/{status}/content/{Escape(mediaType)}/schema";
+
+    public static string RequestPointer(string path, string method = "post", string mediaType = "application/json") =>
+        $"#/paths/{Escape(path)}/{method}/requestBody/content/{Escape(mediaType)}/schema";
 
     public static EvaluationResults Evaluate(string openApiJson, string schemaPointer, string instanceJson)
     {
@@ -36,10 +39,10 @@ public static class JsonSchemaContract
         Assert.False(Evaluate(openApiJson, schemaPointer, instanceJson).IsValid, $"{instanceJson} deveria violar {schemaPointer}");
 
     /// <summary>Exemplo publicado em uma resposta, serializado de volta como texto JSON.</summary>
-    public static string Example(string openApiJson, string path, string status, string mediaType = "application/json")
+    public static string Example(string openApiJson, string path, string status, string mediaType = "application/json", string method = "get")
     {
         using var document = JsonDocument.Parse(openApiJson);
-        return document.RootElement.GetProperty("paths").GetProperty(path).GetProperty("get").GetProperty("responses")
+        return document.RootElement.GetProperty("paths").GetProperty(path).GetProperty(method).GetProperty("responses")
             .GetProperty(status).GetProperty("content").GetProperty(mediaType).GetProperty("example").GetRawText();
     }
 

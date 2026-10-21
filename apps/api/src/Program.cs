@@ -1,4 +1,5 @@
 using Cicclo.Api.Bookings;
+using Cicclo.Api.Bookings.CreateBooking;
 using Cicclo.Api.Bookings.GetBooking;
 using Cicclo.Api.Platform;
 using Cicclo.Api.Platform.BackgroundServices;
@@ -47,6 +48,9 @@ if (bootstrapDemo)
 }
 
 builder.Services.AddOfferReconciliation();
+builder.Services.AddSingleton<BookingMetrics>();
+builder.Services.AddScoped<ICreateBookingSessions, PostgresCreateBookingSessions>();
+builder.Services.AddScoped<CreateBooking>();
 var app = builder.Build();
 app.UseHttpBoundary();
 app.UseRateLimiter();
@@ -54,6 +58,7 @@ app.MapApiOpenApi();
 app.MapHealthEndpoints();
 app.MapGroup("/api/v1").RequireRateLimiting(ApiRateLimits.Reads).MapWalletEndpoint().MapServicesEndpoint();
 app.MapGroup("/api/v1").RequireRateLimiting(ApiRateLimits.BookingReads).MapGetBookingEndpoint();
+app.MapGroup("/api/v1").RequireRateLimiting(ApiRateLimits.BookingCreate).MapCreateBookingEndpoint();
 app.Run();
 return 0;
 

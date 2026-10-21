@@ -1,10 +1,14 @@
+using System.Diagnostics.Metrics;
 using System.Text.Json;
 using Cicclo.Api.Bookings;
 using Cicclo.Api.Bookings.CreateBooking;
+using Cicclo.Api.Laundry;
+using Cicclo.Api.Platform;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace Cicclo.Api.Tests.Support;
 
@@ -25,10 +29,19 @@ public static class BookingApi
     {
         var total = codes.Sum(code => code == "wash" ? 1890L : 2090L);
         var intent = BookingIntent.Create(codes, preferred, total, 10).Intent!;
-        var result = await new CreateBooking(new PostgresCreateBookingSessions(database.ContextFactory(FixtureApp)), clock, NullLogger<CreateBooking>.Instance)
+        var result = await UseCase(new PostgresCreateBookingSessions(database.ContextFactory(FixtureApp)), clock)
             .ExecuteAsync(Guid.NewGuid(), intent, CancellationToken.None);
         return result.Booking ?? throw new InvalidOperationException($"Compra de fixture recusada: {result.Outcome} {result.Rejection}.");
     }
+
+    /// <summary>Caso de uso real de compra com o coordenador de fila (prazo de 60 s) e métricas sobre o mesmo relógio.</summary>
+    public static CreateBooking UseCase(ICreateBookingSessions sessions, TimeProvider clock, IMeterFactory? meters = null) =>
+        new(
+            sessions,
+            new QueueCoordinator(clock, Options.Create(new LaundryOptions())),
+            new LaundryMetrics(meters ?? new ServiceCollection().AddMetrics().BuildServiceProvider().GetRequiredService<IMeterFactory>()),
+            clock,
+            NullLogger<CreateBooking>.Instance);
 
     public static async Task<JsonElement> JsonAsync(HttpResponseMessage response)
     {

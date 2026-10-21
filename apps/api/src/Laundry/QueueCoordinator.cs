@@ -27,7 +27,12 @@ public sealed record ExpiredOffer(Guid ItemId, Guid MachineId, DateTime ExpiresA
 /// <summary>Mudanças de fila de um tipo de máquina numa transação; só viram fato depois do commit de quem chamou.</summary>
 public sealed record QueueChanges(MachineType Type, IReadOnlyList<ExpiredOffer> Expired, IReadOnlyList<MachineOffer> Offers);
 
-public sealed record ActivationResult(ActivationOutcome Outcome, ItemPlacement? Item, IReadOnlyList<MachineOffer> Offers, IReadOnlyList<ExpiredOffer> Expired);
+public sealed record ActivationResult(
+    ActivationOutcome Outcome, ItemPlacement? Item, IReadOnlyList<MachineOffer> Offers, IReadOnlyList<ExpiredOffer> Expired, MachineType? Type = null)
+{
+    /// <summary>Mudanças de fila do tipo do item, para métricas registradas depois do commit; null se o item não existe.</summary>
+    public QueueChanges? Changes => Type is { } type ? new(type, Expired, Offers) : null;
+}
 
 /// <summary>
 /// Coordenador de fila/oferta que opera na transação de quem chama, sem abrir nem confirmar transação própria:
@@ -58,7 +63,7 @@ public sealed class QueueCoordinator(TimeProvider time, IOptions<LaundryOptions>
 
         if (target.Status != BookingItemStatus.PendingActivation)
         {
-            return new(ActivationOutcome.AlreadyActive, Placement(itemId, items), [], []);
+            return new(ActivationOutcome.AlreadyActive, Placement(itemId, items), [], [], type);
         }
 
         // A oferta vencida volta à fila antes de o item recém-ativado entrar: ela venceu antes desta chegada.
@@ -67,7 +72,7 @@ public sealed class QueueCoordinator(TimeProvider time, IOptions<LaundryOptions>
         await session.EnqueueAsync(itemId, ticket, now, cancellationToken);
         items[items.FindIndex(item => item.ItemId == itemId)] = target with { Status = BookingItemStatus.Queued, Ticket = ticket, QueuedAt = now };
         var offers = await OfferFreeMachinesAsync(session, machines, items, now, cancellationToken);
-        return new(ActivationOutcome.Activated, Placement(itemId, items), offers, expired);
+        return new(ActivationOutcome.Activated, Placement(itemId, items), offers, expired, type);
     }
 
     /// <summary>

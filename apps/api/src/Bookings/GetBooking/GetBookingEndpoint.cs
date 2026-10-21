@@ -37,7 +37,8 @@ public static class GetBookingEndpoint
     internal static IResult BookingNotFound(HttpContext context) =>
         ApiProblems.NotFound(context, ApiProblems.BookingNotFound, "Booking não encontrado", "Não existe booking com este identificador na wallet demo.");
 
-    private static readonly BookingResponse Example = new(
+    /// <summary>Exemplo publicado da projeção (handoff 6.4), reutilizado pelas respostas que devolvem o booking.</summary>
+    internal static readonly BookingResponse Example = new(
         Guid.Parse("fb0cb8f8-ced3-4ad7-9ee5-e7df973abc19"),
         MoneyCents.Currency,
         3980,
