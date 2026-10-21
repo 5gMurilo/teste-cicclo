@@ -70,6 +70,12 @@ public interface ILaundrySession : IQueueSession, IAsyncDisposable
     /// <summary>Ocupação sintética da simulação: máquina available sem item → running com is_demo_occupied, sem item nem wallet.</summary>
     Task OccupyAsync(Guid machineId, DateTime occupiedAt, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Conclusão da execução: com item, item in_progress nesta máquina → completed (histórico de máquina e tempos
+    /// preservado) e máquina running dele → available; sem item, ocupação sintética → available sem a marca.
+    /// </summary>
+    Task CompleteRunAsync(Guid machineId, Guid? itemId, DateTime completedAt, CancellationToken cancellationToken);
+
     /// <summary>Oferta confirmada: to_be_confirmed → in_progress com started_at, e máquina reserved → running.</summary>
     Task StartAsync(Guid itemId, Guid machineId, DateTime startedAt, CancellationToken cancellationToken);
 

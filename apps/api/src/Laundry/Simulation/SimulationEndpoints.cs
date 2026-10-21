@@ -14,7 +14,7 @@ public static class SimulationEndpoints
     {
         if (app.Environment.IsDevelopment() && app.Services.GetRequiredService<IOptions<LaundryOptions>>().Value.DemoMode)
         {
-            app.MapGroup("/api/v1/simulation").MapOccupyMachineEndpoint();
+            app.MapGroup("/api/v1/simulation").MapOccupyMachineEndpoint().MapCompleteMachineEndpoint();
         }
 
         return app;

@@ -67,6 +67,7 @@ builder.Services.AddScoped<ConfirmOffer>();
 builder.Services.AddSingleton<RefundMetrics>();
 builder.Services.AddScoped<CancelItem>();
 builder.Services.AddScoped<OccupyMachine>();
+builder.Services.AddScoped<CompleteMachine>();
 var app = builder.Build();
 app.UseHttpBoundary();
 app.UseRateLimiter();
