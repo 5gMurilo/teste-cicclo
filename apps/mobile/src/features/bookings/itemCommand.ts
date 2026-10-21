@@ -67,17 +67,25 @@ export function useItemCommand<T>(send: (itemId: string) => Promise<T>) {
 
 const timeFormat = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
+/** The demo simulation route does not exist on this API (it answers 404 without a problem body). */
+export class SimulationUnavailableError extends Error {
+  constructor() {
+    super('Simulation route unavailable');
+    this.name = 'SimulationUnavailableError';
+  }
+}
+
 /** User-facing text for a failed item command, by status and errorCode only. */
 export function commandErrorMessage(error: unknown): string {
+  if (error instanceof SimulationUnavailableError) {
+    return 'A simulação não está disponível nesta API (o DemoMode precisa estar ligado).';
+  }
   if (error instanceof ApiError) {
     if (error.errorCode === 'MACHINE_OFFER_EXPIRED' || error.status === 410) {
       return 'A oferta venceu e a execução voltou para a fila. Veja o estado atualizado abaixo.';
     }
     if (error.errorCode === 'INVALID_STATE_TRANSITION') {
       return 'O estado da execução mudou e a ação não se aplica mais. Veja o estado atualizado abaixo.';
-    }
-    if (error.status === 404 && error.errorCode === null) {
-      return 'A simulação não está disponível nesta API (o DemoMode precisa estar ligado).';
     }
     if (error.status === 404) return 'Contratação ou execução não encontrada.';
     if (error.status === 429) {

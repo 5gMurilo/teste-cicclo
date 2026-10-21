@@ -1,11 +1,12 @@
 import { useCallback } from 'react';
 import { z } from 'zod';
 
+import { ApiError } from '../../shared/api/apiError';
 import { capabilities } from '../../shared/api/capabilities';
 import { requestJson } from '../../shared/api/client';
 import { isDemoSimulationEnabled } from '../../shared/config/env';
 import { InvalidBookingIdError, isBookingId } from './detailQuery';
-import { useItemCommand } from './itemCommand';
+import { SimulationUnavailableError, useItemCommand } from './itemCommand';
 import { bookingItemSchema, type BookingItem } from './schema';
 
 // Contract: POST /api/v1/simulation/machines/{machineId}/complete (SimulationResponse). Demo only: the route
@@ -37,9 +38,17 @@ export function canSimulateComplete(item: BookingItem): boolean {
 export function useSimulateComplete(machineId: string | null) {
   const send = useCallback(async (): Promise<SimulationResult> => {
     if (machineId === null || !isBookingId(machineId)) throw new InvalidBookingIdError();
-    return simulationResponseSchema.parse(
-      await requestJson({ method: 'POST', path: `/simulation/machines/${machineId}/complete` }),
-    );
+    try {
+      return simulationResponseSchema.parse(
+        await requestJson({ method: 'POST', path: `/simulation/machines/${machineId}/complete` }),
+      );
+    } catch (error) {
+      // A route that is not mapped answers 404 with no problem body; a real "machine not found" carries an errorCode.
+      if (error instanceof ApiError && error.status === 404 && error.errorCode === null) {
+        throw new SimulationUnavailableError();
+      }
+      throw error;
+    }
   }, [machineId]);
   return useItemCommand(send);
 }

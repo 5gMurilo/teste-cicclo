@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 
 import { ApiError } from '../../../shared/api/apiError';
 import { InvalidBookingIdError } from '../detailQuery';
-import { commandErrorMessage, postItemCommand, useItemCommand } from '../itemCommand';
+import { commandErrorMessage, postItemCommand, SimulationUnavailableError, useItemCommand } from '../itemCommand';
 
 const BOOKING_ID = '00000000-0000-4000-8000-000000000001';
 const ITEM_ID = '10000000-0000-4000-8000-000000000001';
@@ -63,6 +63,9 @@ describe('postItemCommand', () => {
 describe('commandErrorMessage', () => {
   it('names each failure by status and errorCode only', () => {
     expect(commandErrorMessage(api(404, 'ITEM_NOT_FOUND'))).toBe('Contratação ou execução não encontrada.');
+    // A bare 404 on a regular command is never blamed on the demo simulation.
+    expect(commandErrorMessage(api(404, null))).toBe('Contratação ou execução não encontrada.');
+    expect(commandErrorMessage(new SimulationUnavailableError())).toMatch(/A simulação não está disponível/);
     expect(commandErrorMessage(api(410, 'MACHINE_OFFER_EXPIRED'))).toMatch(/A oferta venceu/);
     expect(commandErrorMessage(api(409, 'INVALID_STATE_TRANSITION'))).toMatch(/O estado da execução mudou/);
     expect(commandErrorMessage(api(429, 'RATE_LIMIT_EXCEEDED', Date.parse('2026-10-21T12:00:30Z')))).toMatch(/Aguarde até/);

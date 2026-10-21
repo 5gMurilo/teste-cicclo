@@ -561,15 +561,54 @@ describe('demo-only Concluir (simulação)', () => {
 
   it.each([
     ['pending_activation', null],
-    ['queued', null],
-    ['completed', null],
+    ['queued', MACHINE_ID],
+    ['to_be_confirmed', MACHINE_ID],
+    ['completed', MACHINE_ID],
+    ['cancelled', MACHINE_ID],
+    ['failed', MACHINE_ID],
     ['in_progress', null],
-  ])('is hidden for an item that is %s without a machine', async (status, machineId) => {
-    detail = { status: 200, body: booking(item(status, { machineId })) };
+  ])('is hidden for an item that is %s with machine %p', async (status, machineId) => {
+    detail = {
+      status: 200,
+      body: booking(item(status, { machineId, expiresAt: status === 'to_be_confirmed' ? '2099-01-01T00:00:00Z' : null })),
+    };
     await openDetail();
     await screen.findByRole('header', { name: 'Contratação 00000000' });
 
     expect(screen.queryByRole('button', { name: /\(simulação\)/ })).toBeNull();
+  });
+
+  it.each(['', 'false', 'TRUE'])('stays hidden when the opt-in variable is %p', async (value) => {
+    process.env.EXPO_PUBLIC_DEMO_SIMULATION = value;
+    await openDetail();
+    await screen.findByText('Em execução');
+
+    expect(screen.queryByRole('button', { name: /\(simulação\)/ })).toBeNull();
+  });
+
+  it('does not claim completion when the success response is not valid, and the button stays usable', async () => {
+    commandReply = () => ({ status: 200, body: { machine: completeBody.machine } });
+    await openDetail();
+    await screen.findByText('Em execução');
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Concluir wash (simulação)' }));
+
+    expect(await screen.findByText(/Não foi possível concluir a ação/)).toBeOnTheScreen();
+    expect(screen.queryByText('Execução concluída na simulação.')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Concluir wash (simulação)' })).toBeEnabled();
+  });
+
+  it('keeps a bare 404 from a regular command from being blamed on the simulation', async () => {
+    capabilities.simulation.complete = false;
+    detail = { status: 200, body: booking(item('pending_activation')) };
+    commandReply = () => ({ status: 404, body: null });
+    await openDetail();
+    await screen.findByText('Paga, aguardando ativação');
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Ativar wash' }));
+
+    expect(await screen.findByText('Contratação ou execução não encontrada.')).toBeOnTheScreen();
+    expect(screen.queryByText(/A simulação não está disponível/)).toBeNull();
   });
 
   it('completes the running machine, labels it as simulation, and shows what the server says afterwards', async () => {
