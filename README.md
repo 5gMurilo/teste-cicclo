@@ -61,6 +61,8 @@ curl http://localhost:5001/health
 
 Resposta: HTTP 200, `text/plain`, corpo `Healthy`. É somente liveness do processo, não uma declaração de disponibilidade do PostgreSQL. Não há autenticação. A conexão `ConnectionStrings:Cicclo` é resolvida apenas quando um componente de dados a usa; sem ela, a API continua subindo.
 
+Em `Development`, o documento OpenAPI 3.1 gerado pelos endpoints reais fica em `GET /openapi/v1.json` (por exemplo, `curl http://localhost:5001/openapi/v1.json`). Ele lista somente operações já entregues e não é publicado em outros ambientes.
+
 ## Validação
 
 ```sh
