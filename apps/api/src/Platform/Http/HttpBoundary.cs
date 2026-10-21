@@ -21,6 +21,8 @@ public static class HttpBoundary
             options.SerializerOptions.NumberHandling = JsonNumberHandling.Strict;
         });
         services.Configure<KestrelServerOptions>(options => options.Limits.MaxRequestBodySize = MaxRequestBodyBytes);
+        // Binding inválido vira exceção em todo ambiente, para o ApiExceptionHandler responder com o contrato de erro.
+        services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
         return services;
     }
 

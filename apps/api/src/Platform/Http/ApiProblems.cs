@@ -28,8 +28,22 @@ public static class ApiProblems
 
     public const string RateLimitExceeded = "RATE_LIMIT_EXCEEDED";
 
+    public const string BookingNotFound = "BOOKING_NOT_FOUND";
+
     public static IResult Validation(HttpContext context, IDictionary<string, string[]> errors) =>
         Create(context, StatusCodes.Status400BadRequest, ValidationError, "Requisição inválida", "Um ou mais campos são inválidos.", errors);
+
+    /// <summary>Parâmetro de rota, query ou header que o binding não conseguiu converter; o valor recebido não é ecoado.</summary>
+    public static IResult InvalidParameter(HttpContext context) =>
+        Create(
+            context,
+            StatusCodes.Status400BadRequest,
+            ValidationError,
+            "Requisição inválida",
+            "Parâmetro de rota, query ou cabeçalho com formato inválido.");
+
+    public static IResult NotFound(HttpContext context, string errorCode, string title, string detail) =>
+        Create(context, StatusCodes.Status404NotFound, errorCode, title, detail);
 
     public static IResult Unavailable(HttpContext context) =>
         Create(
