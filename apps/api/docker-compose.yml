@@ -18,5 +18,36 @@ services:
       retries: 10
       start_period: 10s
 
+  # One-shot: migrations e depois seed.sql. Executado por scripts/start-demo.sh com `run --rm` a cada inicialização.
+  bootstrap:
+    image: ${CICCLO_API_IMAGE:-cicclo-api:local}
+    pull_policy: never
+    profiles: [app]
+    command: ["--bootstrap-demo"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Laundry__DemoMode: "true"
+      ConnectionStrings__Cicclo: Host=postgres;Port=5432;Database=cicclo;Username=cicclo
+      # A senha vai ao Npgsql como dado em PGPASSWORD, nunca concatenada na connection string.
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in apps/api/.env or your shell}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build: .
+    image: ${CICCLO_API_IMAGE:-cicclo-api:local}
+    profiles: [app]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Cicclo: Host=postgres;Port=5432;Database=cicclo;Username=cicclo
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in apps/api/.env or your shell}
+      OpenTelemetry__OtlpEndpoint: ${CICCLO_OTLP_ENDPOINT:-}
+    ports:
+      - "127.0.0.1:${API_PORT:-5001}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres-data:

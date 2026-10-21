@@ -123,11 +123,11 @@ pnpm test:bootstrap
 
 As tarefas .NET não usam cache Turbo nesta base. O build do mobile pode restaurar `dist/` do cache; desenvolvimento e testes não usam cache. Os comandos da raiz preservam código de saída diferente de zero quando uma tarefa falha.
 
-Provas adicionais, pela raiz: `node scripts/smoke.mjs install`, `dev`, `lint`, `failures`, `native`, `docker` ou `postgres` (um argumento por execução). As provas `dev` e `native` exigem portas 5001 e 8081 livres; `native` exige macOS, Swift e um simulador iOS disponível. As provas Docker exigem daemon ativo e acesso aos registries. Usam containers/volumes com nomes exclusivos e removem somente esses recursos de teste. Evidência visual nativa fica em `.artifacts/native-ios.png`, ignorada no Git.
+O repositório não contém um script `scripts/smoke.mjs`; não há provas adicionais versionadas além dos comandos acima. Para o backend, `apps/api/scripts/start-demo.sh` sobe banco, bootstrap e API em containers e confere as consultas (seção "Demonstração local completa").
 
 ## PostgreSQL local com Compose
 
-O Compose em `apps/api/docker-compose.yml` disponibiliza **apenas o banco**, independente do Dockerfile da API. Prepare uma senha local:
+O Compose em `apps/api/docker-compose.yml` define o banco `postgres` e, no perfil `app`, os serviços `bootstrap` e `api`, usados pelo script da seção "Demonstração local completa". Sem perfil, os comandos abaixo sobem **apenas o banco**. Prepare uma senha local:
 
 ```sh
 cp apps/api/.env.example apps/api/.env
@@ -141,7 +141,7 @@ docker compose -f apps/api/docker-compose.yml --env-file apps/api/.env logs post
 docker compose -f apps/api/docker-compose.yml --env-file apps/api/.env exec postgres psql -U cicclo -d cicclo
 ```
 
-Conexão: `127.0.0.1:5432`, banco e usuário `cicclo`, senha definida no `.env`. A porta fica restrita ao loopback; altere `POSTGRES_PORT` se 5432 já estiver ocupada. Nunca use a senha de exemplo em produção. Arquivos `.env` são ignorados pelo Git.
+Conexão: `127.0.0.1:5432`, banco e usuário `cicclo`, senha definida no `.env`. A porta fica restrita ao loopback; altere `POSTGRES_PORT` se 5432 já estiver ocupada. Nunca use a senha de exemplo em produção. Arquivos `.env` são ignorados pelo Git. Se a senha tiver `$`, aspas ou outros caracteres especiais, escreva-a entre aspas simples no `.env` (`POSTGRES_PASSWORD='...'`): o Compose lê o valor literalmente.
 
 ### Seed e volume
 
@@ -173,6 +173,37 @@ docker compose -f apps/api/docker-compose.yml --env-file apps/api/.env down
 ```
 
 Recriar o container preserva o banco. Remover o volume (`down --volumes`) **apaga os dados locais**; não faça isso para simplesmente reiniciar serviços. Migrations e seed usam transações separadas: se o seed falhar depois das migrations, a estrutura permanece e o bootstrap pode ser repetido após corrigir o problema. Alterar a senha no `.env` também não altera automaticamente a senha de um usuário em um volume já inicializado.
+
+## Demonstração local completa
+
+Pré-requisitos: Docker com Compose v2 (`docker compose`), daemon ativo e `curl` no host. O SDK .NET não é necessário: a API roda na imagem do `Dockerfile`. Com `apps/api/.env` preparado como na seção anterior, execute na raiz:
+
+```sh
+apps/api/scripts/start-demo.sh
+```
+
+O script, em ordem:
+
+1. confere pré-requisitos, o arquivo `.env` e a configuração do Compose, sem instalar nada e sem executar o `.env` como código;
+2. sobe o PostgreSQL e aguarda o healthcheck;
+3. constrói a imagem da API;
+4. executa um bootstrap **novo** a cada chamada (`docker compose run --rm bootstrap`: migrations e depois `seed.sql`) e interrompe tudo se ele falhar;
+5. inicia a API somente depois do bootstrap concluído;
+6. aguarda `GET /health/ready` com prazo finito e confere `GET /api/v1/wallet` e `GET /api/v1/services`, imprimindo as respostas.
+
+Na base nova, a saída mostra `balanceCents` 5000 e os preços 2090 (`dry`) e 1890 (`wash`). Repetir o script preserva saldo, preços e estados já alterados: o seed só insere o que falta. A demo fica em `http://127.0.0.1:5001` (porta `API_PORT` do `.env`), com OpenAPI em `/openapi/v1.json`. Ainda não há compra; o catálogo só informa se o serviço seria contratável.
+
+| Código de saída | Significado |
+| --- | --- |
+| 0 | Banco, bootstrap e API prontos; smoke das consultas aprovado. |
+| 1 | Falha de execução: Compose, bootstrap (a API não é iniciada e nenhum dado é apagado), readiness fora do prazo ou smoke. |
+| 2 | Pré-requisito ou configuração ausente: `docker`/`curl`, Compose v2, daemon, `.env`, `POSTGRES_PASSWORD` ou prazo inválido. |
+
+Variáveis opcionais do script: `CICCLO_ENV_FILE` (outro arquivo de ambiente), `CICCLO_READY_TIMEOUT` (segundos de espera pela readiness, padrão 60) e `COMPOSE_PROJECT_NAME` (outro projeto Compose, com volume próprio). No `.env`, `API_PORT` muda a porta da API e `CICCLO_OTLP_ENDPOINT` habilita a exportação OTLP descrita em "Observabilidade" (o endereço precisa ser alcançável de dentro do container, por exemplo `http://host.docker.internal:4318/` no Docker Desktop).
+
+Conexões: no host, ferramentas usam `127.0.0.1:${POSTGRES_PORT}`; dentro do Compose, bootstrap e API usam `Host=postgres;Port=5432`. A senha chega ao Npgsql pela variável `PGPASSWORD` do container, como dado, e não aparece na connection string, na imagem, no `seed.sql` nem na saída do script. Banco e API publicam portas somente no loopback, e a API não habilita CORS.
+
+Falhas comuns: senha alterada no `.env` depois de criar o volume não muda a senha já gravada no banco (o bootstrap falha com erro de autenticação); outra máquina com o nome `washer-01` ou `dryer-01` faz o seed falhar sem alterar dados; readiness fora do prazo indica API sem acesso à base (consulte `docker compose -f apps/api/docker-compose.yml --env-file apps/api/.env logs api`). O script nunca remove volumes. Para parar, use `docker compose -f apps/api/docker-compose.yml --env-file apps/api/.env --profile app down`, sem `--volumes`.
 
 ## Imagem Docker da API
 
