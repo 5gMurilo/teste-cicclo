@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** em andamento. Última tarefa concluída: T11 (10/37 com Done when marcado); ver STATE.md.
+**Execução:** em andamento. Última tarefa concluída: T12 (11/37 com Done when marcado); ver STATE.md.
 
 ## Execution Protocol
 
@@ -242,7 +242,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Reducer types, contratos públicos de catálogo/carteira.
 **Requirement**: SEL-01, SEL-02, SEL-03, SEL-04, SEL-05, SEL-08, SEL-10.
 **What**: Centralizar totais, expansão de ocorrências, limites/elegibilidade e problemas de revisão sem alterar saldo.
-**Done when**: [ ] Caso 5000/1890/2090 produz 3980/1020; qty e totais seguros; erro/ausência de dados não vira zero financeiro válido; nenhuma regra duplicada em screen.
+**Done when**: [x] Caso 5000/1890/2090 produz 3980/1020; qty e totais seguros; erro/ausência de dados não vira zero financeiro válido; nenhuma regra duplicada em screen.
 **Tests**: unit — teto de 12 casos: 0/1/10/11 ocorrências, duplicatas, saldo insuficiente, qty negativa/fracionária, código ausente, inativo, preço alterado e overflow; incluir duas lavagens 3780.
 **Gate**: Q + CC.
 **Commit**: `feat(checkout): derive bounded financial selection projections`
@@ -709,7 +709,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **10/37 tarefas com Done when marcado** (última: T11); demais abertas ou pendentes de gate externo.
+- Implementação: **11/37 tarefas com Done when marcado** (última: T12); demais abertas ou pendentes de gate externo.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1/C2/C3/CP1 não comprovadas; N1 não executado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.
