@@ -99,16 +99,22 @@ test('container configuration uses pinned stages and non-root runtime', () => {
   assert.match(dockerfile, /ENTRYPOINT \["dotnet", "Cicclo.Api.dll"\]/);
 });
 
-test('postgres configuration persists data and mounts the empty seed read-only', () => {
+test('postgres configuration persists data and leaves the seed to the post-migration bootstrap', () => {
   const compose = parse(text('apps/api/docker-compose.yml'));
   const postgres = compose.services.postgres;
   assert.equal(postgres.image, 'postgres:18.1');
   assert.match(postgres.ports[0], /^127\.0\.0\.1:/);
   assert.ok(postgres.volumes.includes('postgres-data:/var/lib/postgresql'));
-  assert.ok(postgres.volumes.includes('./init/seed.sql:/docker-entrypoint-initdb.d/seed.sql:ro'));
+  assert.ok(postgres.volumes.every((volume) => !volume.includes('docker-entrypoint-initdb.d')));
   assert.match(postgres.environment.POSTGRES_PASSWORD, /\$\{POSTGRES_PASSWORD:\?/);
   assert.ok(postgres.healthcheck.test.join(' ').includes('pg_isready'));
   assert.ok(Object.hasOwn(compose.volumes, 'postgres-data'));
-  assert.equal(readFileSync('apps/api/init/seed.sql').length, 0);
+  const seed = text('apps/api/init/seed.sql');
+  assert.ok(seed.length > 0);
+  assert.doesNotMatch(seed, /\b(CREATE|ALTER|DROP|TRUNCATE|DELETE|UPDATE)\b/i);
+  assert.equal(seed.match(/ON CONFLICT \(\w+\) DO NOTHING;/g)?.length, 3);
   assert.deepEqual(readdirSync('apps/api/init'), ['seed.sql']);
+  assert.match(text('apps/api/src/Cicclo.Api.csproj'), /<Content Include="\.\.\/init\/seed\.sql" Link="Seed\/seed\.sql"/);
+  assert.doesNotMatch(text('apps/api/.dockerignore'), /^init$/m);
+  assert.match(text('apps/api/Dockerfile'), /COPY init\/ \.\/init\//);
 });

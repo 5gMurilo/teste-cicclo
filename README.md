@@ -59,7 +59,7 @@ Diagnóstico da API:
 curl http://localhost:5001/health
 ```
 
-Resposta: HTTP 200, `text/plain`, corpo `Healthy`. É somente liveness do processo, não uma declaração de disponibilidade do PostgreSQL. Não há autenticação, ORM ou conexão API/banco configurada nesta entrega.
+Resposta: HTTP 200, `text/plain`, corpo `Healthy`. É somente liveness do processo, não uma declaração de disponibilidade do PostgreSQL. Não há autenticação. A conexão `ConnectionStrings:Cicclo` é resolvida apenas quando um componente de dados a usa; sem ela, a API continua subindo.
 
 ## Validação
 
@@ -101,7 +101,26 @@ Conexão: `127.0.0.1:5432`, banco e usuário `cicclo`, senha definida no `.env`.
 
 ### Seed e volume
 
-`apps/api/init/seed.sql` começa vazio (0 bytes) e é montado somente para leitura em `/docker-entrypoint-initdb.d/seed.sql`. A imagem oficial executa os scripts desse diretório **apenas quando inicializa um diretório de dados novo**. Acrescentar SQL e reiniciar um banco existente não reaplica o seed. Não use o seed como mecanismo de migrations.
+O PostgreSQL inicia vazio. As tabelas vêm das migrations do EF Core e `apps/api/init/seed.sql` contém **somente dados iniciais**: wallet BRL com saldo 50.00, serviços `wash` (Lavagem, 18.90) e `dry` (Secagem, 20.90) e as máquinas `washer-01` e `dryer-01`, todas com identificadores estáveis. O arquivo não é montado em `/docker-entrypoint-initdb.d`: ali ele rodaria antes das migrations e apenas em volume novo.
+
+Para preparar o banco, execute o modo explícito `--bootstrap-demo` da própria API, com o banco do Compose já ativo:
+
+```sh
+export ASPNETCORE_ENVIRONMENT=Development
+export Laundry__DemoMode=true
+export ConnectionStrings__Cicclo='Host=127.0.0.1;Port=5432;Database=cicclo;Username=cicclo;Password=<senha do .env>'
+dotnet run --project apps/api/src/Cicclo.Api.csproj --no-launch-profile -- --bootstrap-demo
+```
+
+O comando aplica as migrations pendentes e, somente depois do sucesso, executa o `seed.sql` em uma transação. Ele não abre listener HTTP, não usa `psql` nem ferramentas globais e não imprime a connection string. A imagem Docker da API aceita a mesma opção e as mesmas variáveis.
+
+| Código de saída | Significado |
+| --- | --- |
+| 0 | Migrations e seed concluídos. |
+| 1 | Migration falhou (seed não executado) ou seed falhou (todos os inserts do seed revertidos; migrations aplicadas são mantidas). |
+| 2 | Recusado: ambiente diferente de Development, `Laundry:DemoMode` ausente/false ou `ConnectionStrings:Cicclo` não configurada. |
+
+Repetir o comando é seguro: os inserts usam `ON CONFLICT ... DO NOTHING` sobre as identidades estáveis e preservam saldo, preços, estados e datas já existentes. Nada é apagado nem restaurado. Se outra máquina já usar o nome `washer-01` ou `dryer-01` com outro UUID, o seed falha sem alterar dados; investigue antes de repetir. A API em modo normal nunca executa migrations nem seed, e reiniciá-la não restaura a demonstração.
 
 O volume nomeado `postgres-data` é montado em `/var/lib/postgresql`, o caminho recomendado para PostgreSQL 18+. Para parar sem perder dados:
 
@@ -109,7 +128,7 @@ O volume nomeado `postgres-data` é montado em `/var/lib/postgresql`, o caminho 
 docker compose -f apps/api/docker-compose.yml --env-file apps/api/.env down
 ```
 
-Recriar o container preserva o banco. Remover o volume (`down --volumes`) **apaga os dados locais**; não faça isso para simplesmente reiniciar serviços. Uma falha em um seed futuro pode deixar o volume parcialmente inicializado: corrija o problema e avalie os dados antes de decidir restaurar ou reinicializar. Alterar a senha no `.env` também não altera automaticamente a senha de um usuário em um volume já inicializado.
+Recriar o container preserva o banco. Remover o volume (`down --volumes`) **apaga os dados locais**; não faça isso para simplesmente reiniciar serviços. Migrations e seed usam transações separadas: se o seed falhar depois das migrations, a estrutura permanece e o bootstrap pode ser repetido após corrigir o problema. Alterar a senha no `.env` também não altera automaticamente a senha de um usuário em um volume já inicializado.
 
 ## Imagem Docker da API
 

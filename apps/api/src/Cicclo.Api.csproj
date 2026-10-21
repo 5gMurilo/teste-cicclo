@@ -11,4 +11,8 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.13" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Fonte única dos dados iniciais, distribuída ao lado do executável para o modo bootstrap. -->
+    <Content Include="../init/seed.sql" Link="Seed/seed.sql" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>
