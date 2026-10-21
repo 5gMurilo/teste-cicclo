@@ -1,3 +1,4 @@
+import { act } from '@testing-library/react-native';
 import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 
 import { capabilities } from '../src/shared/api/capabilities';
@@ -52,6 +53,7 @@ let posts: { url: string; body: string | undefined }[];
 let commandReply: (url: string) => Reply | Promise<Reply>;
 let gets: number;
 let walletBalance: number;
+let walletGate: Promise<void>;
 
 function response({ status, body, headers = {} }: Reply): Response {
   const lower = Object.fromEntries(Object.entries(headers).map(([k, v]) => [k.toLowerCase(), v]));
@@ -68,6 +70,7 @@ beforeEach(() => {
   posts = [];
   gets = 0;
   walletBalance = 3110;
+  walletGate = Promise.resolve();
   detail = { status: 200, body: booking(item('pending_activation')) };
   commandReply = () => ({ status: 200, body: item('queued', { queuePosition: 1 }) });
   globalThis.fetch = jest.fn(async (url: string | URL | Request, init?: RequestInit) => {
@@ -77,6 +80,7 @@ beforeEach(() => {
       return response(await commandReply(target));
     }
     if (target.endsWith('/wallet')) {
+      await walletGate;
       return response({ status: 200, body: { balanceCents: walletBalance, currency: 'BRL', updatedAt: '2026-10-21T12:00:00Z' } });
     }
     if (target.endsWith('/services')) return response({ status: 200, body: { services: [] } });
@@ -421,5 +425,86 @@ describe('T35: report an issue without promising a refund', () => {
     } finally {
       capabilities.itemCommands.reportIssue = true;
     }
+  });
+});
+
+describe('T34 and T33 hardening: nothing is credited early, the detail is re-read at the deadline', () => {
+  const cancelBody = (refunded: number, remaining: number) => ({
+    item: item('cancelled'),
+    refundedAmountCents: refunded,
+    remainingBalanceCents: remaining,
+  });
+  let open: () => void = () => undefined;
+  const holdWallet = () => {
+    walletGate = new Promise<void>((resolve) => (open = resolve));
+  };
+  afterEach(() => open());
+
+  it('writes the remaining balance the API returned, not the refunded amount, and does not wait for the wallet read', async () => {
+    detail = { status: 200, body: booking(item('queued', { queuePosition: 1 })) };
+    commandReply = () => ({ status: 200, body: cancelBody(1890, 5000) });
+    await openDetail();
+    await screen.findByText('Na fila');
+    await waitFor(() => expect(queryClient.getQueryData(['wallet'])).toMatchObject({ balanceCents: 3110 }));
+    holdWallet();
+    detail = { status: 200, body: booking(item('cancelled')) };
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Cancelar wash' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Confirmar cancelamento de wash' }));
+
+    // The wallet read is held: the result is already shown and the cache holds exactly the API's balance.
+    expect(await screen.findByText(/Estorno confirmado/)).toBeOnTheScreen();
+    expect(queryClient.getQueryData(['wallet'])).toMatchObject({ balanceCents: 5000 });
+  });
+
+  it('leaves the cached balance untouched when the cancellation fails', async () => {
+    detail = { status: 200, body: booking(item('queued', { queuePosition: 1 })) };
+    commandReply = () => ({ status: 409, body: { errorCode: 'INVALID_STATE_TRANSITION' } });
+    await openDetail();
+    await screen.findByText('Na fila');
+    await waitFor(() => expect(queryClient.getQueryData(['wallet'])).toMatchObject({ balanceCents: 3110 }));
+    holdWallet();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Cancelar wash' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Confirmar cancelamento de wash' }));
+
+    expect(await screen.findByText(/O estado da execução mudou/)).toBeOnTheScreen();
+    expect(queryClient.getQueryData(['wallet'])).toMatchObject({ balanceCents: 3110 });
+  });
+
+  it('also leaves the balance untouched when a success response is not valid', async () => {
+    detail = { status: 200, body: booking(item('queued', { queuePosition: 1 })) };
+    commandReply = () => ({ status: 200, body: { item: item('cancelled'), remainingBalanceCents: 9999 } });
+    await openDetail();
+    await screen.findByText('Na fila');
+    await waitFor(() => expect(queryClient.getQueryData(['wallet'])).toMatchObject({ balanceCents: 3110 }));
+    holdWallet();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Cancelar wash' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Confirmar cancelamento de wash' }));
+
+    expect(await screen.findByText(/Não foi possível concluir a ação/)).toBeOnTheScreen();
+    expect(queryClient.getQueryData(['wallet'])).toMatchObject({ balanceCents: 3110 });
+  });
+
+  it('re-reads the detail when the offer deadline reaches zero, before any polling tick', async () => {
+    const T0 = Date.parse('2026-10-21T12:00:00Z');
+    jest.spyOn(Date, 'now').mockImplementation(() => T0);
+    detail = {
+      status: 200,
+      body: booking(item('to_be_confirmed', { machineId: MACHINE_ID, expiresAt: new Date(T0 + 3_000).toISOString() })),
+    };
+    await openDetail();
+    await screen.findByText('Tempo restante: 3 s');
+    const before = gets;
+
+    await act(async () => {
+      jest.setSystemTime(Date.now() + 3_100);
+      await jest.advanceTimersByTimeAsync(3_100);
+    });
+
+    expect(await screen.findByText('Oferta vencida')).toBeOnTheScreen();
+    expect(gets).toBeGreaterThan(before);
+    jest.restoreAllMocks();
   });
 });
