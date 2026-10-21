@@ -1,20 +1,19 @@
-import { StyleSheet, Text } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, Text, View } from 'react-native';
 
 type Props = {
   title: string;
   message: string;
 };
 
-// Temporary honest state until each tab gets its domain screen; owns the top inset until the shared header does.
+// Temporary honest state until each tab gets its domain screen; the shared header owns the top inset.
 export function PlaceholderScreen({ title, message }: Props) {
   return (
-    <SafeAreaView edges={['top']} style={styles.container}>
+    <View style={styles.container}>
       <Text accessibilityRole="header" style={styles.title}>
         {title}
       </Text>
       <Text style={styles.message}>{message}</Text>
-    </SafeAreaView>
+    </View>
   );
 }
 

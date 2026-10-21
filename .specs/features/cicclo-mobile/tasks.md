@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** em andamento. T1 (E0) a T6 concluídas em 2026-10-21; T7–T37 abertas.
+**Execução:** em andamento. T1 (E0) a T7 concluídas em 2026-10-21; T8–T37 abertas.
 
 ## Execution Protocol
 
@@ -185,7 +185,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Props conectadas pelo layout à query wallet; env; money formatter e tokens mínimos introduzidos com este primeiro consumidor.
 **Requirement**: NAV-03, READ-01, READ-02, READ-03, UX-01, UX-02.
 **What**: Renderizar saudação à esquerda e saldo/status à direita; layout fornece dados/retry, shared não importa features.
-**Done when**: [ ] Loading não mostra moeda; falha tem retry; valor é BRL real; nome longo/fonte ampliada têm quebra controlada; um dono de inset; formatador não aceita dinheiro inválido.
+**Done when**: [x] Loading não mostra moeda; falha tem retry; valor é BRL real; nome longo/fonte ampliada têm quebra controlada; um dono de inset; formatador não aceita dinheiro inválido.
 **Tests**: integration — teto de 6 casos: nome/default, wallet 5000, loading, erro/retry, saldo desatualizado rotulado, labels e font scaling; unitário de BRL/inteiro junto ao helper criado.
 **Gate**: F + CC.
 **Commit**: `feat(wallet): present shared balance and greeting states`
@@ -709,7 +709,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **6/37 tarefas executadas** (T1–T6 concluídas em 2026-10-21); demais checkboxes de Done when abertas.
+- Implementação: **7/37 tarefas executadas** (T1–T7 concluídas em 2026-10-21); demais checkboxes de Done when abertas.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1/C2/C3/CP1 não comprovadas; N1 não executado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.

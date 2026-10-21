@@ -43,10 +43,14 @@ function parseApiOrigin(value: string | undefined): string {
   return url.origin;
 }
 
+function parseDisplayName(value: string | undefined): string {
+  return value?.trim() || FALLBACK_DISPLAY_NAME;
+}
+
 export function parsePublicEnv(raw: RawPublicEnv): PublicEnv {
   return {
     apiOrigin: parseApiOrigin(raw.apiUrl),
-    displayName: raw.displayName?.trim() || FALLBACK_DISPLAY_NAME,
+    displayName: parseDisplayName(raw.displayName),
   };
 }
 
@@ -56,4 +60,9 @@ export function readPublicEnv(): PublicEnv {
     apiUrl: process.env.EXPO_PUBLIC_API_URL,
     displayName: process.env.EXPO_PUBLIC_DEMO_DISPLAY_NAME,
   });
+}
+
+/** The greeting must render even when the API URL is misconfigured, so it is read on its own. */
+export function readDisplayName(): string {
+  return parseDisplayName(process.env.EXPO_PUBLIC_DEMO_DISPLAY_NAME);
 }
