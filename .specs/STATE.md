@@ -45,10 +45,11 @@
 ## Handoff
 
 - **Feature**: `.specs/features/cicclo-mobile/spec.md`.
-- **Phase / Task**: Execute inline e sequencial. Última tarefa fechada: T16.
-- **Completed**: T1-T9 e T11-T16 fechadas (E2 completa em código: gate B 138 testes e export Android/iOS); T10 e o fechamento de E1/E2 pendentes de C1. T16 = badge do Checkout com nome acessível (15/37 com Done when marcado).
-- **In-progress**: Nenhuma.
-- **Next step**: Parado no combinado: tudo que depende da API real aguarda o usuário avisar que a API está no docker. Ao retomar: provar C1 (demo Home/Checkout sem débito), fechar T10, integrar E1 e E2 por fast-forward, e seguir para E3 (T17+).
-- **Blockers**: C1 não provado (nenhuma execução contra a API real). `tests/bootstrap.test.mjs` teste 6 falha localmente por ausência de `dotnet` (ambiental, anterior ao trabalho mobile). C1/C2/C3 e CP1 não comprovados; N1 (T29) fica com o usuário (AD-005). Backend existe em branches locais (`feat/backend-e0*`, HEAD `a02a845`) com a base do bootstrap como ancestral; contratos reais só entram quando T6/T8/T17 os lerem.
-- **Uncommitted files**: `.omc/` (não versionar).
-- **Branch**: `feat/mobile-01-catalog-wallet`.
+- **Phase / Task**: Execute inline e sequencial, pausado por decisão do usuário (2026-10-21): tudo que exige a API real aguarda o aviso de que ela está disponível no docker.
+- **Completed**: T1 a T9 e T11 a T16 (15/37 com Done when marcado). E0 integrada em `mobile-worktree`. Gate B de E2: 138 testes, typecheck, lint e export Android/iOS verdes.
+- **In-progress**: T10 está implementada (`[~]`) e só fecha com C1.
+- **Pendente da API real**: C1 (T10 e demo de E1/E2: Home e Checkout sem débito, saldo 5000, catálogo 1890/2090), depois integração por fast-forward de E1 e E2 em `mobile-worktree`; C2 (T17-T21, CTA real em T21), C3 (T22-T28), N1 (T29, com o usuário).
+- **Next step**: quando o usuário avisar que a API está no docker, provar C1, fechar T10, integrar E1 e E2 e seguir para E3 (T17). Contratos de wallet, catálogo, compra, detalhe e listagem estão nas branches locais `feat/backend-e0*` (commit `a02a845`); registrar a origem de cada um em `apps/mobile/docs/api-contract.md`.
+- **Blockers**: C1/C2/C3 não provados. `dotnet` não aparece no PATH desta sessão (há `docker` e `psql`). `tests/bootstrap.test.mjs` teste 6 falha localmente por isso.
+- **Branches**: `feat/mobile-01-catalog-wallet` = T2 a T10 (`6bd529c`); `feat/mobile-02-selection-review` = T11 a T16 sobre ela (`ae97837`, branch atual). `mobile-worktree` está em E0 (`08e6c7d`).
+- **Uncommitted files**: `.omc/` e `apps/mobile/.omc/` (estado de ferramenta, não versionar).
