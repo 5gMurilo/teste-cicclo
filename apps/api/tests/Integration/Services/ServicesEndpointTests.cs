@@ -17,6 +17,20 @@ public sealed class ServicesEndpointTests(PostgresFixture postgres)
 {
     private const string Path = "/api/v1/services";
 
+    /// <summary>
+    /// Desde a E03, reserved é sempre a oferta corrente a um item (ck_machines_active_item): cada máquina reservada
+    /// aponta um item to_be_confirmed de uma compra, como a promoção da fila grava.
+    /// </summary>
+    private const string ReservedByOffers =
+        """
+        INSERT INTO service_requests (id, wallet_id, idempotency_key, request_fingerprint, total_amount, created_at)
+        VALUES ('00000000-0000-4000-8000-00000000b601', '00000000-0000-4000-8000-000000000001', gen_random_uuid(), repeat('e', 64), 39.80, now());
+        INSERT INTO service_request_items (id, request_id, service_code, unit_price, status, queue_ticket, queued_at, machine_id, offered_at, expires_at)
+        VALUES ('00000000-0000-4000-8000-00000000c601', '00000000-0000-4000-8000-00000000b601', 'wash', 18.90, 'to_be_confirmed', nextval('queue_ticket_seq'), now(), '00000000-0000-4000-8000-000000000101', now(), now() + interval '60 seconds'),
+               ('00000000-0000-4000-8000-00000000c602', '00000000-0000-4000-8000-00000000b601', 'dry', 20.90, 'to_be_confirmed', nextval('queue_ticket_seq'), now(), '00000000-0000-4000-8000-000000000102', now(), now() + interval '60 seconds');
+        UPDATE machines SET state = 'reserved', active_item_id = CASE name WHEN 'washer-01' THEN '00000000-0000-4000-8000-00000000c601'::uuid ELSE '00000000-0000-4000-8000-00000000c602'::uuid END;
+        """;
+
     private static readonly string[] ItemFields =
         ["code", "name", "machineType", "unitPriceCents", "currency", "isActive", "canBeBooked", "unavailabilityReason"];
 
@@ -98,7 +112,7 @@ public sealed class ServicesEndpointTests(PostgresFixture postgres)
     [InlineData("running")]
     public async Task C06_ReservedOrRunningMachinesKeepTheServiceBookable(string state)
     {
-        var database = await SeededAsync($"UPDATE machines SET state = '{state}';");
+        var database = await SeededAsync(state == "reserved" ? ReservedByOffers : $"UPDATE machines SET state = '{state}';");
 
         var services = await CatalogAsync(database);
 

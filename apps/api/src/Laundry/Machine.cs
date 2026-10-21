@@ -14,7 +14,7 @@ public enum MachineState
     OutOfService,
 }
 
-/// <summary>Capacidade física mínima consultada pelo catálogo; transições chegam com suas próprias etapas.</summary>
+/// <summary>Capacidade física; reserved e running com item real apontam o item ativo.</summary>
 public sealed class Machine(Guid id, string name, MachineType machineType, MachineState state, DateTime updatedAt)
 {
     public Guid Id { get; private set; } = id;
@@ -26,4 +26,7 @@ public sealed class Machine(Guid id, string name, MachineType machineType, Machi
     public MachineState State { get; private set; } = state;
 
     public DateTime UpdatedAt { get; private set; } = updatedAt;
+
+    /// <summary>Item com oferta corrente (reserved) ou em execução (running); null quando livre ou fora de serviço.</summary>
+    public Guid? ActiveItemId { get; private set; }
 }

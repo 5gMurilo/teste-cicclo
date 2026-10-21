@@ -149,6 +149,8 @@ O PostgreSQL inicia vazio. As tabelas vêm das migrations do EF Core e `apps/api
 
 As migrations também criam o histórico financeiro das compras, que o seed nunca preenche: `service_requests` (compra confirmada, única por wallet e chave de idempotência, total em `numeric(12,2)`), `service_request_items` (uma linha por execução contratada, com o preço histórico cobrado) e `wallet_transactions` (lançamentos de valor positivo e saldo resultante não negativo; no máximo um débito por compra). As chaves estrangeiras são `ON DELETE RESTRICT`: apagar serviço, wallet ou compra com histórico é recusado. A API ainda não expõe comando de compra.
 
+Para a fila e as ofertas de máquina, cada item guarda `queue_ticket` (da sequência monotônica `queue_ticket_seq`; lacunas deixadas por transações revertidas são normais), `queued_at` (última entrada na fila, base da medida de espera), `machine_id`, `offered_at`, `expires_at` e `started_at`, e cada máquina guarda `active_item_id`. O banco recusa estados incompatíveis: item pendente sem ticket, oferta sem máquina ou com prazo não posterior à oferta, início fora da validade da oferta, máquina `reserved` sem item ou livre/fora de serviço com item. Um índice único parcial garante no máximo uma atribuição ativa (`to_be_confirmed` ou `in_progress`) por máquina. Essas colunas ficam nulas nas compras já existentes.
+
 Para preparar o banco, execute o modo explícito `--bootstrap-demo` da própria API, com o banco do Compose já ativo:
 
 ```sh

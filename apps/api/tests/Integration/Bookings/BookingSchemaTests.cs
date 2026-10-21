@@ -16,6 +16,7 @@ public sealed class BookingSchemaTests(PostgresFixture postgres)
     private const string DebitId = "00000000-0000-4000-8000-00000000d001";
     private const string Key = "11111111-1111-4111-8111-111111111111";
     private static readonly string Fingerprint = new('a', 64);
+    private const string LedgerMigration = "BookingLedger";
 
     private static readonly string BookingWithDebit =
         $"""
@@ -66,12 +67,13 @@ public sealed class BookingSchemaTests(PostgresFixture postgres)
         var before = await DemoData.SnapshotAsync(database);
         var stamps = await database.RowsAsync("SELECT created_at, updated_at FROM wallets UNION ALL SELECT updated_at, updated_at FROM machines ORDER BY 1");
 
-        await database.MigrateAsync();
+        // Prova a migration da E02 sobre a base E01; as migrations posteriores têm testes próprios (Integration/Laundry).
+        await database.MigrateAsync(LedgerMigration);
 
         Assert.Equal(before, await DemoData.SnapshotAsync(database));
         Assert.Contains($"wallet|{DemoData.WalletId}|BRL|31.10", before);
         Assert.Equal(stamps, await database.RowsAsync("SELECT created_at, updated_at FROM wallets UNION ALL SELECT updated_at, updated_at FROM machines ORDER BY 1"));
-        Assert.Equal(TestDatabase.MigrationIds, await database.RowsAsync("SELECT \"MigrationId\" FROM \"__EFMigrationsHistory\" ORDER BY 1"));
+        Assert.Equal(TestDatabase.MigrationIdsThrough(LedgerMigration), await database.RowsAsync("SELECT \"MigrationId\" FROM \"__EFMigrationsHistory\" ORDER BY 1"));
         Assert.Equal(
             [
                 "service_request_items|id|uuid|True",
@@ -113,6 +115,8 @@ public sealed class BookingSchemaTests(PostgresFixture postgres)
         Assert.Equal(TestDatabase.MigrationIds, await database.RowsAsync("SELECT \"MigrationId\" FROM \"__EFMigrationsHistory\" ORDER BY 1"));
         Assert.Equal(
             [
+                "machines|fk_machines_service_request_items|service_request_items|r",
+                "service_request_items|fk_service_request_items_machines|machines|r",
                 "service_request_items|fk_service_request_items_service_requests|service_requests|r",
                 "service_request_items|fk_service_request_items_services|services|r",
                 "service_requests|fk_service_requests_wallets|wallets|r",
@@ -137,7 +141,7 @@ public sealed class BookingSchemaTests(PostgresFixture postgres)
     [InlineData("UPDATE service_requests SET request_fingerprint = request_fingerprint || 'a'", PostgresErrorCodes.CheckViolation, "ck_service_requests_request_fingerprint_sha256")]
     [InlineData("UPDATE service_request_items SET unit_price = -18.90", PostgresErrorCodes.CheckViolation, "ck_service_request_items_unit_price_positive")]
     [InlineData("UPDATE service_request_items SET unit_price = 0.00", PostgresErrorCodes.CheckViolation, "ck_service_request_items_unit_price_positive")]
-    [InlineData("UPDATE service_request_items SET status = 'queued'", PostgresErrorCodes.CheckViolation, "ck_service_request_items_status")]
+    [InlineData("UPDATE service_request_items SET status = 'completed', queue_ticket = nextval('queue_ticket_seq'), queued_at = now()", PostgresErrorCodes.CheckViolation, "ck_service_request_items_status")]
     [InlineData("UPDATE wallet_transactions SET amount = 0.00", PostgresErrorCodes.CheckViolation, "ck_wallet_transactions_amount_positive")]
     [InlineData("UPDATE wallet_transactions SET balance_after = -0.01", PostgresErrorCodes.CheckViolation, "ck_wallet_transactions_balance_after_non_negative")]
     [InlineData("UPDATE wallet_transactions SET kind = 'refund'", PostgresErrorCodes.CheckViolation, "ck_wallet_transactions_kind")]

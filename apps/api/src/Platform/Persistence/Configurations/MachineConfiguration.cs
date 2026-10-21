@@ -1,3 +1,4 @@
+using Cicclo.Api.Bookings;
 using Cicclo.Api.Laundry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -14,6 +15,10 @@ internal sealed class MachineConfiguration : IEntityTypeConfiguration<Machine>
             table.HasCheckConstraint(
                 "ck_machines_state",
                 "state IN ('available', 'reserved', 'running', 'out_of_service')");
+            // Item ativo só em reserved/running; reserved é sempre uma oferta a um item.
+            table.HasCheckConstraint(
+                "ck_machines_active_item",
+                "(state IN ('reserved', 'running') OR active_item_id IS NULL) AND (state <> 'reserved' OR active_item_id IS NOT NULL)");
         });
 
         builder.HasKey(machine => machine.Id).HasName("pk_machines");
@@ -28,8 +33,16 @@ internal sealed class MachineConfiguration : IEntityTypeConfiguration<Machine>
             .HasColumnType("text")
             .HasConversion(LaundryColumns.MachineStateConverter);
         builder.Property(machine => machine.UpdatedAt).HasColumnName("updated_at");
+        builder.Property(machine => machine.ActiveItemId).HasColumnName("active_item_id");
+
+        builder.HasOne<BookingItem>()
+            .WithMany()
+            .HasForeignKey(machine => machine.ActiveItemId)
+            .HasConstraintName("fk_machines_service_request_items")
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(machine => machine.Name).IsUnique().HasDatabaseName("ux_machines_name");
         builder.HasIndex(machine => new { machine.MachineType, machine.State }).HasDatabaseName("ix_machines_machine_type_state");
+        builder.HasIndex(machine => machine.ActiveItemId).IsUnique().HasDatabaseName("ux_machines_active_item_id");
     }
 }

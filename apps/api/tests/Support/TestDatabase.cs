@@ -14,6 +14,10 @@ public sealed class TestDatabase(string connectionString)
     /// <summary>Identificadores de todas as migrations do assembly, em ordem de aplicação.</summary>
     public static IReadOnlyList<string> MigrationIds { get; } = LoadMigrationIds();
 
+    /// <summary>Migrations do assembly até a indicada (inclusive), como ficam no histórico de uma base daquele incremento.</summary>
+    public static IReadOnlyList<string> MigrationIdsThrough(string migrationName) =>
+        [.. MigrationIds.Take(MigrationIds.ToList().FindIndex(id => id.EndsWith("_" + migrationName, StringComparison.Ordinal)) + 1)];
+
     public CiccloDbContext CreateContext() =>
         new(new DbContextOptionsBuilder<CiccloDbContext>().UseNpgsql(ConnectionString).Options);
 
