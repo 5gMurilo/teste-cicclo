@@ -36,7 +36,7 @@ describe('tab navigation', () => {
 
       await fireEvent.press(screen.getByLabelText('Serviços, tab, 1 of 3'));
       expect(app.getPathname()).toBe('/services');
-      expect(screen.getByText(/aparecerão aqui quando a listagem estiver disponível/)).toBeOnTheScreen();
+      expect(await screen.findByText(/A listagem de contratações não está disponível/)).toBeOnTheScreen();
 
       await fireEvent.press(screen.getByLabelText('Checkout, tab, 3 of 3'));
       expect(app.getPathname()).toBe('/checkout');
