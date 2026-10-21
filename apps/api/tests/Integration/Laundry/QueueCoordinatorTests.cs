@@ -386,6 +386,49 @@ public sealed class QueueCoordinatorTests(PostgresFixture postgres)
         Assert.Equal(Guid.Parse(WasherId), (await activation.WaitAsync(SignalTimeout)).Item!.MachineId);
     }
 
+    /// <summary>
+    /// QUEUE-13 (dívida N19 da E03): repetir a ativação de um item já ofertado ou em execução devolve o estado atual, sem
+    /// ticket novo, sem oferta e sem nenhuma escrita; em execução, nem o prazo vencido da oferta antiga muda algo.
+    /// </summary>
+    [Theory]
+    [InlineData("to_be_confirmed", 10)]
+    [InlineData("in_progress", 90)]
+    public async Task A15_RepeatedActivationOfAnOfferedOrStartedItemReturnsTheCurrentStateWithoutANewTicket(string state, int repeatAfterSeconds)
+    {
+        var database = await ReadyAsync(postgres);
+        var item = await PendingAsync(database);
+        var clock = Clock();
+        var sessions = Sessions(database, QueueApp);
+        await ActivateAsync(sessions, Coordinator(clock), item);
+        if (state == "in_progress")
+        {
+            clock.SetUtcNow(T0.AddSeconds(5));
+            var booking = await database.ScalarAsync<Guid>($"SELECT request_id FROM service_request_items WHERE id = '{item}'");
+            var started = await new Cicclo.Api.Laundry.ConfirmOffer.ConfirmOffer(sessions, Coordinator(clock), Metrics(), clock, Microsoft.Extensions.Logging.Abstractions.NullLogger<Cicclo.Api.Laundry.ConfirmOffer.ConfirmOffer>.Instance)
+                .ExecuteAsync(booking, item, CancellationToken.None);
+            Assert.Equal(Cicclo.Api.Laundry.ConfirmOffer.ConfirmOfferOutcome.Started, started.Outcome);
+        }
+
+        clock.SetUtcNow(T0.AddSeconds(repeatAfterSeconds));
+        var before = await database.RowsAsync(StateSql);
+        Assert.Contains(before, row => row.StartsWith($"item|{item}|{state}|1|", StringComparison.Ordinal));
+
+        var result = await ActivateAsync(sessions, Coordinator(clock), item);
+
+        Assert.Equal(ActivationOutcome.AlreadyActive, result.Outcome);
+        var expectedStatus = state == "in_progress" ? BookingItemStatus.InProgress : BookingItemStatus.ToBeConfirmed;
+        Assert.Equal((item, expectedStatus, (Guid?)Guid.Parse(WasherId), (int?)null), (result.Item!.ItemId, result.Item.Status, result.Item.MachineId, result.Item.QueuePosition));
+        if (state == "to_be_confirmed")
+        {
+            Assert.Equal(T0.UtcDateTime.AddSeconds(60), result.Item.ExpiresAt);
+        }
+
+        Assert.Empty(result.Offers);
+        Assert.Empty(result.Expired);
+        Assert.Equal(before, await database.RowsAsync(StateSql));
+        Assert.Equal(1L, await database.ScalarAsync<long>("SELECT last_value FROM queue_ticket_seq"));
+    }
+
     private static async Task<string> UpdatedAtAsync(TestDatabase database, string machineId) =>
         await database.ScalarAsync<string>($"SELECT to_char(updated_at AT TIME ZONE 'UTC', 'HH24:MI:SS.US') FROM machines WHERE id = '{machineId}'");
 

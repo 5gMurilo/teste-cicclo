@@ -40,6 +40,7 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
         typeof(PostgresBookingProjection), typeof(Cicclo.Api.Bookings.GetBooking.GetBookingEndpoint),
         typeof(PostgresQueueSession), typeof(CreateBookingEndpoint), typeof(Cicclo.Api.Bookings.ListBookings.ListBookingsEndpoint),
         typeof(Cicclo.Api.Wallet.ListTransactions.PostgresLedgerQuery), typeof(Cicclo.Api.Wallet.ListTransactions.ListTransactionsEndpoint),
+        typeof(Cicclo.Api.Bookings.ActivateItem.ActivateItemEndpoint),
     ];
 
     [Fact]
@@ -56,7 +57,7 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
                 typeof(Booking), typeof(BookingItem), typeof(BookingItemStatus), typeof(LedgerEntry), typeof(LedgerEntryKind),
                 typeof(CreateBookingUseCase), typeof(ICreateBookingSessions), typeof(ICreateBookingSession), typeof(StoredBooking),
                 typeof(WalletBalance), typeof(ServiceCatalogEntry), typeof(BookingView), typeof(BookingItemView), typeof(BookingResponse),
-                typeof(CreateBookingRequest), typeof(BookingMetrics),
+                typeof(CreateBookingRequest), typeof(BookingMetrics), typeof(Cicclo.Api.Bookings.ActivateItem.ActivateItem),
                 typeof(OfferPolicy), typeof(QueueCoordinator), typeof(IQueueSession), typeof(ILaundrySession), typeof(ILaundrySessions),
                 typeof(Cicclo.Api.Laundry.ConfirmOffer.ConfirmOffer), typeof(Cicclo.Api.Laundry.ConfirmOffer.ConfirmOfferResult),
                 typeof(Cicclo.Api.Laundry.ReconcileOffers.ReconcileOffers), typeof(LaundryMetrics), typeof(QueueChanges),
