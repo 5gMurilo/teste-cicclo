@@ -39,6 +39,9 @@ internal sealed class HookedLaundrySessions(ILaundrySessions inner, Func<Task> b
 
         public Task OccupyAsync(Guid machineId, DateTime occupiedAt, CancellationToken cancellationToken) => inner.OccupyAsync(machineId, occupiedAt, cancellationToken);
 
+        public Task CompleteRunAsync(Guid machineId, Guid? itemId, DateTime completedAt, CancellationToken cancellationToken) =>
+            inner.CompleteRunAsync(machineId, itemId, completedAt, cancellationToken);
+
         public Task StartAsync(Guid itemId, Guid machineId, DateTime startedAt, CancellationToken cancellationToken) =>
             inner.StartAsync(itemId, machineId, startedAt, cancellationToken);
 

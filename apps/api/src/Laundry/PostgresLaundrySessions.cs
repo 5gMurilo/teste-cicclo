@@ -83,6 +83,39 @@ public sealed class PostgresLaundrySessions(IDbContextFactory<CiccloDbContext> c
                     cancellationToken),
                 "máquina livre para ocupar");
 
+        public async Task CompleteRunAsync(Guid machineId, Guid? itemId, DateTime completedAt, CancellationToken cancellationToken)
+        {
+            if (itemId is not { } item)
+            {
+                PostgresQueueSession.Expect(
+                    await db.Database.ExecuteSqlAsync(
+                        $"""
+                        UPDATE machines SET state = 'available', is_demo_occupied = false, updated_at = {completedAt}
+                        WHERE id = {machineId} AND state = 'running' AND active_item_id IS NULL AND is_demo_occupied
+                        """,
+                        cancellationToken),
+                    "máquina em ocupação sintética");
+                return;
+            }
+
+            PostgresQueueSession.Expect(
+                await db.Database.ExecuteSqlAsync(
+                    $"""
+                    UPDATE service_request_items SET status = 'completed'
+                    WHERE id = {item} AND status = 'in_progress' AND machine_id = {machineId}
+                    """,
+                    cancellationToken),
+                "item em execução para concluir");
+            PostgresQueueSession.Expect(
+                await db.Database.ExecuteSqlAsync(
+                    $"""
+                    UPDATE machines SET state = 'available', active_item_id = NULL, updated_at = {completedAt}
+                    WHERE id = {machineId} AND state = 'running' AND active_item_id = {item}
+                    """,
+                    cancellationToken),
+                "máquina em execução do item");
+        }
+
         public async Task StartAsync(Guid itemId, Guid machineId, DateTime startedAt, CancellationToken cancellationToken)
         {
             PostgresQueueSession.Expect(

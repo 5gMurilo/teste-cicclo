@@ -26,9 +26,14 @@ public sealed class OccupyMachineTests(PostgresFixture postgres)
     private const string HolderApp = "cicclo-e06-holder";
     private static readonly string WalletLock = $"SELECT 1 FROM wallets WHERE id = '{DemoData.WalletId}' FOR UPDATE";
 
+    /// <summary>
+    /// Simulação ligada e worker de reconciliação com intervalo de 1 h: avançar o relógio do teste em segundos não dispara
+    /// o worker, então toda promoção observada vem do próprio comando, na mesma transação.
+    /// </summary>
     internal static readonly Dictionary<string, string> Demo = new()
     {
         ["Laundry:DemoMode"] = "true",
+        ["Laundry:QueueWorkerIntervalSeconds"] = "3600",
         ["RateLimiting:ItemCommands:PermitLimit"] = "1000",
         ["RateLimiting:BookingReads:PermitLimit"] = "1000",
     };
