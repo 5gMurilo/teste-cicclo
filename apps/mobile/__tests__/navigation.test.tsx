@@ -20,6 +20,18 @@ describe('tab navigation', () => {
     expect(screen.getByLabelText('Home, tab, 2 of 3')).toBeSelected();
   });
 
+  it('anchors the tabs on Home without the deprecated initialRouteName setting', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      const app = await renderRouter(APP_DIR);
+
+      expect(app.getPathname()).toBe('/');
+      expect(warn.mock.calls.flat().join(' ')).not.toMatch(/initialRouteName/);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   it('navigates to every tab and shows honest placeholders without ever posting', async () => {
     const methods: string[] = [];
     globalThis.fetch = jest.fn(async (_url: string | URL | Request, init?: RequestInit) => {

@@ -8,7 +8,7 @@ import { walletOptions } from '../../features/wallet/queries';
 import { readDisplayName } from '../../shared/config/env';
 import { AppHeader } from '../../shared/layout/AppHeader';
 
-export const unstable_settings = { initialRouteName: 'index' };
+export const unstable_settings = { anchor: 'index' };
 
 const TAB_COUNT = 3;
 const CHECKOUT_POSITION = 3;
