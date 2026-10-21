@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** em andamento. Última tarefa concluída: T16 (15/37 com Done when marcado); ver STATE.md.
+**Execução:** em andamento. Última tarefa concluída: T17 (16/37 com Done when marcado); ver STATE.md.
 
 ## Execution Protocol
 
@@ -299,7 +299,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: client, Zod e tipos OpenAPI reais quando disponíveis.
 **Requirement**: BUY-01, BUY-04, SAFE-01, SAFE-02.
 **What**: Serializar body/header definidos e validar resposta de criação/replay separadamente de futuros GETs.
-**Done when**: [ ] Request exato suporta duplicatas e preferência; 200/201 têm parsing validado; código de erro real registrado; temporários explicitados se contrato ainda ausente, sem habilitar integração.
+**Done when**: [x] Request exato suporta duplicatas e preferência; 200/201 têm parsing validado; código de erro real registrado; temporários explicitados se contrato ainda ausente, sem habilitar integração.
 **Tests**: integration — teto de 6 casos: unitário/batch, duplicatas, preferência, header UUID/body/total, replay 200 e response inválido; POST não calcula preço autoritativo.
 **Gate**: F + CC; C2 antes de T21.
 **Commit**: `feat(checkout): consume the idempotent booking contract`
@@ -709,7 +709,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **15/37 tarefas com Done when marcado** (última: T16); demais abertas ou pendentes de gate externo.
+- Implementação: **16/37 tarefas com Done when marcado** (última: T17); demais abertas ou pendentes de gate externo.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1/C2/C3/CP1 não comprovadas; N1 não executado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.
