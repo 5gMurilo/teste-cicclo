@@ -65,7 +65,7 @@ describe('Checkout tab badge', () => {
     expect(app.getPathname()).toBe('/services');
     await fireEvent.press(screen.getByLabelText(/^Checkout.*tab, 3 of 3$/));
     expect(screen.getByLabelText('Subtotal da seleção: R$ 39,80')).toBeOnTheScreen();
-    expect(screen.getByLabelText('Saldo: R$ 50,00')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Saldo da carteira: R$ 50,00')).toBeOnTheScreen();
 
     await fireEvent.press(screen.getByRole('button', { name: 'Remover Lavagem' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Remover Secagem' }));

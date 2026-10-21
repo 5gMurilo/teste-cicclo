@@ -159,6 +159,25 @@ describe('CheckoutProvider', () => {
     expect(result.current.derived.quantity).toBe(10);
   });
 
+  it('does not send a purchase from confirm() while the purchase capability is off', async () => {
+    const posts: string[] = [];
+    globalThis.fetch = jest.fn((url: string | URL | Request, init?: RequestInit) => {
+      if (init?.method === 'POST') posts.push(String(url));
+      return respond(String(url).endsWith('/wallet') ? walletReply : servicesReply);
+    }) as unknown as typeof fetch;
+    const { result } = await mountProvider();
+    await waitFor(() => expect(result.current.readiness).toBe('ready'));
+    await act(async () => {
+      result.current.add('wash');
+    });
+
+    await act(async () => result.current.purchase.confirm());
+
+    expect(result.current.purchase).toMatchObject({ enabled: false, canConfirm: false });
+    expect(result.current.purchase.state.status).toBe('idle');
+    expect(posts).toHaveLength(0);
+  });
+
   it('still allows removal and clears the preference with the last preferred unit', async () => {
     const { result } = await mountProvider();
     await waitFor(() => expect(result.current.readiness).toBe('ready'));

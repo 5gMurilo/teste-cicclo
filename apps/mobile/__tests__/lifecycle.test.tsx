@@ -157,6 +157,27 @@ describe('connectivity and foreground', () => {
     expect(screen.getByText(`Selecionado: ${nbsp('R$ 18,90')}`)).toBeOnTheScreen();
   });
 
+  it('disables the purchase button offline and while the re-read is pending, with no POST', async () => {
+    await startHome();
+    await addWash();
+    await fireEvent.press(screen.getByRole('button', { name: 'Revisar seleção' }));
+    expect(screen.getByRole('button', { name: /^Confirmar contratação/ })).toBeEnabled();
+
+    await emitNetwork(OFFLINE);
+    expect(screen.getByRole('button', { name: /^Confirmar contratação/ })).toBeDisabled();
+
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    walletReply = () => held.then(okWallet);
+    servicesReply = () => held.then(okServices);
+    await emitNetwork(ONLINE);
+    expect(screen.getByRole('button', { name: /^Confirmar contratação/ })).toBeDisabled();
+
+    release();
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Confirmar contratação/ })).toBeEnabled());
+    expect(posts).toBe(0);
+  });
+
   it('re-reads by REST when the app returns to the foreground, with no POST', async () => {
     await startHome();
     const before = { ...gets };

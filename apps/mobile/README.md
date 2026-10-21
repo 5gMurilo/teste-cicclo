@@ -92,7 +92,7 @@ Comandos na raiz. Resultados reais de 2026-10-21 (commit de documentação deste
 | --- | --- |
 | `pnpm --filter @cicclo/mobile typecheck` | Passa |
 | `pnpm --filter @cicclo/mobile lint` | Passa, zero avisos |
-| `pnpm --filter @cicclo/mobile test` | Passa: 30 suítes, 242 testes |
+| `pnpm --filter @cicclo/mobile test` | Passa: 30 suítes, 252 testes |
 | `pnpm --filter @cicclo/mobile build` | Passa: `expo export` para Android e iOS |
 | `pnpm typecheck` (workspace) | Passa |
 | `pnpm lint`, `pnpm test`, `pnpm build` (workspace) | **Falham por motivo externo**: o pacote da API exige `dotnet`, que não está no PATH da máquina onde foram executados. As partes mobile passam isoladamente (linhas acima) |

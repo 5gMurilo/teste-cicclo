@@ -78,6 +78,22 @@ describe('bookingsListOptions', () => {
     expect(list).toBeDefined();
   });
 
+  it('breaks a createdAt tie by bookingId, newest id first, like the API', async () => {
+    answer = () => ({
+      status: 200,
+      body: page([
+        booking(1, '2026-10-21T10:00:00Z'),
+        booking(3, '2026-10-21T10:00:00Z'),
+        booking(2, '2026-10-21T10:00:00Z'),
+      ]),
+    });
+    await load();
+
+    const observer = new InfiniteQueryObserver(client, bookingsListOptions());
+
+    expect(observer.getCurrentResult().data?.bookings.map((b) => b.bookingId.slice(-1))).toEqual(['3', '2', '1']);
+  });
+
   it('follows the real pagination: the next page is page 2 and the reach is reported', async () => {
     answer = (url) =>
       url.includes('page=1')

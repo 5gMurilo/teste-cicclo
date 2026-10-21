@@ -41,8 +41,8 @@ function Balance({ balance, onRetry }: { balance: BalanceState; onRetry: () => v
       );
     case 'ready':
       return (
-        <View style={styles.balance} accessible accessibilityLabel={`Saldo: ${formatBRL(balance.cents)}`}>
-          <Text style={styles.muted}>Saldo</Text>
+        <View style={styles.balance} accessible accessibilityLabel={`Saldo da carteira: ${formatBRL(balance.cents)}`}>
+          <Text style={styles.muted}>Saldo da carteira</Text>
           <Text style={styles.amount}>{formatBRL(balance.cents)}</Text>
         </View>
       );

@@ -47,6 +47,7 @@ let posts: Post[];
 let postAnswers: (() => Promise<Response>)[];
 let balance: number;
 let washPrice: number;
+let washDisabled: boolean;
 let clock: number;
 
 function response(status: number, body: unknown, headers: Record<string, string> = {}): Response {
@@ -68,6 +69,7 @@ beforeEach(() => {
   postAnswers = [];
   balance = 5000;
   washPrice = 1890;
+  washDisabled = false;
   clock = Date.parse('2026-10-21T12:00:00Z');
   jest.spyOn(Date, 'now').mockImplementation(() => clock);
   globalThis.fetch = jest.fn((url: string | URL | Request, init?: RequestInit) => {
@@ -78,7 +80,7 @@ beforeEach(() => {
     return Promise.resolve(
       String(url).endsWith('/wallet')
         ? response(200, { balanceCents: balance, currency: 'BRL', updatedAt: '2026-10-21T12:00:00Z' })
-        : response(200, { services: [service('wash', 'Lavagem', washPrice), service('dry', 'Secagem', 2090)] }),
+        : response(200, { services: [{ ...service('wash', 'Lavagem', washPrice), ...(washDisabled ? { isActive: false, canBeBooked: false, unavailabilityReason: 'SERVICE_DISABLED' } : {}) }, service('dry', 'Secagem', 2090)] }),
     );
   }) as unknown as typeof fetch;
 });
@@ -118,7 +120,7 @@ describe('purchase from the review screen', () => {
     expect(JSON.parse(posts[0].body)).toEqual({ serviceCodes: ['wash'], expectedTotalCents: 1890 });
     expect(posts[0].key).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     expect(screen.getByLabelText(`Saldo restante: ${nbsp('R$ 31,10')}`)).toBeOnTheScreen();
-    expect(await screen.findByLabelText(`Saldo: ${nbsp('R$ 31,10')}`)).toBeOnTheScreen();
+    expect(await screen.findByLabelText(`Saldo da carteira: ${nbsp('R$ 31,10')}`)).toBeOnTheScreen();
     expect(screen.getByLabelText('Checkout, tab, 3 of 3')).toBeOnTheScreen();
   });
 
@@ -225,5 +227,57 @@ describe('purchase from the review screen', () => {
     expect(await screen.findByText(/a chave já pertence a outra intenção/)).toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: 'Verificar contratação' })).toBeNull();
     expect(screen.queryByRole('button', { name: /^Confirmar contratação/ })).toBeNull();
+  });
+});
+
+describe('purchase button guards and request content', () => {
+  it('sends the chosen execution preference in the request body', async () => {
+    postAnswers = [reply(201, bookingFor(3980, 1020))];
+    await startReview('Lavagem', 'Secagem');
+    await fireEvent.press(screen.getByRole('radio', { name: 'Secagem' }));
+
+    await confirm();
+
+    await screen.findByText('Contratação confirmada');
+    expect(JSON.parse(posts[0].body)).toEqual({
+      serviceCodes: ['wash', 'dry'],
+      expectedTotalCents: 3980,
+      preferredFirstServiceCode: 'dry',
+    });
+  });
+
+  it('omits the preference from the body when none was chosen', async () => {
+    postAnswers = [reply(201, bookingFor(3980, 1020))];
+    await startReview('Lavagem', 'Secagem');
+
+    await confirm();
+
+    await screen.findByText('Contratação confirmada');
+    expect(JSON.parse(posts[0].body)).not.toHaveProperty('preferredFirstServiceCode');
+  });
+
+  it('disables the purchase button when a selected service becomes unavailable', async () => {
+    await startReview('Lavagem');
+    expect(screen.getByRole('button', { name: /^Confirmar contratação/ })).toBeEnabled();
+    washDisabled = true;
+
+    await queryClient.invalidateQueries({ queryKey: ['services'] });
+
+    await waitFor(() => expect(screen.getByText(/Remova os serviços indisponíveis/)).toBeOnTheScreen());
+    expect(screen.getByRole('button', { name: /^Confirmar contratação/ })).toBeDisabled();
+    expect(posts).toHaveLength(0);
+  });
+
+  it('keeps the purchase button disabled when a price rise no longer fits the balance, even after accepting it', async () => {
+    await startReview('Lavagem');
+    washPrice = 6000;
+
+    await queryClient.invalidateQueries({ queryKey: ['services'] });
+
+    await waitFor(() => expect(screen.getByText(/Saldo insuficiente para esta seleção/)).toBeOnTheScreen());
+    expect(screen.getByRole('button', { name: /^Confirmar contratação/ })).toBeDisabled();
+    await fireEvent.press(screen.getByRole('button', { name: 'Aceitar novos preços' }));
+    expect(screen.getByRole('button', { name: /^Confirmar contratação/ })).toBeDisabled();
+    expect(posts).toHaveLength(0);
   });
 });
