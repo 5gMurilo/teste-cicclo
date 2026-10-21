@@ -47,4 +47,17 @@ public sealed class PublishedApiFixture : IAsyncLifetime
                 ["Laundry__DemoMode"] = demoMode,
                 ["ConnectionStrings__Cicclo"] = connectionString,
             });
+
+    /// <summary>Executa `--reset-demo`, com `--confirm-reset` somente quando a confirmação é informada.</summary>
+    public Task<ProcessResult> ResetAsync(string? connectionString, string? confirmation, string environment = "Development", string? demoMode = "true") =>
+        ProcessRunner.RunAsync(
+            ProcessRunner.DotNet,
+            confirmation is null ? [EntryAssembly, "--reset-demo"] : [EntryAssembly, "--reset-demo", "--confirm-reset", confirmation],
+            Path.GetTempPath(),
+            new Dictionary<string, string?>
+            {
+                ["ASPNETCORE_ENVIRONMENT"] = environment,
+                ["Laundry__DemoMode"] = demoMode,
+                ["ConnectionStrings__Cicclo"] = connectionString,
+            });
 }
