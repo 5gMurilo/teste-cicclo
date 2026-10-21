@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** em andamento. T1 (E0) a T3 concluídas em 2026-10-21; T4–T37 abertas.
+**Execução:** em andamento. T1 (E0) a T4 concluídas em 2026-10-21; T5–T37 abertas.
 
 ## Execution Protocol
 
@@ -149,7 +149,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: env, normalizador e fetch nativo.
 **Requirement**: SAFE-01, SAFE-02, BUY-01, BUY-08.
 **What**: Centralizar prefixo/headers, parse JSON, timeout 15s e AbortSignal, retornando unknown para o endpoint validar.
-**Done when**: [ ] Prefixo aparece uma vez; GET propaga signal; POST preserva header/body recebidos; timeout/cleanup funcionam; transporte não inventa chave ou rollback.
+**Done when**: [x] Prefixo aparece uma vez; GET propaga signal; POST preserva header/body recebidos; timeout/cleanup funcionam; transporte não inventa chave ou rollback.
 **Tests**: unit — teto de 9 casos: GET, POST/header/body, JSON sucesso, corpo vazio, HTML, JSON inválido, não-2xx, abort externo, timeout e limpeza; fake fetch async fiel.
 **Gate**: Q + CC.
 **Commit**: `feat(api): centralize cancellable json transport`
@@ -709,7 +709,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **3/37 tarefas executadas** (T1–T3 concluídas em 2026-10-21); demais checkboxes de Done when abertas.
+- Implementação: **4/37 tarefas executadas** (T1–T4 concluídas em 2026-10-21); demais checkboxes de Done when abertas.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1/C2/C3/CP1 não comprovadas; N1 não executado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.
