@@ -11,7 +11,7 @@ public enum ConfirmOfferOutcome
     /// <summary>O item já estava em execução: nada mudou (repetição).</summary>
     AlreadyStarted,
 
-    /// <summary>now &gt;= expiresAt no instante da decisão: a oferta corrente venceu.</summary>
+    /// <summary>now &gt;= expiresAt no instante da decisão: a oferta venceu e a reconciliação (reentrada no fim da fila) foi confirmada.</summary>
     Expired,
 
     /// <summary>Estado ou vínculo item↔máquina fora da regra: nada mudou.</summary>
@@ -25,10 +25,12 @@ public sealed record ConfirmOfferResult(ConfirmOfferOutcome Outcome, ItemPlaceme
 
 /// <summary>
 /// Confirma a oferta corrente de um item: wallet → máquinas do tipo → itens sob lock, instante capturado depois dos
-/// locks e prazo estrito now &lt; expiresAt. Só a confirmação válida grava (início do item e máquina running, no mesmo
-/// commit); as recusas não mudam nada.
+/// locks e prazo estrito now &lt; expiresAt. A confirmação válida grava início do item e máquina running no mesmo commit.
+/// Oferta vencida não é exceção: a mesma transação reconcilia o tipo (reentrada no fim da fila e próxima oferta) e
+/// confirma, e só então devolve Expired. As demais recusas não mudam nada.
 /// </summary>
-public sealed partial class ConfirmOffer(ILaundrySessions sessions, TimeProvider time, ILogger<ConfirmOffer> logger)
+public sealed partial class ConfirmOffer(
+    ILaundrySessions sessions, QueueCoordinator coordinator, LaundryMetrics metrics, TimeProvider time, ILogger<ConfirmOffer> logger)
 {
     public async Task<ConfirmOfferResult> ExecuteAsync(Guid bookingId, Guid itemId, CancellationToken cancellationToken)
     {
@@ -53,8 +55,12 @@ public sealed partial class ConfirmOffer(ILaundrySessions sessions, TimeProvider
                 LogRefused(itemId, item.Status);
                 return new(ConfirmOfferOutcome.InvalidState, Placement(item));
             case OfferCheck.Expired:
+                var changes = await coordinator.ReconcileAsync(session, [location.MachineType], cancellationToken);
+                var current = await session.LockItemsAsync(location.MachineType, itemId, cancellationToken);
+                await session.CommitAsync();
+                metrics.RecordCommitted(changes);
                 LogExpired(itemId);
-                return new(ConfirmOfferOutcome.Expired, Placement(item));
+                return new(ConfirmOfferOutcome.Expired, QueueCoordinator.Placement(itemId, current));
         }
 
         await session.StartAsync(itemId, item.MachineId!.Value, now, cancellationToken);
@@ -68,7 +74,7 @@ public sealed partial class ConfirmOffer(ILaundrySessions sessions, TimeProvider
     [LoggerMessage(EventId = 300, Level = LogLevel.Information, Message = "Oferta do item {ItemId} confirmada na máquina {MachineId}.")]
     private partial void LogStarted(Guid itemId, Guid machineId);
 
-    [LoggerMessage(EventId = 301, Level = LogLevel.Information, Message = "Confirmação do item {ItemId} recusada: oferta vencida.")]
+    [LoggerMessage(EventId = 301, Level = LogLevel.Information, Message = "Confirmação do item {ItemId} recusada: oferta vencida, devolvida ao fim da fila.")]
     private partial void LogExpired(Guid itemId);
 
     [LoggerMessage(EventId = 302, Level = LogLevel.Information, Message = "Confirmação do item {ItemId} recusada no estado {Status}.")]

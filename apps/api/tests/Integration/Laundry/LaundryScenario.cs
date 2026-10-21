@@ -1,8 +1,10 @@
+using System.Diagnostics.Metrics;
 using System.Globalization;
 using Cicclo.Api.Laundry;
 using Cicclo.Api.Platform;
 using Cicclo.Api.Tests.Support;
 using Cicclo.Api.Wallet;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Npgsql;
@@ -42,6 +44,10 @@ internal static class LaundryScenario
 
     public static QueueCoordinator Coordinator(TimeProvider time, int timeoutSeconds = 60) =>
         new(time, Options.Create(new LaundryOptions { ConfirmationTimeoutSeconds = timeoutSeconds }));
+
+    /// <summary>Métricas reais sobre uma fábrica de meters própria do cenário (capturável por MeterListener).</summary>
+    public static LaundryMetrics Metrics(IMeterFactory? meters = null) =>
+        new(meters ?? new ServiceCollection().AddMetrics().BuildServiceProvider().GetRequiredService<IMeterFactory>());
 
     public static PostgresLaundrySessions Sessions(TestDatabase database, string applicationName) =>
         new(database.ContextFactory(applicationName));
@@ -101,9 +107,9 @@ internal static class LaundryScenario
     {
         await using var session = await sessions.OpenAsync(CancellationToken.None);
         await session.LockWalletAsync(DemoWallet.Id, CancellationToken.None);
-        var offers = await coordinator.PromoteAsync(session, type, CancellationToken.None);
+        var changes = await coordinator.ReconcileAsync(session, [type], CancellationToken.None);
         await session.CommitAsync();
-        return offers;
+        return changes.Single().Offers;
     }
 
     public static string Named(TestDatabase database, string applicationName) =>
