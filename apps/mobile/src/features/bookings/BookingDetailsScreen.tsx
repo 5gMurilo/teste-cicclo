@@ -9,17 +9,21 @@ import { formatBRL } from '../../shared/lib/money';
 import { colors, spacing } from '../../shared/theme/tokens';
 import { bookingDetailOptions, isBookingId } from './detailQuery';
 import { ItemActions } from './ItemActions';
-import type { BookingItem } from './schema';
-import { statusLabel } from './status';
+import type { Booking, BookingItem } from './schema';
+import { bookingPhase, statusLabel } from './status';
+import { DETAIL_POLL_MS, useBookingPolling } from './useBookingPolling';
 
 const dateFormat = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 const timeFormat = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 const shortId = (id: string) => id.slice(0, 8);
 
+const hasLiveItems = (booking: Booking | undefined) => booking !== undefined && bookingPhase(booking.items) === 'active';
+
 export function BookingDetailsScreen({ bookingId }: { bookingId: string | undefined }) {
   const router = useRouter();
   const valid = bookingId !== undefined && isBookingId(bookingId);
-  const detail = useQuery(bookingDetailOptions(valid ? bookingId : ''));
+  const refetchInterval = useBookingPolling(DETAIL_POLL_MS, hasLiveItems);
+  const detail = useQuery({ ...bookingDetailOptions(valid ? bookingId : ''), refetchInterval });
   const back = <Action label="Voltar para Serviços" onPress={() => router.navigate('/services')} />;
 
   let body;

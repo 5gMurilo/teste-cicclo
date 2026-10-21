@@ -5,7 +5,7 @@ import { AppState } from 'react-native';
 
 import { queryClient } from '../src/shared/api/queryClient';
 
-jest.mock('../src/shared/api/capabilities', () => ({ capabilities: { purchase: true, keyRetentionMs: null } }));
+jest.mock('../src/shared/api/capabilities', () => ({ capabilities: { purchase: true, keyRetentionMs: null, itemCommands: { activate: false, confirm: false, cancel: false, reportIssue: false } } }));
 jest.mock('expo-network', () => ({ getNetworkStateAsync: jest.fn(), addNetworkStateListener: jest.fn() }));
 jest.mock('expo-crypto', () => ({ randomUUID: () => '00000000-0000-4000-8000-000000000001' }));
 

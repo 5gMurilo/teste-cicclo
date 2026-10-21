@@ -10,6 +10,7 @@ import { colors, spacing } from '../../shared/theme/tokens';
 import { bookingsListOptions } from './listQuery';
 import type { Booking } from './schema';
 import { bookingPhase, statusLabel } from './status';
+import { LIST_POLL_MS, useBookingPolling } from './useBookingPolling';
 
 type Filter = 'active' | 'history';
 
@@ -26,8 +27,12 @@ const EMPTY_TEXT: Record<Filter, string> = {
 const dateFormat = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 const shortId = (id: string) => id.slice(0, 8);
 
+const hasLiveBookings = (data: { pages: { items: Booking[] }[] } | undefined) =>
+  data?.pages.some((page) => page.items.some((booking) => bookingPhase(booking.items) !== 'history')) ?? false;
+
 export function BookingsScreen() {
-  const list = useInfiniteQuery(bookingsListOptions());
+  const refetchInterval = useBookingPolling(LIST_POLL_MS, hasLiveBookings);
+  const list = useInfiniteQuery({ ...bookingsListOptions(), refetchInterval });
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>('active');
 

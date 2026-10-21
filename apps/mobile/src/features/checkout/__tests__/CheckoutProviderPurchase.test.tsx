@@ -6,7 +6,7 @@ import { createTestQueryClient } from '../../../test/queryClient';
 import { CheckoutProvider, useCheckout } from '../CheckoutProvider';
 
 // The purchase capability is on: these tests guard what confirm() must refuse even when the UI cannot reach it.
-jest.mock('../../../shared/api/capabilities', () => ({ capabilities: { purchase: true, keyRetentionMs: null } }));
+jest.mock('../../../shared/api/capabilities', () => ({ capabilities: { purchase: true, keyRetentionMs: null, itemCommands: { activate: false, confirm: false, cancel: false, reportIssue: false } } }));
 
 let client: QueryClient;
 let posts: string[];

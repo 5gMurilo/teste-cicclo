@@ -522,7 +522,7 @@ Nenhuma tarefa desta fase começa antes de CP1. Cada comando abaixo requer seu p
 **Reuses**: Query list/detail, status e sinais lifecycle, sem segundo monitor de rede.
 **Requirement**: QUEUE-02, QUEUE-09, SAFE-04, SAFE-05.
 **What**: Aplicar polling condicional de 10s na lista e 5s no detalhe, ajustado ao rate limit real.
-**Done when**: [ ] Blur/background/offline/terminal suspendem; foreground/reconexão refazem GET; não há polling de wallet por reflexo nem POST automático; cleanup sem observer duplicado.
+**Done when**: [x] Blur/background/offline/terminal suspendem; foreground/reconexão refazem GET; não há polling de wallet por reflexo nem POST automático; cleanup sem observer duplicado.
 **Tests**: integration — teto de 7 casos: lista ativa, detalhe ativo, blur, background, offline, todos terminais e reconnect; avançar clock para comprovar chamadas e suspensão reais.
 **Gate**: CP1 + F + CC.
 **Commit**: `feat(bookings): poll visible nonterminal service states`
@@ -711,7 +711,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **31/37 tarefas com Done when marcado** (última: T35); demais abertas ou pendentes de gate externo.
+- Implementação: **32/37 tarefas com Done when marcado** (última: T36); demais abertas ou pendentes de gate externo.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1, C2 e C3 provados contra a API real em 2026-10-21; N1 aprovado pelo usuário no iOS em relato global (AD-006); CP1 (P1) não comprovado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.

@@ -61,10 +61,10 @@
 ## Handoff
 
 - **Feature**: `.specs/features/cicclo-mobile/spec.md`.
-- **Phase / Task**: Execute inline e sequencial. Última tarefa fechada: T35.
-- **Completed**: P0 fechado; T32 fechada; T31, T33, T34 e T35 pendentes da prova CP1. T35 = reportIssue.ts (POST sem corpo, 202 validado, 'Relato enviado para verificação' sem qualquer texto de estorno, ação só em in_progress e uma vez por tela) (31/37 com Done when marcado).
+- **Phase / Task**: Execute inline e sequencial. Última tarefa fechada: T36.
+- **Completed**: P0 fechado; T32 e T36 fechadas; T31, T33, T34 e T35 pendentes da prova CP1. T36 = useBookingPolling (lista 10 s, detalhe 5 s; só com a tela em foco e item não terminal; para em 429; segundo plano e offline pelo Query via focusManager/onlineManager; sem polling de carteira nem POST; mutações nas guardas morrem). Limite de leituras de contratações do backend: 30/min por IP, compartilhado entre lista e detalhe (uso pior caso 18/min) (32/37 com Done when marcado).
 - **In-progress**: Nenhuma.
-- **Next step**: T36 (polling condicional de lista e detalhe).
+- **Next step**: T37 (destacar ofertas na lista de Serviços) e depois a prova CP1 ao vivo dos quatro comandos.
 - **Blockers**: nenhum para P0. `dotnet` fora do PATH da sessão do agente (workspace e testes de bootstrap que compilam a API falham por isso; não é do mobile).
-- **Branches** (atual: `feat/mobile-06-service-lifecycle`): chore/mobile-00-baseline 08e6c7d; chore/mobile-05-p0-readiness 1a4ff65; feat/mobile-01-catalog-wallet 6bd529c; feat/mobile-02-selection-review 0a34316; feat/mobile-03-safe-booking 9674db3; feat/mobile-04-booking-tracking ad3d9a8; feat/mobile-06-service-lifecycle 046e364; mobile-worktree f3ac3ca.
+- **Branches** (atual: `feat/mobile-06-service-lifecycle`): chore/mobile-00-baseline 08e6c7d; chore/mobile-05-p0-readiness 1a4ff65; feat/mobile-01-catalog-wallet 6bd529c; feat/mobile-02-selection-review 0a34316; feat/mobile-03-safe-booking 9674db3; feat/mobile-04-booking-tracking ad3d9a8; feat/mobile-06-service-lifecycle 485d4d7; mobile-worktree f3ac3ca.
 - **Uncommitted files**: `.omc/` e `apps/mobile/.omc/` (estado de ferramenta, não versionar).
