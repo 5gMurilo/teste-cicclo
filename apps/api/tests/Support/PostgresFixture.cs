@@ -14,9 +14,17 @@ public sealed class PostgresFixture : IAsyncLifetime
 
     private readonly PostgreSqlContainer container = new PostgreSqlBuilder(Image)
         .WithName($"cicclo-api-tests-{Guid.NewGuid():N}")
+        .WithPassword(Password)
         .Build();
 
+    /// <summary>Senha exclusiva do container de teste, usada para provar que não vaza em saídas.</summary>
+    public static string Password { get; } = $"pw-{Guid.NewGuid():N}-$!";
+
     public Task InitializeAsync() => container.StartAsync();
+
+    /// <summary>Conexão do mesmo banco vista por outro container na rede bridge do Docker.</summary>
+    public string ContainerNetworkConnectionString(TestDatabase database) =>
+        new NpgsqlConnectionStringBuilder(database.ConnectionString) { Host = container.IpAddress, Port = 5432 }.ConnectionString;
 
     public Task DisposeAsync() => container.DisposeAsync().AsTask();
 

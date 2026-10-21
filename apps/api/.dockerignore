@@ -5,5 +5,4 @@
 .env
 .env.*
 tests
-init
 docker-compose.yml

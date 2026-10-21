@@ -3,6 +3,7 @@ WORKDIR /source
 COPY Directory.Build.props ./
 COPY src/Cicclo.Api.csproj src/packages.lock.json ./src/
 RUN dotnet restore src/Cicclo.Api.csproj --locked-mode
+COPY init/ ./init/
 COPY src/ ./src/
 RUN dotnet publish src/Cicclo.Api.csproj --configuration Release --no-restore --output /app/publish /p:UseAppHost=false
 
