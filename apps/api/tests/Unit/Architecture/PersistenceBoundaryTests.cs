@@ -1,17 +1,21 @@
 using System.Reflection;
 using System.Text.Json;
 using Cicclo.Api.Bookings;
+using Cicclo.Api.Bookings.CreateBooking;
 using Cicclo.Api.Laundry;
 using Cicclo.Api.Platform.Persistence;
 using Cicclo.Api.Services;
+using Cicclo.Api.Services.GetCatalog;
 using Cicclo.Api.Tests.Support;
 using Cicclo.Api.Wallet;
+using Cicclo.Api.Wallet.GetBalance;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
+using CreateBookingUseCase = Cicclo.Api.Bookings.CreateBooking.CreateBooking;
 
 namespace Cicclo.Api.Tests.Unit.Architecture;
 
@@ -24,11 +28,22 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
 
     private static readonly string[] ForbiddenPrefixes = ["Microsoft.EntityFrameworkCore", "Microsoft.AspNetCore", "Npgsql", "System.Linq.IQueryable"];
 
+    /// <summary>
+    /// Adaptadores HTTP/PostgreSQL dos casos de uso (ENG-04), únicos tipos das capacidades que podem usar
+    /// ASP.NET/EF/Npgsql. Todo o resto dos namespaces e sub-namespaces de capacidade é regra/porta/DTO.
+    /// </summary>
+    private static readonly Type[] FrameworkAdapters =
+    [
+        typeof(WalletEndpoint), typeof(PostgresWalletBalanceQuery),
+        typeof(ServicesEndpoint), typeof(PostgresServiceCatalogQuery),
+        typeof(PostgresCreateBookingSessions),
+    ];
+
     [Fact]
     public void DomainModelsDoNotDependOnPersistenceOrHttpFrameworks()
     {
         var domainTypes = typeof(Program).Assembly.GetTypes()
-            .Where(type => DomainNamespaces.Contains(type.Namespace) && !IsCompilerGenerated(type))
+            .Where(type => IsInDomainNamespace(type.Namespace) && !IsCompilerGenerated(type) && !IsFrameworkAdapter(type))
             .ToList();
 
         Assert.Superset(
@@ -36,6 +51,8 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
             {
                 typeof(WalletAccount), typeof(LaundryService), typeof(Machine), typeof(MachineType), typeof(MachineState),
                 typeof(Booking), typeof(BookingItem), typeof(BookingItemStatus), typeof(LedgerEntry), typeof(LedgerEntryKind),
+                typeof(CreateBookingUseCase), typeof(ICreateBookingSessions), typeof(ICreateBookingSession), typeof(StoredBooking),
+                typeof(WalletBalance), typeof(ServiceCatalogEntry),
             },
             domainTypes.ToHashSet());
         var violations = domainTypes
@@ -83,6 +100,24 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
         Assert.Matches(
             "<PackageReference Include=\"Microsoft.EntityFrameworkCore.Design\" Version=\"10.0.13\">\\s*<IncludeAssets>[^<]*</IncludeAssets>\\s*<PrivateAssets>all</PrivateAssets>",
             project);
+    }
+
+    /// <summary>Namespace da capacidade ou qualquer sub-namespace dela (por exemplo Cicclo.Api.Bookings.CreateBooking).</summary>
+    private static bool IsInDomainNamespace(string? name) =>
+        name is not null && DomainNamespaces.Any(root => name == root || name.StartsWith(root + ".", StringComparison.Ordinal));
+
+    /// <summary>O adaptador ou um tipo aninhado nele (sessão, linhas SQL, lambdas/state machines geradas).</summary>
+    private static bool IsFrameworkAdapter(Type type)
+    {
+        for (Type? current = type; current is not null; current = current.DeclaringType)
+        {
+            if (FrameworkAdapters.Contains(current))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool IsCompilerGenerated(Type type) =>
