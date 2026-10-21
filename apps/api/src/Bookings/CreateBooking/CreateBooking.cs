@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Cicclo.Api.Laundry;
 using Cicclo.Api.Wallet;
+using Cicclo.Api.Wallet.ReadCaching;
 
 namespace Cicclo.Api.Bookings.CreateBooking;
 
@@ -39,9 +40,16 @@ public sealed record CreateBookingResult(
 /// débito condicional → booking/itens/débito → ativação inicial → commit. O replay precede toda regra dinâmica.
 /// Itens nascem pending_activation; na mesma transação, compra de um item ativa esse item, lote com preferência ativa
 /// a primeira ocorrência do serviço preferido e lote sem preferência fica todo pendente. Falha na ativação reverte tudo.
+/// Só uma compra criada (inclusive a reconhecida depois de commit desconhecido) invalida o cache de leitura da wallet,
+/// depois que a sessão foi descartada; replay e recusa não mudaram saldo e não invalidam.
 /// </summary>
 public sealed partial class CreateBooking(
-    ICreateBookingSessions sessions, QueueCoordinator coordinator, LaundryMetrics laundryMetrics, TimeProvider time, ILogger<CreateBooking> logger)
+    ICreateBookingSessions sessions,
+    QueueCoordinator coordinator,
+    LaundryMetrics laundryMetrics,
+    TimeProvider time,
+    WalletCacheInvalidation walletCache,
+    ILogger<CreateBooking> logger)
 {
     /// <summary>Tentativas totais da unidade inteira quando o rollback é conhecido.</summary>
     public const int MaxAttempts = 3;
@@ -53,6 +61,11 @@ public sealed partial class CreateBooking(
     {
         using var activity = Activities.StartActivity("booking.create");
         var result = await ExecuteWithRetriesAsync(idempotencyKey, intent, cancellationToken);
+        if (result.Outcome == CreateBookingOutcome.Created)
+        {
+            await walletCache.AfterCommitAsync();
+        }
+
         activity?.SetTag("booking.outcome", result.Outcome.ToString());
         activity?.SetTag("booking.rejection", result.Rejection?.ToString());
         activity?.SetTag("booking.id", result.Booking?.BookingId.ToString());

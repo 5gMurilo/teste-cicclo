@@ -10,7 +10,7 @@ public static class ProcessRunner
 {
     /// <summary>Variáveis que o processo filho nunca herda da sessão; cada teste declara as suas.</summary>
     private static readonly string[] IsolatedVariables =
-        ["ASPNETCORE_ENVIRONMENT", "DOTNET_ENVIRONMENT", "ConnectionStrings__Cicclo", "Laundry__DemoMode"];
+        ["ASPNETCORE_ENVIRONMENT", "DOTNET_ENVIRONMENT", "ConnectionStrings__Cicclo", "Laundry__DemoMode", "Caching__Enabled", "Caching__Redis", "Caching__KeyPrefix"];
 
     public static string DotNet { get; } = Environment.GetEnvironmentVariable("DOTNET_HOST_PATH") is { Length: > 0 } host ? host : "dotnet";
 

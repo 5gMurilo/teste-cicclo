@@ -1,5 +1,6 @@
 using Cicclo.Api.Laundry;
 using Cicclo.Api.Wallet;
+using Cicclo.Api.Wallet.ReadCaching;
 
 namespace Cicclo.Api.Bookings.CancelItem;
 
@@ -25,10 +26,17 @@ public sealed record CancelItemResult(CancelItemOutcome Outcome, decimal? Refund
 /// Cancela uma execução ainda não iniciada numa única transação, na ordem comum de locks: wallet (mutex das escritas)
 /// → máquinas do tipo → itens. Sob os locks, valida o estado; marca cancelled, libera a máquina reservada, credita o
 /// preço histórico com um lançamento refund e reconcilia a fila do tipo (próximo elegível recebe a oferta) antes do
-/// commit. Item já cancelado é repetição sem crédito novo. Métricas só depois do commit.
+/// commit. Item já cancelado é repetição sem crédito novo. Métricas e invalidação do cache de leitura da wallet só
+/// depois do commit, com a sessão já descartada.
 /// </summary>
 public sealed partial class CancelItem(
-    ILaundrySessions sessions, QueueCoordinator coordinator, LaundryMetrics laundryMetrics, RefundMetrics refundMetrics, TimeProvider time, ILogger<CancelItem> logger)
+    ILaundrySessions sessions,
+    QueueCoordinator coordinator,
+    LaundryMetrics laundryMetrics,
+    RefundMetrics refundMetrics,
+    TimeProvider time,
+    WalletCacheInvalidation walletCache,
+    ILogger<CancelItem> logger)
 {
     public async Task<CancelItemResult> ExecuteAsync(Guid bookingId, Guid itemId, CancellationToken cancellationToken)
     {
@@ -66,6 +74,7 @@ public sealed partial class CancelItem(
             await session.CommitAsync();
         }
 
+        await walletCache.AfterCommitAsync();
         laundryMetrics.RecordCommitted(changes);
         refundMetrics.RecordCommitted(plan.Reason);
         LogCancelled(itemId, plan.Amount);

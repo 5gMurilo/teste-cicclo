@@ -4,6 +4,7 @@ using Cicclo.Api.Bookings;
 using Cicclo.Api.Bookings.CreateBooking;
 using Cicclo.Api.Laundry;
 using Cicclo.Api.Platform;
+using Cicclo.Api.Wallet.ReadCaching;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,13 +35,17 @@ public static class BookingApi
         return result.Booking ?? throw new InvalidOperationException($"Compra de fixture recusada: {result.Outcome} {result.Rejection}.");
     }
 
-    /// <summary>Caso de uso real de compra com o coordenador de fila (prazo de 60 s) e métricas sobre o mesmo relógio.</summary>
+    /// <summary>
+    /// Caso de uso real de compra com o coordenador de fila (prazo de 60 s) e métricas sobre o mesmo relógio; sem cache
+    /// de leitura registrado, a invalidação pós-commit não faz nada (Caching:Enabled=false).
+    /// </summary>
     public static CreateBooking UseCase(ICreateBookingSessions sessions, TimeProvider clock, IMeterFactory? meters = null) =>
         new(
             sessions,
             new QueueCoordinator(clock, Options.Create(new LaundryOptions())),
             new LaundryMetrics(meters ?? new ServiceCollection().AddMetrics().BuildServiceProvider().GetRequiredService<IMeterFactory>()),
             clock,
+            new WalletCacheInvalidation(NullLogger<WalletCacheInvalidation>.Instance),
             NullLogger<CreateBooking>.Instance);
 
     public static async Task<JsonElement> JsonAsync(HttpResponseMessage response)
