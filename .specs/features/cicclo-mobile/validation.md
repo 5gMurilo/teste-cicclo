@@ -1,18 +1,95 @@
 # Cicclo mobile: validação independente (P0 mais P1 mais ação de simulação)
 
 **Data:** 2026-10-21
+**Criado:** 2026-10-21. **Última atualização:** 2026-10-21 (reverificação do delta `ef90f3d`, rodada 2).
+**Spec:** `.specs/features/cicclo-mobile/spec.md`
+**Faixa Git:** `08e6c7d..HEAD`. P0: `57b40ed` (PASS); P1: `fcd69ea` (PASS); ação de simulação: rodada 1 em `f42e39e` (FAIL), **rodada 2 em `749e1b6`** (estado verificado; um commit de correção). Tudo o que veio antes está preservado abaixo.
+**Verifier:** agente independente (autor diferente do verificador). Nenhum código de produção ou teste foi alterado na árvore real; este arquivo é a única escrita. O teste ao vivo **não foi executado** e **nenhum POST foi enviado**.
+
+Verdict: PASS
+
+**Result**: PASS
+
+Condições do PASS atendidas para o estado `749e1b6`: os 3 mutantes não equivalentes da rodada 1 (S1b, S3, S11) morrem, assim como as variantes do 404 (S7, S7b e o novo S7c); o sobrevivente que resta (S5a) é equivalente; não há GAP de AC; gates verdes (36 suítes, 361 testes); P0 e P1 sem regressão (amostra de 8 mutantes, todos mortos). O PASS vale para o que se verifica localmente e **não declara P1 nem P0 entregues por completo**: os itens PENDING-EXTERNAL abaixo seguem em aberto. Há uma pendência baixa de evidência (o log versionado pelo doc está fora do git, ver a conferência).
+
+# Delta `ef90f3d`, rodada 2 (HEAD `749e1b6`)
+
+## Comandos executados (árvore real)
+
+| Comando | Resultado real |
+| --- | --- |
+| `pnpm --filter @cicclo/mobile typecheck` | exit 0 |
+| `pnpm --filter @cicclo/mobile lint` (`--max-warnings 0`) | exit 0, zero avisos |
+| `pnpm --filter @cicclo/mobile test` | exit 0: **36 suítes / 36 passaram; 361 testes / 361 passaram; 0 falhas; 0 ignorados** (+16 testes: `env.test.ts`, `itemCommands.test.tsx`, `itemCommand.test.tsx`) |
+| Grep `test.skip|it.skip|describe.skip|.only(|xit|xdescribe|test.todo|it.todo|TODO|FIXME|fit(|fdescribe` | Nenhuma ocorrência |
+| Teste ao vivo; POST à API | Não executados |
+
+## Os achados da rodada 1: reavaliação
+
+| Achado | Correção e evidência `file:linha` | Resultado |
+| --- | --- | --- |
+| S1b: variável vazia ligava a ação | `src/shared/config/__tests__/env.test.ts`: `isDemoSimulationEnabled()` `toBe(true)` só para `'true'` e `toBe(false)` para `undefined`, `''`, `'false'`, `'TRUE'`, `'1'`, `'yes'`, `' true'`; `__tests__/itemCommands.test.tsx` "stays hidden when the opt-in variable is %p" com `''`, `'false'` e `'TRUE'` afirmando `queryByRole('button', { name: /\(simulação\)/ })` nulo | **COVERED**; S1b morto (9 falhas) |
+| S3: status não provado com máquina presente | `it.each` com `queued`, `to_be_confirmed`, `completed`, `cancelled` e `failed` **com `machineId`** e `in_progress` sem máquina, todos afirmando o botão ausente (`itemCommands.test.tsx` "is hidden for an item that is %s with machine %p") | **COVERED**; S3 morto (5 falhas) |
+| S11: resposta de sucesso inválida | `itemCommands.test.tsx` "does not claim completion when the success response is not valid, and the button stays usable": `findByText(/Não foi possível concluir a ação/)`, `queryByText('Execução concluída na simulação.')` nulo, botão `toBeEnabled()` | **COVERED**; S11 morto (com mutação sintaticamente válida: cast `as SimulationResult`) |
+| Mensagem de 404 compartilhada | A mensagem agora é de `SimulationUnavailableError`, lançado só por `completeSimulation.ts` para 404 sem `errorCode`, e mapeado em `commandErrorMessage` (`itemCommand.ts`). Um 404 sem `errorCode` de outro comando diz "Contratação ou execução não encontrada." (`itemCommand.test.tsx` `commandErrorMessage(api(404, null))` `toBe(...)`; `itemCommands.test.tsx` "keeps a bare 404 from a regular command from being blamed on the simulation") | **COVERED**; S7, S7b e S7c (voltar a culpar a simulação em qualquer 404) mortos |
+
+## Conferência da seção "Simulação de conclusão" (`api-contract.md`, linhas 57-65) com o log em `docs/evidence`
+
+| Afirmação | Sustentação | Avaliação |
+| --- | --- | --- |
+| Rota, `SimulationResponse` (`machine` e `item`), "existe só com a API em Development e DemoMode"; fora disso 404 e fora do OpenAPI | O doc agora diz "Segundo o código e o README do backend" e **"Esse 404 não foi observado"**; o app trata o 404 sem corpo como indisponível "por inferência" | Honesta: marcada como inferência (corrige a rodada 1) |
+| 200 com máquina `available`, `activeItemId` nulo, item `completed` com `machineId`, `queuePosition`, `expiresAt` nulos | O log (`docs/evidence/live-simulation-2026-10-21.log`, 995 bytes) é idêntico ao `/tmp/live-simulation.log` (diff sem diferença) e mostra o corpo `{machine, item}` com esses valores | Sustentada |
+| A leitura seguinte de `GET /machines` confirmou `available`; a repetição respondeu 409 `INVALID_STATE_TRANSITION` | O log só mostra "1 passed"; as asserções estão em `live/simulation.live.test.ts:32-33` e `:42-43` | Sustentada pelo teste que passou, não por saída explícita |
+| "O teste conclui a primeira máquina `running` que encontrar, o que altera os dados da demo" | `live.test.ts:21-22` | Sustentada (corrige a omissão da rodada 1) |
+| Relato do usuário: o botão apareceu e o fluxo funcionou 100% pelo app, com o `fetch` do React Native | É relato, sem captura nem resposta registrada | Rotulado como relato; sem base independente |
+| "saída guardada em [evidence/live-simulation-2026-10-21.log]" | **O arquivo não está no git**: `.gitignore:24 *.log` o ignora (`git check-ignore -v` e `git ls-files apps/mobile/docs` confirmam; só `api-contract.md` e `native-validation.md` são versionados). Quem clonar o repositório não terá o log, e o link do doc quebra | **Afirmação sem base para terceiros** (baixa-média) |
+
+## Sensor (worktree descartável em `749e1b6`)
+
+18 mutantes injetados, `typecheck` exit 0 em todos; **17 mortos, 1 sobrevivente (equivalente)**.
+
+| Mutante | Descrição | Resultado |
+| --- | --- | --- |
+| S1b, S3, S11, S7, S7b | os pedidos | **Mortos** (ver tabela acima) |
+| S7c | um 404 sem `errorCode` de qualquer comando volta a ser culpado na simulação | Morto |
+| S5a | botão da simulação sem `disabled` enquanto pendente | **Sobreviveu, equivalente**: a guarda síncrona do hook (`itemCommand.ts`, `busy`; provada por Q13) impede o segundo envio |
+| S1, S2, S4 | variável ignorada; capacidade ignorada; botão sem `machineId` | Mortos |
+| Q1, Q4, Q5, Q8, Q13, Q23 | P1: confirmar no zero; texto de estorno sem checar valor; saldo creditado numa falha; polling sem a guarda de terminal; sem guarda de duplo toque; cancelamento sem `try/catch` do cache | Mortos |
+| M1, R1 | P0: replay com chave nova; `cache.ts` sem `cancelQueries` | Mortos |
+
+**Sobreviventes não equivalentes: 0.** S9 (validação extra do id da máquina), equivalente pela razão da rodada 1, não foi reinjetado.
+
+### Isolamento
+
+`git status --porcelain` da árvore real antes e depois do sensor: vazio nos dois, **idêntico**; a árvore não mudou durante a rodada. O `.env.example` commitado segue com o valor vazio (o `true` visto na rodada 1 foi revertido). Worktree descartável removido, sem `git stash`, reset ou rebase. Nenhum POST.
+
+## Pendente por dependência externa (à parte; não força FAIL)
+
+Os mesmos de antes: comportamento da rota de simulação **fora** do DemoMode (404 sem corpo e ausência no OpenAPI, só inferidos); item `queued` real e corpo real do `cancel`; repetições e 409 em itens cancelados ou em andamento; as linhas "observado" do `api-contract.md` apoiadas em logs perdidos; compra após horas; compra de 2 ou mais unidades; Android sem ensaio (aceito por decisão do usuário, AD-007); `pnpm test:bootstrap` e comandos do workspace sem `dotnet`.
+
+## Gaps por gravidade
+
+1. **Baixa-média:** o log de evidência de `docs/evidence/` está fora do git (`*.log` no `.gitignore`); renomear (por exemplo `.txt`) ou usar `git add -f`, ou o doc referencia um arquivo que terceiros não têm.
+2. **Baixa:** o relato do usuário sobre o fluxo pelo app não tem captura; e o `.env` local do usuário com `true` liga a ação no aparelho dele, o que é esperado (opt-in).
+3. **Observação sem violação de AC:** a ação de simulação é uma exceção consciente à regra "sem painel de operador" (AD-008).
+
+---
+
+# Cabeçalho da verificação anterior do delta `ef90f3d` (`f42e39e`, FAIL; preservado)
+
+**Data:** 2026-10-21
 **Criado:** 2026-10-21. **Última atualização:** 2026-10-21 (delta `ef90f3d`, ação demo "Concluir (simulação)").
 **Spec:** `.specs/features/cicclo-mobile/spec.md`
 **Faixa Git:** `08e6c7d..HEAD`. P0: `57b40ed` (PASS); P1: `fcd69ea` (PASS); **delta desta rodada: `fcd69ea..f42e39e`**, que na prática é o commit `ef90f3d` (o `f42e39e` só acrescenta o relatório anterior). Estado verificado: `f42e39e`.
 **Verifier:** agente independente (autor diferente do verificador). Nenhum código de produção ou teste foi alterado na árvore real; este arquivo é a única escrita. O teste ao vivo **não foi executado** e **nenhum POST foi enviado**; foram feitas leituras `GET` (OpenAPI e `/machines`).
 
-Verdict: FAIL
+Veredito anterior (f42e39e): FAIL
 
-**Result**: FAIL
+Resultado anterior (f42e39e): FAIL
 
 Resumo: P0 e P1 seguem como verificados (sem regressão: gates verdes, 36 suítes, 345 testes, e 5 mutantes de regressão mortos). O delta da ação de simulação tem **3 mutantes não equivalentes vivos**, todos na decisão de mostrar o botão e na validação da resposta: (1) a variável vazia (o valor que o `.env.example` traz) liga a ação; (2) o botão aparece para qualquer status quando há máquina (uma oferta `to_be_confirmed` tem `machineId`); (3) uma resposta de sucesso inválida é tratada como sucesso. São três testes pequenos, sem mudança de produção. A seção "Simulação de conclusão" do `api-contract.md` é sustentada pelo log, com uma afirmação que o log não prova.
 
-# Delta `ef90f3d`: ação demo "Concluir (simulação)" (HEAD `f42e39e`)
+# Delta `ef90f3d`, rodada 1 (preservada; HEAD `f42e39e`, FAIL por S1b, S3 e S11)
 
 ## Comandos executados (árvore real)
 

@@ -1,0 +1,16 @@
+watchman warning: Recrawled this watch 9 times, most recently because:
+MustScanSubDirs UserDroppedTo resolve, please review the information on
+https://facebook.github.io/watchman/docs/troubleshooting.html#recrawl
+To clear this warning, run:
+`watchman watch-del '/Users/digitalrepublic/orca/workspaces/teste-cicclo/mobile-worktree' ; watchman watch-project '/Users/digitalrepublic/orca/workspaces/teste-cicclo/mobile-worktree'`
+
+  console.log
+    complete answered: {"machine":{"machineId":"00000000-0000-4000-8000-000000000101","name":"washer-01","machineType":"washer","state":"available","activeItemId":null,"isDemoOccupied":false},"item":{"itemId":"01a16040-2a90-74a9-9adf-70ef43bf4450","serviceCode":"wash","unitPriceCents":1890,"status":"completed","machineId":null,"queuePosition":null,"expiresAt":null}}
+
+      at Object.log (live/simulation.live.test.ts:27:13)
+
+Test Suites: 1 passed, 1 total
+Tests:       1 passed, 1 total
+Snapshots:   0 total
+Time:        1.369 s
+Ran all test suites.

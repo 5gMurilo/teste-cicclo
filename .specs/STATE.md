@@ -69,10 +69,10 @@
 ## Handoff
 
 - **Feature**: `.specs/features/cicclo-mobile/spec.md`.
-- **Phase / Task**: P0 fechado (T1 a T30, Verifier PASS em `cb9adcd` e delta PASS em `57b40ed`; N1 aprovado pelo usuário no iOS, aceito para o Android por AD-007). P1 implementado (T31 a T37) e ligado na branch `feat/mobile-06-service-lifecycle`.
-- **P1**: T32 e T36 `[x]`; T31, T33, T34, T35 e T37 `[~]`. As quatro capacidades (`capabilities.itemCommands.*`) foram ligadas com evidência parcial na API real (seção "Provas P1 contra a API real" em `apps/mobile/docs/api-contract.md`, com o que foi e o que não foi observado), porque o usuário precisa usar as ações; o resumo de aprovação de `live/lifecycle.live.test.ts` se perdeu na primeira execução.
-- **Pendente**: restaurar a demo (`--reset-demo` do backend, API parada), rodar `live/contract.live.test.ts` e `live/lifecycle.live.test.ts` com a saída salva em arquivo, completar a tabela de provas, fechar os `[~]` e rodar o Verifier de P1 (escopo QUEUE-01 a QUEUE-10).
-- **Estado da demo agora**: carteira 1020 e três contratações (lavagem A cancelada; lavagem em andamento com secagem cancelada; uma secagem com oferta criada pelo app).
+- **Phase / Task**: P0 (T1 a T30) e P1 (T31 a T37) implementados, ligados e verificados pelo Verifier independente (PASS em `749e1b6`, 361 testes; ver `validation.md`). N1 aprovado pelo usuário no iOS e aceito para o Android (AD-006, AD-007). Ação demo "Concluir (simulação)" adicionada por decisão do usuário (AD-008), opt-in por `EXPO_PUBLIC_DEMO_SIMULATION=true`, validada pelo usuário no app contra a API real.
+- **Completed**: 35/37 com Done when `[x]`; T34 (cancelar) e T37 (oferta na lista) seguem `[~]` à espera da prova ao vivo limpa.
+- **Pendente (externo, não força FAIL no Verifier)**: restaurar a demo (`--reset-demo`) e rodar `live/contract.live.test.ts`, `live/lifecycle.live.test.ts` e `live/simulation.live.test.ts` com a saída salva em arquivo; item `queued` real, corpo real do cancelamento e repetições; mesmo `incidentId` na repetição do relato; 404 da rota de simulação fora do DemoMode (inferido); compra após horas; compra ao vivo de duas ou mais unidades com preferência aceita; Android sem ensaio (aceito por decisão).
+- **Estado da demo**: carteira 1020, máquinas livres, várias contratações (a lavagem e a secagem das compras de teste concluídas pela simulação).
 - **Blockers**: nenhum para uso. `dotnet` fora do PATH da sessão do agente (workspace e bootstrap que compilam a API falham por isso; não é do mobile).
-- **Branches**: cadeia linear E0 a E5, E6 `feat/mobile-06-service-lifecycle` (atual); `mobile-worktree` integrada por fast-forward. Nada foi enviado ao remoto.
+- **Branches**: cadeia linear E0 a E5 e E6 `feat/mobile-06-service-lifecycle`; `mobile-worktree` integrada por fast-forward. Nada foi enviado ao remoto.
 - **Uncommitted files**: nenhum.
