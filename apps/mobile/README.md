@@ -43,6 +43,8 @@ URL da API por dispositivo (a API de desenvolvimento usa a porta 5001):
 
 Variáveis `EXPO_PUBLIC_*` são embutidas no app e não são secretas. Nunca coloque credenciais nelas.
 
+Para rodar no simulador iOS: copie `.env.example` para `.env` (`cp apps/mobile/.env.example apps/mobile/.env`), com a API de pé em `http://localhost:5001`, e inicie com `pnpm --filter @cicclo/mobile ios`. O Expo lê o `.env` **ao iniciar o Metro**: se o arquivo for criado ou alterado depois, pare o Metro e inicie de novo (`--clear` se o valor antigo persistir). Sem `EXPO_PUBLIC_API_URL`, o header, a Home, Serviços e o detalhe mostram "Configuração da API ausente ou inválida. Defina EXPO_PUBLIC_API_URL em apps/mobile/.env e reinicie o Metro." Em desenvolvimento, falhas de requisição também aparecem no terminal do Metro como `[api] GET /wallet failed` com tipo, status, código e traceId, sem corpo, cabeçalhos ou chave de idempotência.
+
 ## Executar
 
 ```sh
@@ -81,6 +83,7 @@ Subir a API e a base demo é responsabilidade do backend (ver o README da raiz e
 
 - **Reiniciar o app perde a intenção em andamento.** A chave não é persistida; a recuperação entre reinícios exige a opção P2 (intenção persistida), fora do escopo. Depois de um reinício, consulte a aba Serviços antes de decidir contratar de novo.
 - **Retenção da chave de idempotência:** o backend grava a chave junto da contratação, com índice único e sem limpeza; não há expiração conhecida, então o app não bloqueia a verificação por idade (`keyRetentionMs = null`). O replay depois de horas não foi exercitado.
+- **O app não assume uma URL de API.** Sem `apps/mobile/.env` (ou sem reiniciar o Metro depois de criá-lo), nenhuma leitura funciona e o app mostra a instrução de configuração acima, em vez de usar `localhost` por conta própria.
 - Não há polling: a atualização acontece ao abrir telas, ao voltar do segundo plano, ao reconectar e por ações explícitas.
 - A lista de contratações é paginada; os filtros valem para os registros carregados, e a tela avisa quando existem mais.
 
