@@ -1,5 +1,5 @@
-import { readPublicEnv } from '../config/env';
-import { parseRetryAfterDeadline, toApiError } from './apiError';
+import { ConfigError, readPublicEnv } from '../config/env';
+import { ApiError, parseRetryAfterDeadline, toApiError } from './apiError';
 
 const API_PREFIX = '/api/v1';
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -37,7 +37,36 @@ function parseJson(text: string): { ok: true; value: unknown } | { ok: false } {
   }
 }
 
+/**
+ * Development-only trace of a failed request, so a failing read is never silent. Carries only the
+ * method, the path without its query, and the classification: never a body, a header or the
+ * Idempotency-Key.
+ */
+function logFailure(options: RequestOptions, error: unknown): void {
+  if (!__DEV__ || process.env.NODE_ENV === 'test') return;
+  if (options.signal?.aborted) return;
+
+  const detail =
+    error instanceof ApiError
+      ? { kind: 'http', status: error.status, errorCode: error.errorCode, traceId: error.traceId }
+      : error instanceof TransportError
+        ? { kind: error.kind, status: error.status }
+        : error instanceof ConfigError
+          ? { kind: 'config', message: error.message }
+          : { kind: 'unexpected' };
+  console.warn(`[api] ${options.method} ${options.path.split('?')[0]} failed`, detail);
+}
+
 export async function requestJson(options: RequestOptions): Promise<unknown> {
+  try {
+    return await sendRequest(options);
+  } catch (error) {
+    logFailure(options, error);
+    throw error;
+  }
+}
+
+async function sendRequest(options: RequestOptions): Promise<unknown> {
   const { apiOrigin } = readPublicEnv();
   const controller = new AbortController();
   let timedOut = false;
