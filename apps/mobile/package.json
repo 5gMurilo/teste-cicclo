@@ -2,7 +2,7 @@
   "name": "@cicclo/mobile",
   "version": "0.0.0",
   "private": true,
-  "main": "index.ts",
+  "main": "expo-router/entry",
   "scripts": {
     "dev": "expo start",
     "android": "expo start --android",
@@ -10,12 +10,24 @@
     "build": "expo export --platform all",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
-    "test": "jest --ci --runInBand --verbose"
+    "test": "jest --ci --runInBand --verbose",
+    "test:live": "jest --ci --runInBand --verbose --testPathIgnorePatterns=/node_modules/ --testMatch=**/live/**/*.live.test.ts"
   },
   "dependencies": {
+    "@expo/vector-icons": "15.1.1",
+    "@tanstack/react-query": "5.104.5",
     "expo": "58.0.16",
+    "expo-constants": "58.0.12",
+    "expo-crypto": "58.0.7",
+    "expo-linking": "58.0.13",
+    "expo-network": "58.0.4",
+    "expo-router": "58.0.24",
+    "expo-status-bar": "58.0.3",
     "react": "19.3.0",
-    "react-native": "0.88.0"
+    "react-native": "0.88.0",
+    "react-native-safe-area-context": "5.10.1",
+    "react-native-screens": "4.30.0",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@react-native/jest-preset": "0.88.0",
@@ -31,6 +43,13 @@
     "typescript": "6.0.3"
   },
   "jest": {
-    "preset": "jest-expo"
+    "preset": "jest-expo",
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest.setup.ts"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/live/"
+    ]
   }
 }
