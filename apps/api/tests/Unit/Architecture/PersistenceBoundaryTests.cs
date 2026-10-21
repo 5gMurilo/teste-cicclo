@@ -43,6 +43,7 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
         typeof(Cicclo.Api.Bookings.ActivateItem.ActivateItemEndpoint), typeof(Cicclo.Api.Bookings.ConfirmItem.ConfirmItemEndpoint),
         typeof(Cicclo.Api.Bookings.CancelItem.CancelItemEndpoint),
         typeof(Cicclo.Api.Laundry.GetMachines.GetMachinesEndpoint), typeof(Cicclo.Api.Laundry.GetMachines.PostgresMachinesQuery),
+        typeof(Cicclo.Api.Laundry.Simulation.SimulationEndpoints), typeof(Cicclo.Api.Laundry.Simulation.OccupyMachineEndpoint),
     ];
 
     [Fact]
@@ -66,7 +67,8 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
                 typeof(Cicclo.Api.Bookings.CancelItem.CancelItem), typeof(Cicclo.Api.Bookings.CancelItem.CancelItemResult),
                 typeof(Cicclo.Api.Bookings.CancelItem.CancelItemResponse), typeof(RefundPolicy), typeof(RefundPlan), typeof(RefundMetrics),
                 typeof(Cicclo.Api.Laundry.GetMachines.MachinesResponse), typeof(Cicclo.Api.Laundry.GetMachines.MachineResponse),
-                typeof(Cicclo.Api.Laundry.GetMachines.MachineStateContract),
+                typeof(Cicclo.Api.Laundry.GetMachines.MachineStateContract), typeof(Cicclo.Api.Laundry.Simulation.OccupyMachine),
+                typeof(Cicclo.Api.Laundry.Simulation.OccupyMachineOutcome), typeof(Cicclo.Api.Laundry.Simulation.SimulationResponse),
             },
             domainTypes.ToHashSet());
         var violations = domainTypes

@@ -67,6 +67,22 @@ public sealed class PostgresLaundrySessions(IDbContextFactory<CiccloDbContext> c
         public Task OfferAsync(Guid itemId, Guid machineId, DateTime offeredAt, DateTime expiresAt, CancellationToken cancellationToken) =>
             queue.OfferAsync(itemId, machineId, offeredAt, expiresAt, cancellationToken);
 
+        public async Task<MachineType?> LocateMachineAsync(Guid machineId, CancellationToken cancellationToken)
+        {
+            var types = await db.Machines.AsNoTracking().Where(machine => machine.Id == machineId).Select(machine => machine.MachineType).ToListAsync(cancellationToken);
+            return types.Count == 1 ? types[0] : null;
+        }
+
+        public async Task OccupyAsync(Guid machineId, DateTime occupiedAt, CancellationToken cancellationToken) =>
+            PostgresQueueSession.Expect(
+                await db.Database.ExecuteSqlAsync(
+                    $"""
+                    UPDATE machines SET state = 'running', is_demo_occupied = true, updated_at = {occupiedAt}
+                    WHERE id = {machineId} AND state = 'available' AND active_item_id IS NULL
+                    """,
+                    cancellationToken),
+                "máquina livre para ocupar");
+
         public async Task StartAsync(Guid itemId, Guid machineId, DateTime startedAt, CancellationToken cancellationToken)
         {
             PostgresQueueSession.Expect(

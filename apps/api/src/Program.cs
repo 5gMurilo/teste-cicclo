@@ -7,6 +7,7 @@ using Cicclo.Api.Bookings.GetBooking;
 using Cicclo.Api.Bookings.ListBookings;
 using Cicclo.Api.Laundry.ConfirmOffer;
 using Cicclo.Api.Laundry.GetMachines;
+using Cicclo.Api.Laundry.Simulation;
 using Cicclo.Api.Platform;
 using Cicclo.Api.Platform.BackgroundServices;
 using Cicclo.Api.Platform.Health;
@@ -65,6 +66,7 @@ builder.Services.AddScoped<ActivateItem>();
 builder.Services.AddScoped<ConfirmOffer>();
 builder.Services.AddSingleton<RefundMetrics>();
 builder.Services.AddScoped<CancelItem>();
+builder.Services.AddScoped<OccupyMachine>();
 var app = builder.Build();
 app.UseHttpBoundary();
 app.UseRateLimiter();
@@ -75,6 +77,7 @@ app.MapGroup("/api/v1").RequireRateLimiting(ApiRateLimits.BookingReads).MapGetBo
 app.MapGroup("/api/v1").RequireRateLimiting(ApiRateLimits.BookingCreate).MapCreateBookingEndpoint();
 app.MapGroup("/api/v1").RequireRateLimiting(ApiRateLimits.ItemCommands).MapActivateItemEndpoint().MapConfirmItemEndpoint();
 app.MapGroup("/api/v1").RequireRateLimiting(ApiRateLimits.ItemCancel).MapCancelItemEndpoint();
+app.MapSimulationEndpoints();
 app.Run();
 return 0;
 

@@ -61,6 +61,15 @@ public interface ILaundrySession : IQueueSession, IAsyncDisposable
     /// <summary>Bloqueia a wallet até o fim da transação; ausência dela é base não preparada.</summary>
     Task LockWalletAsync(Guid walletId, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Descoberta sem lock do tipo de uma máquina; null se ela não existe. Só orienta quais locks adquirir: o inventário é
+    /// fixo e o tipo de uma máquina não muda.
+    /// </summary>
+    Task<MachineType?> LocateMachineAsync(Guid machineId, CancellationToken cancellationToken);
+
+    /// <summary>Ocupação sintética da simulação: máquina available sem item → running com is_demo_occupied, sem item nem wallet.</summary>
+    Task OccupyAsync(Guid machineId, DateTime occupiedAt, CancellationToken cancellationToken);
+
     /// <summary>Oferta confirmada: to_be_confirmed → in_progress com started_at, e máquina reserved → running.</summary>
     Task StartAsync(Guid itemId, Guid machineId, DateTime startedAt, CancellationToken cancellationToken);
 

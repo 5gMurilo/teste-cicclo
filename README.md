@@ -157,6 +157,12 @@ curl -i -X POST http://localhost:5001/api/v1/bookings \
 
 As leituras de contratações, do histórico e das máquinas (detalhe, listagem, lançamentos e `GET /api/v1/machines`) compartilham uma política própria: janela fixa de 1 minuto por IP, `RateLimiting:BookingReads:PermitLimit` (padrão 30), separada do limite de `GET /api/v1/wallet` e catálogo.
 
+### Simulação de máquinas (somente Development com DemoMode)
+
+As rotas sob `/api/v1/simulation` existem apenas quando o ambiente é `Development` **e** `Laundry:DemoMode=true` (`Laundry__DemoMode=true`). Em qualquer outra combinação elas não são mapeadas: respondem 404 e não aparecem no OpenAPI. Não há login nem pseudo-autorização por `walletId`; o corpo das requisições não é lido. Cada comando responde `{ "machine": {...}, "item": {...} | null }`, com a máquina atual (mesma forma de `GET /api/v1/machines`) e o item real afetado, quando existe. `machineId` que não é UUID responde 400 `VALIDATION_ERROR`; máquina inexistente, 404 `MACHINE_NOT_FOUND`. A simulação não tem política de limite própria.
+
+- `POST /api/v1/simulation/machines/{machineId}/occupy` marca uma máquina `available`, sem item e sem ninguém na fila do seu tipo, como `running` com `isDemoOccupied: true` e `activeItemId: null` (ocupação sintética). Não cria compra, débito, lançamento nem wallet. Máquina `reserved`, `running` ou `out_of_service`, ou um item já na fila do tipo, responde 409 `INVALID_STATE_TRANSITION` sem mudança: a ocupação não fura a fila. Ocupação e ativação disputam o mesmo lock; só uma toma a máquina livre.
+
 ### Observabilidade
 
 A API escreve logs estruturados em JSON no console (um único provider), com `TraceId` e `SpanId` nos escopos. Um cabeçalho W3C `traceparent` recebido é continuado pelo trace da requisição. Traces e métricas HTTP vêm da instrumentação nativa do ASP.NET Core: as métricas usam rota normalizada (`/api/v1/wallet`), método e status, nunca IDs ou query string. O recurso identifica `service.name=cicclo.api`, `service.version` (versão do assembly, com commit quando disponível no build) e `deployment.environment.name`.
