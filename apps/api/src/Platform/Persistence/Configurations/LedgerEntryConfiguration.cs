@@ -62,7 +62,7 @@ internal sealed class LedgerEntryConfiguration : IEntityTypeConfiguration<Ledger
         _ => throw new ArgumentOutOfRangeException(nameof(value), value, "Tipo de lançamento sem representação persistida."),
     };
 
-    private static LedgerEntryKind ParseKind(string value) => value switch
+    public static LedgerEntryKind ParseKind(string value) => value switch
     {
         "debit" => LedgerEntryKind.Debit,
         _ => throw new InvalidOperationException($"Tipo de lançamento persistido desconhecido: '{value}'."),

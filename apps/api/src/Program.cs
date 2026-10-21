@@ -10,6 +10,7 @@ using Cicclo.Api.Platform.Observability;
 using Cicclo.Api.Platform.Persistence;
 using Cicclo.Api.Services.GetCatalog;
 using Cicclo.Api.Wallet.GetBalance;
+using Cicclo.Api.Wallet.ListTransactions;
 using Microsoft.EntityFrameworkCore;
 
 var bootstrapDemo = BootstrapDemoCommand.IsRequested(args);
@@ -32,6 +33,7 @@ builder.Services.AddDbContextFactory<CiccloDbContext>();
 builder.Services.AddScoped<PostgresWalletBalanceQuery>();
 builder.Services.AddScoped<PostgresServiceCatalogQuery>();
 builder.Services.AddScoped<PostgresBookingProjection>();
+builder.Services.AddScoped<PostgresLedgerQuery>();
 
 if (bootstrapDemo)
 {
@@ -58,7 +60,7 @@ app.UseRateLimiter();
 app.MapApiOpenApi();
 app.MapHealthEndpoints();
 app.MapGroup("/api/v1").RequireRateLimiting(ApiRateLimits.Reads).MapWalletEndpoint().MapServicesEndpoint();
-app.MapGroup("/api/v1").RequireRateLimiting(ApiRateLimits.BookingReads).MapGetBookingEndpoint().MapListBookingsEndpoint();
+app.MapGroup("/api/v1").RequireRateLimiting(ApiRateLimits.BookingReads).MapGetBookingEndpoint().MapListBookingsEndpoint().MapListTransactionsEndpoint();
 app.MapGroup("/api/v1").RequireRateLimiting(ApiRateLimits.BookingCreate).MapCreateBookingEndpoint();
 app.Run();
 return 0;
