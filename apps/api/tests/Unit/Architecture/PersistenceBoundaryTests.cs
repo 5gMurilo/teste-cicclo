@@ -45,7 +45,7 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
         typeof(Cicclo.Api.Laundry.GetMachines.GetMachinesEndpoint), typeof(Cicclo.Api.Laundry.GetMachines.PostgresMachinesQuery),
         typeof(Cicclo.Api.Laundry.Simulation.SimulationEndpoints), typeof(Cicclo.Api.Laundry.Simulation.OccupyMachineEndpoint),
         typeof(Cicclo.Api.Laundry.Simulation.CompleteMachineEndpoint), typeof(Cicclo.Api.Laundry.ReportIssue.ReportIssueEndpoint),
-        typeof(Cicclo.Api.Laundry.Simulation.BreakdownMachineEndpoint),
+        typeof(Cicclo.Api.Laundry.Simulation.BreakdownMachineEndpoint), typeof(Cicclo.Api.Laundry.ConfirmIncident.ConfirmIncidentEndpoint),
     ];
 
     [Fact]
@@ -76,6 +76,8 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
                 typeof(Cicclo.Api.Laundry.ReportIssue.ReportIssueResult), typeof(Cicclo.Api.Laundry.ReportIssue.ReportIssueRequest),
                 typeof(Cicclo.Api.Laundry.ReportIssue.ReportIssueResponse), typeof(Cicclo.Api.Laundry.ReportIssue.IssueDescription),
                 typeof(Cicclo.Api.Laundry.ConfirmMachineFailure.ConfirmMachineFailure), typeof(Cicclo.Api.Laundry.ConfirmMachineFailure.ConfirmMachineFailureResult),
+                typeof(IncidentLocation), typeof(Cicclo.Api.Laundry.ConfirmIncident.ConfirmIncident), typeof(Cicclo.Api.Laundry.ConfirmIncident.ConfirmIncidentResult),
+                typeof(Cicclo.Api.Laundry.ConfirmIncident.ConfirmIncidentResponse), typeof(Cicclo.Api.Laundry.ConfirmIncident.ConfirmedIncidentStatusContract),
             },
             domainTypes.ToHashSet());
         var violations = domainTypes

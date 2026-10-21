@@ -1,3 +1,4 @@
+using Cicclo.Api.Laundry.ConfirmIncident;
 using Cicclo.Api.Platform;
 using Cicclo.Api.Platform.Http;
 using Microsoft.Extensions.Options;
@@ -14,7 +15,7 @@ public static class SimulationEndpoints
     {
         if (app.Environment.IsDevelopment() && app.Services.GetRequiredService<IOptions<LaundryOptions>>().Value.DemoMode)
         {
-            app.MapGroup("/api/v1/simulation").MapOccupyMachineEndpoint().MapCompleteMachineEndpoint().MapBreakdownMachineEndpoint();
+            app.MapGroup("/api/v1/simulation").MapOccupyMachineEndpoint().MapCompleteMachineEndpoint().MapBreakdownMachineEndpoint().MapConfirmIncidentEndpoint();
         }
 
         return app;
