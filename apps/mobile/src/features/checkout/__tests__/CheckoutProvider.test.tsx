@@ -8,6 +8,9 @@ import { queryClient as appQueryClient } from '../../../shared/api/queryClient';
 import { createTestQueryClient } from '../../../test/queryClient';
 import { CheckoutProvider, useCheckout } from '../CheckoutProvider';
 
+// These tests cover the provider with the purchase capability off.
+jest.mock('../../../shared/api/capabilities', () => ({ capabilities: { purchase: false, keyRetentionMs: null } }));
+
 const CHECKOUT_TAB = /^Checkout.*tab, 3 of 3$/;
 const service = (code: string, unitPriceCents: number, over: Record<string, unknown> = {}) => ({
   code,

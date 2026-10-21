@@ -3,8 +3,15 @@
  * Flip a value in the commit that records its proof in docs/api-contract.md, never before.
  */
 export const capabilities = {
-  /** C2: POST/replay 201/200 with the same id, duplicates, limit, error codes and money consistency proven. */
-  purchase: false,
-  /** C2: how long the server replays a stored Idempotency-Key; null while unproven. */
+  /**
+   * C2, proven on 2026-10-21 against the real API (live/contract.live.test.ts): 201 then 200 replay with the
+   * same booking and no second debit, IDEMPOTENCY_CONFLICT, definitive refusals, 429 with Retry-After and the
+   * next read already showing the debited balance. See docs/api-contract.md.
+   */
+  purchase: true,
+  /**
+   * How long the server replays a stored Idempotency-Key. null = no expiry known: the key is stored with the
+   * booking behind a unique index and the backend has no cleanup, so a replay stays valid while the booking exists.
+   */
   keyRetentionMs: null as number | null,
 };
