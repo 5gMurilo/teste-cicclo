@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** em andamento. T1 (E0) a T9 concluídas em 2026-10-21; T10 com código e gate B verdes, aguardando C1 (demo com API real); T11–T37 abertas.
+**Execução:** em andamento. Última tarefa concluída: T16 (15/37 com Done when marcado); ver STATE.md.
 
 ## Execution Protocol
 
@@ -231,7 +231,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Nenhum estado remoto; só tipos e ações de seleção.
 **Requirement**: SEL-05, SEL-07, SEL-09.
 **What**: Implementar add/remove/setPreference/clear como transformação pura sem fetch.
-**Done when**: [ ] Remove elimina zeros; preferência inexistente não é mantida; remover última ocorrência preferida limpa preferência; input não é mutado.
+**Done when**: [x] Remove elimina zeros; preferência inexistente não é mantida; remover última ocorrência preferida limpa preferência; input não é mutado.
 **Tests**: unit — teto de 7 casos: add inicial/repetido, remove, remove ausente, preferência válida, última preferida removida, clear e imutabilidade.
 **Gate**: Q + CC.
 **Commit**: `feat(checkout): model local quantities and preference`
@@ -242,7 +242,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Reducer types, contratos públicos de catálogo/carteira.
 **Requirement**: SEL-01, SEL-02, SEL-03, SEL-04, SEL-05, SEL-08, SEL-10.
 **What**: Centralizar totais, expansão de ocorrências, limites/elegibilidade e problemas de revisão sem alterar saldo.
-**Done when**: [ ] Caso 5000/1890/2090 produz 3980/1020; qty e totais seguros; erro/ausência de dados não vira zero financeiro válido; nenhuma regra duplicada em screen.
+**Done when**: [x] Caso 5000/1890/2090 produz 3980/1020; qty e totais seguros; erro/ausência de dados não vira zero financeiro válido; nenhuma regra duplicada em screen.
 **Tests**: unit — teto de 12 casos: 0/1/10/11 ocorrências, duplicatas, saldo insuficiente, qty negativa/fracionária, código ausente, inativo, preço alterado e overflow; incluir duas lavagens 3780.
 **Gate**: Q + CC.
 **Commit**: `feat(checkout): derive bounded financial selection projections`
@@ -253,7 +253,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Reducer/seletores e queries públicas wallet/catalog; inserir provider no root.
 **Requirement**: SEL-02, SEL-03, SEL-04, SEL-06, SEL-07.
 **What**: Expor seleção e ações públicas validadas; persistir somente durante a sessão, sem saldo no Context.
-**Done when**: [ ] Adição valida dados/limites antes de dispatch; remoção continua possível; provider único acima das tabs; estado derivado não é segunda fonte de wallet/catalog.
+**Done when**: [x] Adição valida dados/limites antes de dispatch; remoção continua possível; provider único acima das tabs; estado derivado não é segunda fonte de wallet/catalog.
 **Tests**: integration — teto de 6 casos: seleção atravessa abas, insuficiência, wallet loading/erro, indisponibilidade, limite e limpeza preferência.
 **Gate**: F + CC.
 **Commit**: `feat(checkout): retain validated selection above tab navigation`
@@ -264,7 +264,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Contrato público do CheckoutProvider e ServiceCard, sem novos totais no JSX.
 **Requirement**: SEL-01, SEL-02, SEL-03, SEL-04, SEL-05, UX-01.
 **What**: Conectar adicionar/remover/quantidade/resumo selecionado e disponível, com CTA para revisão.
-**Done when**: [ ] Feedback de bloqueio é acessível mesmo com botão disabled; header não muda; nenhum POST; selecionar não controla máquina.
+**Done when**: [x] Feedback de bloqueio é acessível mesmo com botão disabled; header não muda; nenhum POST; selecionar não controla máquina.
 **Tests**: integration — teto de 6 casos: wash+dry 3980/1020 com header 5000, repetido, remover, insuficiência, wallet inválida e serviço indisponível.
 **Gate**: F + CC.
 **Commit**: `feat(home): select services without debiting the wallet`
@@ -275,7 +275,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Provider e seletores; screen introduzida no lugar do placeholder da rota checkout.
 **Requirement**: SEL-07, SEL-08, SEL-09, SEL-10, BUY-14, UX-01.
 **What**: Exibir quantidades, remover, preferência válida, total/estimativa distintos e aviso da futura cobrança imediata.
-**Done when**: [ ] Empty state volta à Home; preço alterado requer nova revisão; compra ainda não habilitada e isso é explícito ao usuário; sem rota de detalhe inexistente.
+**Done when**: [x] Empty state volta à Home; preço alterado requer nova revisão; compra ainda não habilitada e isso é explícito ao usuário; sem rota de detalhe inexistente.
 **Tests**: integration — teto de 7 casos: vazio/CTA, itens/total, preferência nula/válida, remoção preferida, mudança preço/elegibilidade, três rótulos financeiros e ausência de POST.
 **Gate**: F + CC.
 **Commit**: `feat(checkout): review quantities prices and execution preference`
@@ -286,7 +286,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Quantidade derivada pública do checkout; navegação da T5.
 **Requirement**: NAV-01, NAV-02, SEL-06, SEL-11, UX-01.
 **What**: Conectar badge e nome acessível sem recalcular a regra de quantidade no layout.
-**Done when**: [ ] Zero oculta badge; duas unidades do mesmo serviço contam 2; ordem/inicial das tabs e seleção preservadas; E2 demonstra seleção real sem débito.
+**Done when**: [x] Zero oculta badge; duas unidades do mesmo serviço contam 2; ordem/inicial das tabs e seleção preservadas; E2 demonstra seleção real sem débito.
 **Tests**: integration — teto de 4 casos: zero, múltiplas ocorrências, remoção e navegação completa mantendo seleção/header.
 **Gate**: F + B no fechamento E2 + C1 + CC.
 **Commit**: `feat(navigation): expose accessible checkout item counts`
@@ -709,7 +709,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **9/37 tarefas concluídas**; T10 implementada e commitada, **pendente de C1** (`[~]`: nada de demo real executado); demais checkboxes de Done when abertas.
+- Implementação: **15/37 tarefas com Done when marcado** (última: T16); demais abertas ou pendentes de gate externo.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1/C2/C3/CP1 não comprovadas; N1 não executado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.
