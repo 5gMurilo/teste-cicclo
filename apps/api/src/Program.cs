@@ -1,4 +1,5 @@
 using Cicclo.Api.Platform;
+using Cicclo.Api.Platform.Health;
 using Cicclo.Api.Platform.Http;
 using Cicclo.Api.Platform.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -7,6 +8,7 @@ var bootstrapDemo = BootstrapDemoCommand.IsRequested(args);
 var builder = WebApplication.CreateBuilder(BootstrapDemoCommand.WithoutOption(args));
 builder.Services.AddHealthChecks();
 builder.Services.AddHttpBoundary();
+builder.Services.AddApiOpenApi();
 builder.Services.AddOptions<LaundryOptions>()
     .Bind(builder.Configuration.GetSection(LaundryOptions.SectionName))
     .ValidateDataAnnotations()
@@ -31,7 +33,8 @@ if (bootstrapDemo)
 
 var app = builder.Build();
 app.UseHttpBoundary();
-app.MapHealthChecks("/health");
+app.MapApiOpenApi();
+app.MapHealthEndpoints();
 app.Run();
 return 0;
 
