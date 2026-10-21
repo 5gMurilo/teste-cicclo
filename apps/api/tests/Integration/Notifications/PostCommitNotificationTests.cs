@@ -1,7 +1,6 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Channels;
 using Cicclo.Api.Bookings;
 using Cicclo.Api.Bookings.CancelItem;
 using Cicclo.Api.Bookings.CreateBooking;
@@ -11,10 +10,8 @@ using Cicclo.Api.Tests.Integration.Bookings;
 using Cicclo.Api.Tests.Integration.Laundry;
 using Cicclo.Api.Tests.Support;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -117,7 +114,7 @@ public sealed class PostCommitNotificationTests(PostgresFixture postgres)
         var probe = new ProbeState(database);
         await using var factory = Host(database, clock, Realtime(), probe);
         using var http = factory.CreateClient();
-        await using var client = await ConnectAsync(factory);
+        await using var client = await RealtimeTestClient.ConnectAsync(factory);
         var booking = await PurchaseAsync(http);
         await client.SkipThroughAsync("wallet.updated");
         var state = await database.RowsAsync(StateSql);
@@ -164,7 +161,7 @@ public sealed class PostCommitNotificationTests(PostgresFixture postgres)
         var probe = new ProbeState(database);
         await using var factory = Host(database, clock, Realtime(), probe);
         using var http = factory.CreateClient();
-        await using var client = await ConnectAsync(factory);
+        await using var client = await RealtimeTestClient.ConnectAsync(factory);
 
         var booking = await PurchaseAsync(http);
 
@@ -204,7 +201,7 @@ public sealed class PostCommitNotificationTests(PostgresFixture postgres)
         var probe = new ProbeState(database);
         await using var factory = Host(database, clock, Realtime(), probe);
         using var http = factory.CreateClient();
-        await using var client = await ConnectAsync(factory);
+        await using var client = await RealtimeTestClient.ConnectAsync(factory);
         var key = Guid.NewGuid();
         var booking = await PurchaseAsync(http, key);
         await client.SkipThroughAsync("wallet.updated");
@@ -239,7 +236,7 @@ public sealed class PostCommitNotificationTests(PostgresFixture postgres)
         var probe = new ProbeState(database);
         await using var factory = Host(database, clock, Realtime(), probe);
         using var http = factory.CreateClient();
-        await using var client = await ConnectAsync(factory);
+        await using var client = await RealtimeTestClient.ConnectAsync(factory);
         var booking = await PurchaseAsync(http, body: """{"serviceCodes":["wash","wash"],"preferredFirstServiceCode":"wash","expectedTotalCents":3780}""");
         var first = await ItemInAsync(database, booking.Booking, "to_be_confirmed");
         var second = await ItemInAsync(database, booking.Booking, "pending_activation");
@@ -283,7 +280,7 @@ public sealed class PostCommitNotificationTests(PostgresFixture postgres)
         var probe = new ProbeState(database);
         await using var factory = Host(database, clock, Realtime(("Laundry:QueueWorkerIntervalSeconds", "60")), probe);
         using var http = factory.CreateClient();
-        await using var client = await ConnectAsync(factory);
+        await using var client = await RealtimeTestClient.ConnectAsync(factory);
         var first = await PurchaseAsync(http);
         clock.SetUtcNow(T0.AddSeconds(1));
         var second = await PurchaseAsync(http);
@@ -366,7 +363,7 @@ public sealed class PostCommitNotificationTests(PostgresFixture postgres)
 
         var lonely = await PurchaseAsync(http);
         await AssertStatusAsync(HttpStatusCode.OK, http.PostAsync($"/api/v1/bookings/{lonely.Booking}/items/{lonely.Item}/cancel", null));
-        var gone = await ConnectAsync(factory);
+        var gone = await RealtimeTestClient.ConnectAsync(factory);
         await gone.DisposeAsync();
         clock.SetUtcNow(T0.AddSeconds(5));
         var after = await PurchaseAsync(http, body: """{"serviceCodes":["dry"],"expectedTotalCents":2090}""");
@@ -384,7 +381,7 @@ public sealed class PostCommitNotificationTests(PostgresFixture postgres)
         var database = await ReadyAsync(postgres);
         await using var factory = Host(database, Clock(), Realtime());
         using var http = factory.CreateClient();
-        await using var client = await ConnectAsync(factory);
+        await using var client = await RealtimeTestClient.ConnectAsync(factory);
 
         var booking = await PurchaseAsync(http);
 
@@ -425,26 +422,6 @@ public sealed class PostCommitNotificationTests(PostgresFixture postgres)
             });
         });
 
-    /// <summary>
-    /// Cliente real por long polling sobre o TestServer. A primeira invocação recusada funciona como barreira: o servidor só
-    /// despacha invocações depois de registrar a conexão, então Clients.All já a inclui.
-    /// </summary>
-    private static async Task<RealtimeClient> ConnectAsync(WebApplicationFactory<Program> factory)
-    {
-        var server = factory.Server;
-        var connection = new HubConnectionBuilder()
-            .WithUrl(new Uri(server.BaseAddress, LaundryHub.Path), options =>
-            {
-                options.Transports = HttpTransportType.LongPolling;
-                options.HttpMessageHandlerFactory = _ => server.CreateHandler();
-            })
-            .Build();
-        var client = new RealtimeClient(connection);
-        await connection.StartAsync();
-        await Assert.ThrowsAsync<HubException>(() => connection.InvokeAsync<object>("Ready"));
-        return client;
-    }
-
     private static async Task<(Guid Booking, Guid Item)> PurchaseAsync(HttpClient client, Guid? key = null, string body = WashBody)
     {
         using var response = await PostBookingAsync(client, key ?? Guid.NewGuid(), body);
@@ -480,37 +457,6 @@ public sealed class PostCommitNotificationTests(PostgresFixture postgres)
     private static async Task TerminateAsync(TestDatabase database, string applicationName) =>
         Assert.Equal(["true"], await database.RowsAsync(
             $"SELECT pg_terminate_backend(pid, {(int)SignalTimeout.TotalMilliseconds})::text FROM pg_stat_activity WHERE datname = current_database() AND application_name = '{applicationName}' AND state <> 'idle'"));
-
-    private sealed class RealtimeClient : IAsyncDisposable
-    {
-        /// <summary>Nomes da tabela de eventos do design, literais: o cliente não herda as constantes do servidor.</summary>
-        private static readonly string[] EventNames =
-            ["booking.updated", "queue.updated", "machine.offered", "machine.offer_expired", "wallet.updated", "machine.failed"];
-
-        private readonly HubConnection connection;
-        private readonly Channel<(string Name, JsonElement Payload)> received = Channel.CreateUnbounded<(string, JsonElement)>();
-
-        public RealtimeClient(HubConnection connection)
-        {
-            this.connection = connection;
-            foreach (var name in EventNames)
-            {
-                connection.On<JsonElement>(name, payload => received.Writer.TryWrite((name, payload)));
-            }
-        }
-
-        public async Task<(string Name, JsonElement Payload)> NextAsync() =>
-            await received.Reader.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(10));
-
-        public async Task SkipThroughAsync(string name)
-        {
-            while ((await NextAsync()).Name != name)
-            {
-            }
-        }
-
-        public async ValueTask DisposeAsync() => await connection.DisposeAsync();
-    }
 
     /// <summary>Lote visto pela sonda: nomes, (booking, versão do payload, revisão no banco) e se a wallet estava livre.</summary>
     private sealed record ProbeBatch(string[] Names, (Guid Booking, long Payload, long Database)[] Revisions, bool WalletLockFree);
