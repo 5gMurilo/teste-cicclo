@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 var bootstrapDemo = BootstrapDemoCommand.IsRequested(args);
 var builder = WebApplication.CreateBuilder(BootstrapDemoCommand.WithoutOption(args));
-builder.Services.AddHealthChecks();
+builder.Services.AddApiHealthChecks();
 builder.Services.AddHttpBoundary();
 builder.Services.AddApiOpenApi();
 builder.Services.AddOptions<LaundryOptions>()

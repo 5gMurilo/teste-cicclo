@@ -57,9 +57,11 @@ Diagnóstico da API:
 
 ```sh
 curl http://localhost:5001/health
+curl http://localhost:5001/health/live
+curl http://localhost:5001/health/ready
 ```
 
-Resposta: HTTP 200, `text/plain`, corpo `Healthy`. É somente liveness do processo, não uma declaração de disponibilidade do PostgreSQL. Não há autenticação. A conexão `ConnectionStrings:Cicclo` é resolvida apenas quando um componente de dados a usa; sem ela, a API continua subindo.
+`/health` (alias legado) e `/health/live` respondem HTTP 200, `text/plain`, corpo `Healthy`: liveness do processo, sem consultar o PostgreSQL. `/health/ready` responde 200 `Healthy` somente quando o banco está acessível e a base demo foi preparada pelo bootstrap (wallet demo, catálogo e máquinas presentes); caso contrário, 503 `Unhealthy`, sem detalhes do banco. Saldo, preços e estados alterados pelo uso não afetam a readiness. Não há autenticação. A conexão `ConnectionStrings:Cicclo` é resolvida apenas quando um componente de dados a usa; sem ela, a API continua subindo.
 
 Em `Development`, o documento OpenAPI 3.1 gerado pelos endpoints reais fica em `GET /openapi/v1.json` (por exemplo, `curl http://localhost:5001/openapi/v1.json`). Ele lista somente operações já entregues e não é publicado em outros ambientes.
 

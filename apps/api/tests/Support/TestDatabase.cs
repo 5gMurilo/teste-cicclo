@@ -18,6 +18,15 @@ public sealed class TestDatabase(string connectionString)
         await context.Database.MigrateAsync();
     }
 
+    /// <summary>Prepara a base como o bootstrap: migrations reais e depois o seed.sql distribuído, pelo mesmo executor.</summary>
+    public async Task BootstrapAsync()
+    {
+        await MigrateAsync();
+        await using var connection = new NpgsqlConnection(ConnectionString);
+        await connection.OpenAsync();
+        await new DemoSeedSql().ExecuteAsync(connection, CancellationToken.None);
+    }
+
     public async Task ExecuteAsync(string sql)
     {
         await using var connection = new NpgsqlConnection(ConnectionString);
