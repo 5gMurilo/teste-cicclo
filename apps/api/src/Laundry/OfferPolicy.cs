@@ -1,3 +1,5 @@
+using Cicclo.Api.Bookings;
+
 namespace Cicclo.Api.Laundry;
 
 /// <summary>Máquina do tipo, lida sob lock: só available sem item ativo recebe oferta.</summary>
@@ -8,6 +10,15 @@ public sealed record QueuedItem(Guid ItemId, long Ticket);
 
 /// <summary>Par item→máquina escolhido pela promoção FIFO.</summary>
 public sealed record OfferPairing(Guid ItemId, Guid MachineId);
+
+/// <summary>Decisão sobre confirmar a oferta corrente de um item.</summary>
+public enum OfferCheck
+{
+    Confirmable,
+    AlreadyStarted,
+    Expired,
+    Invalid,
+}
 
 /// <summary>
 /// Regras puras de fila e oferta: FIFO por ticket (id como desempate), máquina livre por id, prazo da oferta e
@@ -23,6 +34,21 @@ public static class OfferPolicy
     }
 
     public static DateTime ExpiresAt(DateTime offeredAt, TimeSpan timeout) => offeredAt + timeout;
+
+    /// <summary>
+    /// Confirmação da oferta corrente no instante da decisão: em execução é repetição sem efeito; fora de
+    /// to_be_confirmed, ou com vínculo item↔máquina divergente (máquina não reservada para o item), é inválida; a
+    /// oferta só vale com now &lt; expiresAt, então now == expiresAt já venceu.
+    /// </summary>
+    public static OfferCheck CheckConfirmation(LaundryItem item, MachineSlot? machine, DateTime now) =>
+        item.Status == BookingItemStatus.InProgress ? OfferCheck.AlreadyStarted
+        : item.Status != BookingItemStatus.ToBeConfirmed
+          || machine is null
+          || machine.MachineId != item.MachineId
+          || machine.State != MachineState.Reserved
+          || machine.ActiveItemId != item.ItemId ? OfferCheck.Invalid
+        : now >= item.ExpiresAt ? OfferCheck.Expired
+        : OfferCheck.Confirmable;
 
     /// <summary>
     /// Pareia as máquinas livres (por id) com os primeiros da fila (por ticket, depois id). Nenhum item é pulado:

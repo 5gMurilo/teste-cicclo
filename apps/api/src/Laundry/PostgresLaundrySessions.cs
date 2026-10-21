@@ -46,14 +46,14 @@ public sealed class PostgresLaundrySessions(IDbContextFactory<CiccloDbContext> c
             }
         }
 
-        public async Task<MachineType?> FindItemMachineTypeAsync(Guid itemId, CancellationToken cancellationToken)
+        public async Task<ItemLocation?> LocateItemAsync(Guid itemId, CancellationToken cancellationToken)
         {
-            var types = await db.BookingItems
+            var locations = await db.BookingItems
                 .AsNoTracking()
                 .Where(item => item.Id == itemId)
-                .Join(db.Services, item => item.ServiceCode, service => service.Code, (item, service) => service.MachineType)
+                .Join(db.Services, item => item.ServiceCode, service => service.Code, (item, service) => new ItemLocation(item.BookingId, service.MachineType))
                 .ToListAsync(cancellationToken);
-            return types.Count == 1 ? types[0] : null;
+            return locations.Count == 1 ? locations[0] : null;
         }
 
         public async Task<IReadOnlyList<MachineSlot>> LockMachinesAsync(MachineType type, CancellationToken cancellationToken)
@@ -115,6 +115,26 @@ public sealed class PostgresLaundrySessions(IDbContextFactory<CiccloDbContext> c
                     """,
                     cancellationToken),
                 "máquina livre para reservar");
+        }
+
+        public async Task StartAsync(Guid itemId, Guid machineId, DateTime startedAt, CancellationToken cancellationToken)
+        {
+            Expect(
+                await db.Database.ExecuteSqlAsync(
+                    $"""
+                    UPDATE service_request_items SET status = 'in_progress', started_at = {startedAt}
+                    WHERE id = {itemId} AND status = 'to_be_confirmed' AND machine_id = {machineId}
+                    """,
+                    cancellationToken),
+                "oferta corrente para iniciar");
+            Expect(
+                await db.Database.ExecuteSqlAsync(
+                    $"""
+                    UPDATE machines SET state = 'running', updated_at = {startedAt}
+                    WHERE id = {machineId} AND state = 'reserved' AND active_item_id = {itemId}
+                    """,
+                    cancellationToken),
+                "máquina reservada para o item");
         }
 
         public Task CommitAsync() => transaction.CommitAsync(CancellationToken.None);
