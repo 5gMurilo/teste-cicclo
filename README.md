@@ -103,7 +103,13 @@ A API escreve logs estruturados em JSON no console (um único provider), com `Tr
 | `OpenTelemetry:Enabled` | `true` | `false` desliga traces, métricas e exportação; os logs JSON no console continuam. |
 | `OpenTelemetry:OtlpEndpoint` | ausente | URL base http(s) de um coletor OTLP/HTTP, por exemplo `http://127.0.0.1:4318/`. Sem ela nada é exportado, nem para `localhost`. Valor inválido impede o startup. |
 
-Com endpoint, logs, traces e métricas são enviados em protobuf para `v1/logs`, `v1/traces` e `v1/metrics` sob a URL base, em background, com filas limitadas (2048 itens) e timeout de 5 s por envio. Ao parar, a API envia o último lote com o mesmo prazo. Coletor fora do ar ou lento não altera as respostas nem a saúde. Exemplo com variáveis de ambiente: `OpenTelemetry__OtlpEndpoint=http://127.0.0.1:4318/`. Nenhum coletor ou dashboard faz parte do projeto. Ainda não há spans ou métricas de compra, fila ou SQL.
+Com endpoint, logs, traces e métricas são enviados em protobuf para `v1/logs`, `v1/traces` e `v1/metrics` sob a URL base, em background, com filas limitadas (2048 itens) e timeout de 5 s por envio. Ao parar, a API envia o último lote com o mesmo prazo. Coletor fora do ar ou lento não altera as respostas nem a saúde. Exemplo com variáveis de ambiente: `OpenTelemetry__OtlpEndpoint=http://127.0.0.1:4318/`. Nenhum coletor ou dashboard faz parte do projeto. Ainda não há spans ou métricas de compra ou SQL.
+
+O meter `Cicclo.Api.Laundry` publica `cicclo_queue_wait_seconds` (histograma da espera entre `queued_at` e a oferta da máquina) e `cicclo_offers_expired_total` (ofertas vencidas devolvidas à fila), ambos só com a dimensão `machine_type` (`washer` ou `dryer`) e registrados somente depois do commit da transação que produziu o fato.
+
+### Reconciliação de ofertas
+
+No modo API normal, um worker em background reconcilia a fila a cada `Laundry:QueueWorkerIntervalSeconds` (padrão 5 s). Cada iteração abre um escopo e uma transação própria, bloqueia wallet, máquinas e itens nessa ordem, devolve ao fim da fila as ofertas vencidas (`now >= expires_at`, ticket e `queued_at` novos, sem débito nem cancelamento) e oferta as máquinas livres aos próximos por ticket, com prazo de `Laundry:ConfirmationTimeoutSeconds` (padrão 60 s). O estado vive só no PostgreSQL: reiniciar a API não perde fila nem oferta, e a primeira iteração após o reinício reconcilia o que venceu enquanto ela estava parada. Uma iteração que falha é registrada em log (evento 320) e a próxima tentativa só ocorre no intervalo seguinte; ao parar, a espera e o SQL em andamento são cancelados e a transação é revertida. O prazo da oferta não depende do worker: uma confirmação com `now >= expires_at` já é recusada e reconcilia a fila na mesma transação. O modo `--bootstrap-demo` não inicia o worker. Ainda não há endpoints de ativação ou confirmação.
 
 ## Validação
 

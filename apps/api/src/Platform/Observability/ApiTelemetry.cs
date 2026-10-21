@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using Cicclo.Api.Laundry;
 using Microsoft.Extensions.Options;
 using OpenTelemetry;
 using OpenTelemetry.Exporter;
@@ -58,7 +59,7 @@ public static class ApiTelemetry
                 .AddService(ServiceName, serviceVersion: Version)
                 .AddAttributes([new("deployment.environment.name", builder.Environment.EnvironmentName)]))
             .WithTracing(tracing => tracing.AddAspNetCoreInstrumentation())
-            .WithMetrics(metrics => metrics.AddAspNetCoreInstrumentation())
+            .WithMetrics(metrics => metrics.AddAspNetCoreInstrumentation().AddMeter(LaundryMetrics.MeterName))
             .WithLogging();
 
         if (endpoint is not null)
