@@ -38,7 +38,7 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
         typeof(ServicesEndpoint), typeof(PostgresServiceCatalogQuery),
         typeof(PostgresCreateBookingSessions), typeof(PostgresLaundrySessions),
         typeof(PostgresBookingProjection), typeof(Cicclo.Api.Bookings.GetBooking.GetBookingEndpoint),
-        typeof(PostgresQueueSession), typeof(CreateBookingEndpoint),
+        typeof(PostgresQueueSession), typeof(CreateBookingEndpoint), typeof(Cicclo.Api.Bookings.ListBookings.ListBookingsEndpoint),
     ];
 
     [Fact]
