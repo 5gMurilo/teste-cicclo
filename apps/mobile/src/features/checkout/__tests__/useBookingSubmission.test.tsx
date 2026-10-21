@@ -1,7 +1,9 @@
+import { QueryClientProvider, type QueryClient } from '@tanstack/react-query';
 import { act, renderHook } from '@testing-library/react-native';
-
 import { randomUUID } from 'expo-crypto';
+import type { ReactNode } from 'react';
 
+import { createTestQueryClient } from '../../../test/queryClient';
 import { useBookingSubmission } from '../useBookingSubmission';
 
 jest.mock('expo-crypto', () => ({ randomUUID: jest.fn() }));
@@ -52,10 +54,16 @@ const keys = (...values: string[]) => {
   return () => values[i++] ?? `key-${i}`;
 };
 
+let client: QueryClient;
+const wrapper = ({ children }: { children: ReactNode }) => (
+  <QueryClientProvider client={client}>{children}</QueryClientProvider>
+);
+
 beforeEach(() => {
   process.env.EXPO_PUBLIC_API_URL = 'http://api.test:5001';
   sent = [];
   resolvers = [];
+  client = createTestQueryClient();
 });
 
 afterEach(() => {
@@ -66,7 +74,7 @@ describe('useBookingSubmission', () => {
   it('sends at most one initial request when the button is tapped twice before the next render', async () => {
     installFetch();
     const generateKey = keys('k1', 'k2');
-    const { result } = await renderHook(() => useBookingSubmission({ generateKey }));
+    const { result } = await renderHook(() => useBookingSubmission({ generateKey }), { wrapper });
 
     await act(async () => {
       void result.current.submit(REQUEST);
@@ -82,7 +90,7 @@ describe('useBookingSubmission', () => {
     const random = jest.mocked(randomUUID);
     random.mockReturnValueOnce('11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa').mockReturnValueOnce('22222222-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
     installFetch(async () => response(409, { errorCode: 'PRICE_CHANGED' }));
-    const { result } = await renderHook(() => useBookingSubmission());
+    const { result } = await renderHook(() => useBookingSubmission(), { wrapper });
 
     await act(async () => result.current.submit(REQUEST));
     await act(async () => result.current.submit(REQUEST));
@@ -96,7 +104,7 @@ describe('useBookingSubmission', () => {
   it('freezes the payload when the intent is created', async () => {
     installFetch();
     const generateKey = keys('k1');
-    const { result } = await renderHook(() => useBookingSubmission({ generateKey }));
+    const { result } = await renderHook(() => useBookingSubmission({ generateKey }), { wrapper });
     const request = { serviceCodes: ['wash'], expectedTotalCents: 1890 };
 
     await act(async () => {
@@ -118,7 +126,7 @@ describe('useBookingSubmission', () => {
   ])('treats %s as a single confirmed booking', async (_name, status) => {
     installFetch(async () => response(status, BOOKING));
     const generateKey = keys('k1');
-    const { result } = await renderHook(() => useBookingSubmission({ generateKey }));
+    const { result } = await renderHook(() => useBookingSubmission({ generateKey }), { wrapper });
 
     await act(async () => result.current.submit(REQUEST));
 
@@ -129,7 +137,7 @@ describe('useBookingSubmission', () => {
   it('marks an allowlisted refusal as rejected and uses a new key for the next intent', async () => {
     installFetch(async () => response(409, { errorCode: 'WALLET_INSUFFICIENT_BALANCE' }));
     const generateKey = keys('k1', 'k2');
-    const { result } = await renderHook(() => useBookingSubmission({ generateKey }));
+    const { result } = await renderHook(() => useBookingSubmission({ generateKey }), { wrapper });
 
     await act(async () => result.current.submit(REQUEST));
     expect(result.current.state).toMatchObject({ status: 'rejected', reason: 'insufficient-balance' });
@@ -148,7 +156,7 @@ describe('useBookingSubmission', () => {
   ])('keeps key and payload in unknown after %s, without declaring failure or success', async (_name, answer, cause) => {
     installFetch(answer);
     const generateKey = keys('k1', 'k2');
-    const { result } = await renderHook(() => useBookingSubmission({ generateKey }));
+    const { result } = await renderHook(() => useBookingSubmission({ generateKey }), { wrapper });
 
     await act(async () => result.current.submit(REQUEST));
 
@@ -165,7 +173,7 @@ describe('useBookingSubmission', () => {
   it('keeps an idempotency conflict blocked: no new key and no automatic resolution', async () => {
     installFetch(async () => response(409, { errorCode: 'IDEMPOTENCY_CONFLICT' }));
     const generateKey = keys('k1', 'k2');
-    const { result } = await renderHook(() => useBookingSubmission({ generateKey }));
+    const { result } = await renderHook(() => useBookingSubmission({ generateKey }), { wrapper });
 
     await act(async () => result.current.submit(REQUEST));
     await act(async () => result.current.submit(REQUEST));
@@ -178,7 +186,7 @@ describe('useBookingSubmission', () => {
   it('treats a configuration error raised before any request as a certain rejection', async () => {
     delete process.env.EXPO_PUBLIC_API_URL;
     installFetch(async () => response(201, BOOKING));
-    const { result } = await renderHook(() => useBookingSubmission({ generateKey: () => 'k1' }));
+    const { result } = await renderHook(() => useBookingSubmission({ generateKey: () => 'k1' }), { wrapper });
 
     await act(async () => result.current.submit(REQUEST));
 

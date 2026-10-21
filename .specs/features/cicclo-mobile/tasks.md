@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** em andamento. Última tarefa concluída: T18 (17/37 com Done when marcado); ver STATE.md.
+**Execução:** em andamento. Última tarefa concluída: T19 (18/37 com Done when marcado); ver STATE.md.
 
 ## Execution Protocol
 
@@ -322,7 +322,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Intenção original, parser de deadline e queries de wallet/catalog.
 **Requirement**: BUY-02, BUY-08, BUY-09, BUY-10, BUY-11, BUY-12, BUY-13, SEL-08.
 **What**: Implementar verify explícito, revisão PRICE_CHANGED, allowlist de recusa e controle de Retry-After sem fila automática.
-**Done when**: [ ] verify usa key/body byte a byte originais; catálogo posterior não os altera; consentimento novo gera nova chave somente após rejeição definitiva/revisão; conflito ou retenção vencida/desconhecida não libera compra nova.
+**Done when**: [x] verify usa key/body byte a byte originais; catálogo posterior não os altera; consentimento novo gera nova chave somente após rejeição definitiva/revisão; conflito ou retenção vencida/desconhecida não libera compra nova.
 **Tests**: integration — teto de 10 casos: rede/timeout/5xx/2xx inválido, replay mesmo body/chave após catálogo mudar, PRICE_CHANGED sem reenvio silencioso, saldo insuficiente real, 429 segundos/data, conflito e ausência de POST por reconexão automática.
 **Gate**: F + CC.
 **Commit**: `feat(checkout): reconcile uncertain outcomes with explicit consent`
@@ -709,7 +709,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **17/37 tarefas com Done when marcado** (última: T18); demais abertas ou pendentes de gate externo.
+- Implementação: **18/37 tarefas com Done when marcado** (última: T19); demais abertas ou pendentes de gate externo.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1/C2/C3/CP1 não comprovadas; N1 não executado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.

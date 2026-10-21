@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { randomUUID } from 'expo-crypto';
 import { useCallback, useRef, useState } from 'react';
 import { ZodError } from 'zod';
@@ -5,6 +6,8 @@ import { ZodError } from 'zod';
 import { ApiError } from '../../shared/api/apiError';
 import { TransportError } from '../../shared/api/client';
 import { ConfigError } from '../../shared/config/env';
+import { catalogKey } from '../catalog/queries';
+import { walletKey } from '../wallet/queries';
 import {
   createBooking,
   serializeBookingBody,
@@ -30,6 +33,7 @@ export type RejectionReason =
   | 'no-operational-machine'
   | 'request-too-large'
   | 'unsupported-media-type'
+  | 'rate-limited'
   | 'configuration';
 
 /** Why the outcome of a sent purchase cannot be known from the response alone. */
@@ -39,18 +43,29 @@ export type UnknownCause =
   | 'server-error'
   | 'invalid-response'
   | 'unclassified-error'
+  | 'rate-limited'
+  | 'retention-expired'
   | 'idempotency-conflict';
 
 export type SubmissionState =
   | { status: 'idle' }
   | { status: 'submitting'; intent: BookingIntent }
   | { status: 'confirmed'; intent: BookingIntent; booking: ConfirmedBooking }
-  | { status: 'rejected'; intent: BookingIntent; reason: RejectionReason }
-  | { status: 'unknown'; intent: BookingIntent; cause: UnknownCause };
+  | { status: 'rejected'; intent: BookingIntent; reason: RejectionReason; retryAfterAt: number | null }
+  | { status: 'unknown'; intent: BookingIntent; cause: UnknownCause; retryAfterAt: number | null };
 
 type Outcome =
-  | { status: 'rejected'; reason: RejectionReason }
-  | { status: 'unknown'; cause: UnknownCause };
+  | { status: 'rejected'; reason: RejectionReason; retryAfterAt: number | null }
+  | { status: 'unknown'; cause: UnknownCause; retryAfterAt: number | null };
+
+/** After these refusals the displayed wallet and catalog are stale and must be re-read. */
+const REFRESH_AFTER: ReadonlySet<RejectionReason> = new Set([
+  'price-changed',
+  'insufficient-balance',
+  'service-disabled',
+  'no-operational-machine',
+  'service-not-found',
+]);
 
 // Allowlist taken from the contract (CreateBookingEndpoint.cs): only these guarantee "nothing debited".
 const DEFINITIVE_REFUSALS: Record<string, RejectionReason> = {
@@ -65,33 +80,51 @@ const DEFINITIVE_REFUSALS: Record<string, RejectionReason> = {
   UNSUPPORTED_MEDIA_TYPE: 'unsupported-media-type',
 };
 
-export function classifyFailure(error: unknown): Outcome {
+const unknown = (cause: UnknownCause, retryAfterAt: number | null = null): Outcome => ({ status: 'unknown', cause, retryAfterAt });
+const rejected = (reason: RejectionReason, retryAfterAt: number | null = null): Outcome => ({ status: 'rejected', reason, retryAfterAt });
+
+/**
+ * Maps a failed attempt to what is financially known. `afterUnknown` is true when an earlier attempt of the
+ * same intent already left the device: a refusal that says nothing about that attempt cannot resolve it.
+ */
+export function classifyFailure(error: unknown, afterUnknown = false): Outcome {
   // Thrown before any request leaves the device: certainly not a purchase.
-  if (error instanceof ConfigError) return { status: 'rejected', reason: 'configuration' };
+  if (error instanceof ConfigError) return afterUnknown ? unknown('unclassified-error') : rejected('configuration');
   if (error instanceof ApiError) {
-    if (error.errorCode === 'IDEMPOTENCY_CONFLICT') return { status: 'unknown', cause: 'idempotency-conflict' };
+    if (error.errorCode === 'IDEMPOTENCY_CONFLICT') return unknown('idempotency-conflict');
+    if (error.status === 429) {
+      // The rate limiter answers before the purchase runs, so a first attempt is a certain refusal.
+      return afterUnknown ? unknown('rate-limited', error.retryAfterAt) : rejected('rate-limited', error.retryAfterAt);
+    }
     const refusal = error.errorCode ? DEFINITIVE_REFUSALS[error.errorCode] : undefined;
-    if (refusal && error.status >= 400 && error.status < 500) return { status: 'rejected', reason: refusal };
-    return { status: 'unknown', cause: error.status >= 500 ? 'server-error' : 'unclassified-error' };
+    if (refusal && error.status >= 400 && error.status < 500) return rejected(refusal);
+    return unknown(error.status >= 500 ? 'server-error' : 'unclassified-error');
   }
   if (error instanceof TransportError) {
-    if (error.kind === 'network') return { status: 'unknown', cause: 'network' };
-    if (error.kind === 'timeout') return { status: 'unknown', cause: 'timeout' };
-    return { status: 'unknown', cause: 'invalid-response' };
+    if (error.kind === 'network') return unknown('network');
+    if (error.kind === 'timeout') return unknown('timeout');
+    return unknown('invalid-response');
   }
-  if (error instanceof ZodError) return { status: 'unknown', cause: 'invalid-response' };
-  return { status: 'unknown', cause: 'unclassified-error' };
+  if (error instanceof ZodError) return unknown('invalid-response');
+  return unknown('unclassified-error');
 }
 
 type Options = {
   /** Test seam for the Idempotency-Key; production uses a random UUID v4. */
   generateKey?: () => string;
   now?: () => Date;
+  /** How long the server remembers a key for replay; null while unproven (gate C2). */
+  keyRetentionMs?: number | null;
 };
 
 const IDLE: SubmissionState = { status: 'idle' };
 
-export function useBookingSubmission({ generateKey = randomUUID, now = () => new Date() }: Options = {}) {
+export function useBookingSubmission({
+  generateKey = randomUUID,
+  now = () => new Date(),
+  keyRetentionMs = null,
+}: Options = {}) {
+  const queryClient = useQueryClient();
   // The ref is the synchronous guard: it changes before any await, so two taps in one tick cannot both pass.
   const stateRef = useRef<SubmissionState>(IDLE);
   const [state, setState] = useState<SubmissionState>(IDLE);
@@ -102,22 +135,33 @@ export function useBookingSubmission({ generateKey = randomUUID, now = () => new
   }, []);
 
   const send = useCallback(
-    async (intent: BookingIntent) => {
+    async (intent: BookingIntent, afterUnknown: boolean) => {
       try {
         const booking = await createBooking({ idempotencyKey: intent.key, body: intent.body });
         commit({ status: 'confirmed', intent, booking });
       } catch (error) {
-        commit({ ...classifyFailure(error), intent });
+        const outcome = classifyFailure(error, afterUnknown);
+        commit({ ...outcome, intent });
+        if (outcome.status === 'rejected' && REFRESH_AFTER.has(outcome.reason)) {
+          void queryClient.invalidateQueries({ queryKey: walletKey });
+          void queryClient.invalidateQueries({ queryKey: catalogKey });
+        }
       }
     },
-    [commit],
+    [commit, queryClient],
   );
 
-  /** Starts a new intent. Ignored while a purchase is in flight or its outcome is still unknown. */
+  const blockedByRetryAfter = useCallback(
+    (retryAfterAt: number | null) => retryAfterAt !== null && now().getTime() < retryAfterAt,
+    [now],
+  );
+
+  /** Starts a new intent. Ignored while a purchase is in flight, its outcome is unknown, or Retry-After is pending. */
   const submit = useCallback(
     async (request: BookingRequest): Promise<void> => {
-      const current = stateRef.current.status;
-      if (current === 'submitting' || current === 'unknown') return;
+      const current = stateRef.current;
+      if (current.status === 'submitting' || current.status === 'unknown') return;
+      if (current.status === 'rejected' && blockedByRetryAfter(current.retryAfterAt)) return;
 
       const frozen: Readonly<BookingRequest> = Object.freeze({
         ...request,
@@ -130,10 +174,27 @@ export function useBookingSubmission({ generateKey = randomUUID, now = () => new
         createdAt: now().toISOString(),
       };
       commit({ status: 'submitting', intent });
-      await send(intent);
+      await send(intent, false);
     },
-    [commit, generateKey, now, send],
+    [blockedByRetryAfter, commit, generateKey, now, send],
   );
+
+  /**
+   * Explicit user action: replays the same key and the same bytes of an unknown intent. Never automatic,
+   * never after a conflict, an expired retention window, or while Retry-After is pending.
+   */
+  const verify = useCallback(async (): Promise<void> => {
+    const current = stateRef.current;
+    if (current.status !== 'unknown') return;
+    if (current.cause === 'idempotency-conflict' || current.cause === 'retention-expired') return;
+    if (blockedByRetryAfter(current.retryAfterAt)) return;
+    if (keyRetentionMs !== null && now().getTime() - Date.parse(current.intent.createdAt) >= keyRetentionMs) {
+      commit({ ...current, cause: 'retention-expired' });
+      return;
+    }
+    commit({ status: 'submitting', intent: current.intent });
+    await send(current.intent, true);
+  }, [blockedByRetryAfter, commit, keyRetentionMs, now, send]);
 
   /** Leaves a settled result (confirmed or rejected) behind. An unknown outcome can never be dismissed. */
   const dismiss = useCallback(() => {
@@ -141,5 +202,5 @@ export function useBookingSubmission({ generateKey = randomUUID, now = () => new
     if (current === 'confirmed' || current === 'rejected') commit(IDLE);
   }, [commit]);
 
-  return { state, submit, dismiss };
+  return { state, submit, verify, dismiss };
 }
