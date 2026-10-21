@@ -45,8 +45,8 @@
 ## Handoff
 
 - **Feature**: `.specs/features/cicclo-mobile/spec.md`.
-- **Phase / Task**: Código de P0 completo (E0 a E5). Gates C1, C2 e C3 provados contra a API real em 2026-10-21 (`apps/mobile/live/contract.live.test.ts`, evidência em `apps/mobile/docs/api-contract.md`); compra real ligada (`capabilities.purchase = true`). Verifier: PASS em `08e6c7d..db1ea75`; reexecução sobre o estado final pendente de relatório.
-- **Completed**: 28/37 com Done when `[x]` (T1 a T28). Gate B: 30 suítes, 252 testes, typecheck, lint e export Android/iOS verdes.
+- **Phase / Task**: Código de P0 completo (E0 a E5). Gates C1, C2 e C3 provados contra a API real em 2026-10-21 (`apps/mobile/live/contract.live.test.ts`, evidência em `apps/mobile/docs/api-contract.md`); compra real ligada (`capabilities.purchase = true`). Verifier independente: PASS em `08e6c7d..db1ea75` (iteração 2); iteração 3 sobre `9d4ad9f` deu FAIL por um único mutante de baixa gravidade (N5: `confirm()` com seleção vazia), já corrigido e coberto por `CheckoutProviderPurchase.test.tsx` (o mutante morre), mas **sem nova reverificação** porque o limite de 3 iterações foi atingido; `validation.md` registra esse FAIL.
+- **Completed**: 28/37 com Done when `[x]` (T1 a T28). Gate B: 31 suítes, 254 testes, typecheck, lint e export Android/iOS verdes.
 - **Pendente**: N1 (T29, executado pelo usuário no Android com `apps/mobile/docs/native-validation.md`) e, com ele, o fechamento de T30 (README já publicado, falta N1 e o Verifier final). P1 (T31 a T37) só depois de P0 verificado e de CP1.
 - **Next step**: o usuário executa N1 e reporta resultado por cenário; registrar em `native-validation.md`, commit `docs(mobile): record verified android and accessibility evidence`, marcar T29/T30 e reexecutar o Verifier para o fechamento P0. A demo local está com o saldo debitado (3110) e uma contratação; para repetir `test:live` ou o cenário 3 do checklist, restaurar a demo pelo `--reset-demo` do backend (API parada antes).
 - **Blockers**: N1 (usuário). `dotnet` fora do PATH da sessão do agente (workspace e testes de bootstrap que compilam a API falham por isso; não é do mobile).

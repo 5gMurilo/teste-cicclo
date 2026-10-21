@@ -26,3 +26,13 @@ Cada endpoint registra a origem do schema usado em runtime. Enquanto não houver
 | C3 | Depois da compra a listagem tem exatamente esse booking (`page` 1, `pageSize` 20, `hasNextPage` false); o detalhe retorna preço histórico 1890. `GET /bookings/{id}` inexistente: 404 `BOOKING_NOT_FOUND`; id malformado: 400 `VALIDATION_ERROR` (o app nem envia); `page=2&pageSize=1`: página vazia; `page=0&pageSize=500`: 400 |
 
 Observações: logo após a compra o item chegou `to_be_confirmed` com `machineId` e `expiresAt` (havia máquina livre); `queuePosition` é nulo nesse estado. O caso de duas ou mais unidades com compra bem-sucedida e o de preferência aceita não foram exercitados com débito porque o saldo restante (3110) não cobre dois itens; a precificação de duplicatas e a regra da preferência foram provadas pelas recusas acima.
+
+**Ressalvas da prova ao vivo (apontadas pelo Verifier independente):**
+
+1. O código HTTP da criação (201) e do replay (200) não é observado: `createBooking` devolve só o corpo validado. O que o teste prova é o mesmo `bookingId`, o mesmo valor cobrado e a ausência de novo débito. O `remainingBalanceCents` do replay não é afirmado.
+2. O 429 foi observado (`RATE_LIMIT_EXCEEDED`, prazo lido de `Retry-After`), mas o código e o formato do cabeçalho só aparecem no log do teste, sem asserção própria.
+3. A leitura consistente depois da escrita vem de uma única amostra.
+4. Ordenação e paginação com `hasNextPage` verdadeiro não foram vistas ao vivo, pois só existe um booking; estão provadas com API simulada.
+5. Só o estado `to_be_confirmed` foi visto ao vivo; os estados terminais e `queued` estão provados com API simulada e pela leitura do backend.
+6. A precificação de duplicatas é inferida de uma recusa; nenhuma compra de duas ou mais unidades, nem preferência aceita, foi exercitada com débito. Para fechar isso: restaurar a demo e repetir com `["wash","wash"]` e preferência.
+7. O teste ao vivo usa o `fetch` do Node, não o do React Native, e o preço histórico (1890) coincide com o atual. A primeira execução com o `fetch` do React Native contra a API será a N1, no Android.
