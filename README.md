@@ -147,6 +147,8 @@ Conexão: `127.0.0.1:5432`, banco e usuário `cicclo`, senha definida no `.env`.
 
 O PostgreSQL inicia vazio. As tabelas vêm das migrations do EF Core e `apps/api/init/seed.sql` contém **somente dados iniciais**: wallet BRL com saldo 50.00, serviços `wash` (Lavagem, 18.90) e `dry` (Secagem, 20.90) e as máquinas `washer-01` e `dryer-01`, todas com identificadores estáveis. O arquivo não é montado em `/docker-entrypoint-initdb.d`: ali ele rodaria antes das migrations e apenas em volume novo.
 
+As migrations também criam o histórico financeiro das compras, que o seed nunca preenche: `service_requests` (compra confirmada, única por wallet e chave de idempotência, total em `numeric(12,2)`), `service_request_items` (uma linha por execução contratada, com o preço histórico cobrado) e `wallet_transactions` (lançamentos de valor positivo e saldo resultante não negativo; no máximo um débito por compra). As chaves estrangeiras são `ON DELETE RESTRICT`: apagar serviço, wallet ou compra com histórico é recusado. A API ainda não expõe comando de compra.
+
 Para preparar o banco, execute o modo explícito `--bootstrap-demo` da própria API, com o banco do Compose já ativo:
 
 ```sh

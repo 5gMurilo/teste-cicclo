@@ -1,3 +1,4 @@
+using Cicclo.Api.Bookings;
 using Cicclo.Api.Laundry;
 using Cicclo.Api.Services;
 using Cicclo.Api.Wallet;
@@ -15,6 +16,12 @@ public sealed class CiccloDbContext(DbContextOptions<CiccloDbContext> options) :
     public DbSet<LaundryService> Services => Set<LaundryService>();
 
     public DbSet<Machine> Machines => Set<Machine>();
+
+    public DbSet<Booking> Bookings => Set<Booking>();
+
+    public DbSet<BookingItem> BookingItems => Set<BookingItem>();
+
+    public DbSet<LedgerEntry> LedgerEntries => Set<LedgerEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(CiccloDbContext).Assembly);

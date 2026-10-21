@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text.Json;
+using Cicclo.Api.Bookings;
 using Cicclo.Api.Laundry;
 using Cicclo.Api.Platform.Persistence;
 using Cicclo.Api.Services;
@@ -19,7 +20,7 @@ namespace Cicclo.Api.Tests.Unit.Architecture;
 public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> factory)
     : IClassFixture<WebApplicationFactory<Program>>
 {
-    private static readonly string[] DomainNamespaces = ["Cicclo.Api.Wallet", "Cicclo.Api.Services", "Cicclo.Api.Laundry"];
+    private static readonly string[] DomainNamespaces = ["Cicclo.Api.Wallet", "Cicclo.Api.Services", "Cicclo.Api.Laundry", "Cicclo.Api.Bookings"];
 
     private static readonly string[] ForbiddenPrefixes = ["Microsoft.EntityFrameworkCore", "Microsoft.AspNetCore", "Npgsql", "System.Linq.IQueryable"];
 
@@ -31,7 +32,11 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
             .ToList();
 
         Assert.Superset(
-            new HashSet<Type> { typeof(WalletAccount), typeof(LaundryService), typeof(Machine), typeof(MachineType), typeof(MachineState) },
+            new HashSet<Type>
+            {
+                typeof(WalletAccount), typeof(LaundryService), typeof(Machine), typeof(MachineType), typeof(MachineState),
+                typeof(Booking), typeof(BookingItem), typeof(BookingItemStatus), typeof(LedgerEntry), typeof(LedgerEntryKind),
+            },
             domainTypes.ToHashSet());
         var violations = domainTypes
             .SelectMany(type => ReferencedTypes(type).Select(reference => $"{type.Name} -> {reference.FullName}"))
@@ -48,7 +53,7 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
         var entities = context.GetService<IDesignTimeModel>().Model.GetEntityTypes().ToList();
 
         Assert.Equal(
-            ["machines", "services", "wallets"],
+            ["machines", "service_request_items", "service_requests", "services", "wallet_transactions", "wallets"],
             entities.Select(entity => entity.GetTableName()).Order(StringComparer.Ordinal));
         Assert.All(entities, entity => Assert.Empty(entity.GetSeedData()));
     }
