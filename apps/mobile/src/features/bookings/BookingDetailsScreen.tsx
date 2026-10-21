@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ApiError } from '../../shared/api/apiError';
+import { CONFIG_ERROR_MESSAGE, isConfigError } from '../../shared/config/env';
 import { formatBRL } from '../../shared/lib/money';
 import { colors, spacing } from '../../shared/theme/tokens';
 import { bookingDetailOptions, isBookingId } from './detailQuery';
@@ -32,7 +33,9 @@ export function BookingDetailsScreen({ bookingId }: { bookingId: string | undefi
     );
   } else if (!detail.data) {
     const notFound = detail.error instanceof ApiError && detail.error.status === 404;
-    body = (
+    body = isConfigError(detail.error) ? (
+      <Problem message={CONFIG_ERROR_MESSAGE} />
+    ) : (
       <Problem
         message={notFound ? 'Contratação não encontrada.' : 'Não foi possível carregar a contratação.'}
         retry={notFound ? undefined : () => void detail.refetch()}
