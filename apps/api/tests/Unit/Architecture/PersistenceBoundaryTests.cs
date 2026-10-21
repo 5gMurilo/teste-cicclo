@@ -46,6 +46,7 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
         typeof(Cicclo.Api.Laundry.Simulation.SimulationEndpoints), typeof(Cicclo.Api.Laundry.Simulation.OccupyMachineEndpoint),
         typeof(Cicclo.Api.Laundry.Simulation.CompleteMachineEndpoint), typeof(Cicclo.Api.Laundry.ReportIssue.ReportIssueEndpoint),
         typeof(Cicclo.Api.Laundry.Simulation.BreakdownMachineEndpoint), typeof(Cicclo.Api.Laundry.ConfirmIncident.ConfirmIncidentEndpoint),
+        typeof(Cicclo.Api.Laundry.RestoreMachine.RestoreMachineEndpoint),
     ];
 
     [Fact]
@@ -78,6 +79,7 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
                 typeof(Cicclo.Api.Laundry.ConfirmMachineFailure.ConfirmMachineFailure), typeof(Cicclo.Api.Laundry.ConfirmMachineFailure.ConfirmMachineFailureResult),
                 typeof(IncidentLocation), typeof(Cicclo.Api.Laundry.ConfirmIncident.ConfirmIncident), typeof(Cicclo.Api.Laundry.ConfirmIncident.ConfirmIncidentResult),
                 typeof(Cicclo.Api.Laundry.ConfirmIncident.ConfirmIncidentResponse), typeof(Cicclo.Api.Laundry.ConfirmIncident.ConfirmedIncidentStatusContract),
+                typeof(Cicclo.Api.Laundry.RestoreMachine.RestoreMachine), typeof(Cicclo.Api.Laundry.RestoreMachine.RestoreMachineResult),
             },
             domainTypes.ToHashSet());
         var violations = domainTypes
