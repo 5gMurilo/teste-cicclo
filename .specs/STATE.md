@@ -45,10 +45,10 @@
 ## Handoff
 
 - **Feature**: `.specs/features/cicclo-mobile/spec.md`.
-- **Phase / Task**: Execute inline e sequencial. Última tarefa fechada: T13.
-- **Completed**: T1-T9 e T11-T13 fechadas; T10 pendente de C1. T13 = CheckoutProvider.tsx no root (ref síncrono evita dois toques no mesmo tick; readiness loading/unavailable/ready bloqueia adição) (12/37 com Done when marcado).
+- **Phase / Task**: Execute inline e sequencial. Última tarefa fechada: T14.
+- **Completed**: T1-T9 e T11-T14 fechadas; T10 pendente de C1. T14 = seleção na Home (HomeScreen + checkout/messages.ts; resumo Selecionado/Disponível, alerta de bloqueio, CTA Revisar seleção) (13/37 com Done when marcado).
 - **In-progress**: Nenhuma.
-- **Next step**: T14 (HomeScreen com seleção). API real fica para depois por decisão do usuário.
+- **Next step**: T15 (CheckoutScreen: revisão sem contratar). API real fica para depois por decisão do usuário.
 - **Blockers**: C1 não provado (nenhuma execução contra a API real). `tests/bootstrap.test.mjs` teste 6 falha localmente por ausência de `dotnet` (ambiental, anterior ao trabalho mobile). C1/C2/C3 e CP1 não comprovados; N1 (T29) fica com o usuário (AD-005). Backend existe em branches locais (`feat/backend-e0*`, HEAD `a02a845`) com a base do bootstrap como ancestral; contratos reais só entram quando T6/T8/T17 os lerem.
 - **Uncommitted files**: `.omc/` (não versionar).
 - **Branch**: `feat/mobile-01-catalog-wallet`.

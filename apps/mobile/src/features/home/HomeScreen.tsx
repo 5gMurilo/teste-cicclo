@@ -1,12 +1,21 @@
 import { useQuery } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { formatBRL } from '../../shared/lib/money';
 import { colors, spacing } from '../../shared/theme/tokens';
 import { ServiceCard } from '../catalog/components/ServiceCard';
 import { catalogOptions } from '../catalog/queries';
+import { useCheckout } from '../checkout/CheckoutProvider';
+import { blockedMessage } from '../checkout/messages';
 
 export function HomeScreen() {
   const catalog = useQuery(catalogOptions());
+  const checkout = useCheckout();
+  const router = useRouter();
+  const [blocked, setBlocked] = useState<string | null>(null);
+  const { totalCents, availableCents, quantity } = checkout.derived;
 
   if (catalog.isPending) {
     return (
@@ -35,25 +44,64 @@ export function HomeScreen() {
   }
 
   return (
-    <FlatList
-      data={catalog.data.services}
-      keyExtractor={(service) => service.code}
-      renderItem={({ item }) => <ServiceCard service={item} />}
-      contentContainerStyle={styles.list}
-      ListHeaderComponent={
-        <View style={styles.header}>
-          <Text accessibilityRole="header" style={styles.title}>
-            Serviços disponíveis
+    <View style={styles.screen}>
+      <FlatList
+        data={catalog.data.services}
+        extraData={checkout.selection}
+        keyExtractor={(service) => service.code}
+        renderItem={({ item }) => (
+          <ServiceCard
+            service={item}
+            quantity={checkout.selection.quantities[item.code] ?? 0}
+            onAdd={(code) => {
+              const result = checkout.add(code);
+              setBlocked(result.ok ? null : blockedMessage(result.reason));
+            }}
+            onRemove={(code) => {
+              checkout.remove(code);
+              setBlocked(null);
+            }}
+          />
+        )}
+        contentContainerStyle={styles.list}
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <Text accessibilityRole="header" style={styles.title}>
+              Serviços disponíveis
+            </Text>
+            {catalog.isError ? (
+              <View>
+                <Text style={styles.error}>Preços e disponibilidade podem estar desatualizados.</Text>
+                <RetryButton onRetry={() => void catalog.refetch()} />
+              </View>
+            ) : null}
+          </View>
+        }
+      />
+      <View style={styles.summary}>
+        {blocked ? (
+          <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.error}>
+            {blocked}
           </Text>
-          {catalog.isError ? (
-            <View>
-              <Text style={styles.error}>Preços e disponibilidade podem estar desatualizados.</Text>
-              <RetryButton onRetry={() => void catalog.refetch()} />
-            </View>
-          ) : null}
-        </View>
-      }
-    />
+        ) : null}
+        {totalCents !== null && availableCents !== null ? (
+          <>
+            <Text style={styles.summaryText}>{`Selecionado: ${formatBRL(totalCents)}`}</Text>
+            <Text style={styles.summaryText}>{`Disponível para adicionar: ${formatBRL(availableCents)}`}</Text>
+          </>
+        ) : null}
+        {quantity > 0 ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Revisar seleção"
+            onPress={() => router.navigate('/checkout')}
+            style={styles.review}
+          >
+            <Text style={styles.reviewText}>Revisar seleção</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
   );
 }
 
@@ -71,6 +119,7 @@ function RetryButton({ onRetry }: { onRetry: () => void }) {
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, padding: spacing.md },
   list: { padding: spacing.md, gap: spacing.sm },
   header: { gap: spacing.sm, marginBottom: spacing.sm },
@@ -79,4 +128,21 @@ const styles = StyleSheet.create({
   error: { fontSize: 16, color: colors.danger, textAlign: 'center' },
   retry: { minHeight: 44, justifyContent: 'center', paddingHorizontal: spacing.md },
   retryText: { fontSize: 14, fontWeight: '600', color: colors.text, textDecorationLine: 'underline' },
+  summary: {
+    gap: spacing.xs,
+    padding: spacing.md,
+    borderTopColor: colors.border,
+    borderTopWidth: 1,
+    backgroundColor: colors.background,
+  },
+  summaryText: { fontSize: 16, color: colors.text },
+  review: {
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderColor: colors.text,
+    borderWidth: 1,
+    borderRadius: 8,
+  },
+  reviewText: { fontSize: 16, fontWeight: '600', color: colors.text },
 });

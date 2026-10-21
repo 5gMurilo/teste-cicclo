@@ -57,7 +57,6 @@ describe('Home reading states', () => {
     expect(screen.getByText('R$ 18,90')).toBeOnTheScreen();
     expect(screen.getByText('Secagem')).toBeOnTheScreen();
     expect(screen.getByText('R$ 25,00')).toBeOnTheScreen();
-    expect(screen.queryByRole('button', { name: /^Adicionar/ })).toBeNull();
     expect(calls.length).toBeGreaterThan(0);
     expect(calls.every((call) => call.method === 'GET')).toBe(true);
   });
