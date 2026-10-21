@@ -26,7 +26,7 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
 {
     private static readonly string[] DomainNamespaces = ["Cicclo.Api.Wallet", "Cicclo.Api.Services", "Cicclo.Api.Laundry", "Cicclo.Api.Bookings"];
 
-    private static readonly string[] ForbiddenPrefixes = ["Microsoft.EntityFrameworkCore", "Microsoft.AspNetCore", "Npgsql", "System.Linq.IQueryable"];
+    private static readonly string[] ForbiddenPrefixes = ["Microsoft.EntityFrameworkCore", "Microsoft.AspNetCore", "Npgsql", "System.Linq.IQueryable", "StackExchange.Redis"];
 
     /// <summary>
     /// Adaptadores HTTP/PostgreSQL dos casos de uso (ENG-04), únicos tipos das capacidades que podem usar
@@ -46,7 +46,7 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
         typeof(Cicclo.Api.Laundry.Simulation.SimulationEndpoints), typeof(Cicclo.Api.Laundry.Simulation.OccupyMachineEndpoint),
         typeof(Cicclo.Api.Laundry.Simulation.CompleteMachineEndpoint), typeof(Cicclo.Api.Laundry.ReportIssue.ReportIssueEndpoint),
         typeof(Cicclo.Api.Laundry.Simulation.BreakdownMachineEndpoint), typeof(Cicclo.Api.Laundry.ConfirmIncident.ConfirmIncidentEndpoint),
-        typeof(Cicclo.Api.Laundry.RestoreMachine.RestoreMachineEndpoint),
+        typeof(Cicclo.Api.Laundry.RestoreMachine.RestoreMachineEndpoint), typeof(Cicclo.Api.Wallet.ReadCaching.RedisWalletReadCache),
     ];
 
     [Fact]
@@ -80,6 +80,8 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
                 typeof(IncidentLocation), typeof(Cicclo.Api.Laundry.ConfirmIncident.ConfirmIncident), typeof(Cicclo.Api.Laundry.ConfirmIncident.ConfirmIncidentResult),
                 typeof(Cicclo.Api.Laundry.ConfirmIncident.ConfirmIncidentResponse), typeof(Cicclo.Api.Laundry.ConfirmIncident.ConfirmedIncidentStatusContract),
                 typeof(Cicclo.Api.Laundry.RestoreMachine.RestoreMachine), typeof(Cicclo.Api.Laundry.RestoreMachine.RestoreMachineResult),
+                typeof(Cicclo.Api.Wallet.ReadCaching.IWalletReadCache), typeof(Cicclo.Api.Wallet.ReadCaching.WalletCacheEntry),
+                typeof(Cicclo.Api.Wallet.ReadCaching.WalletCacheOptions),
             },
             domainTypes.ToHashSet());
         var violations = domainTypes
