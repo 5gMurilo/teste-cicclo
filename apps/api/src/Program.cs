@@ -1,6 +1,7 @@
 using Cicclo.Api.Platform;
 using Cicclo.Api.Platform.Health;
 using Cicclo.Api.Platform.Http;
+using Cicclo.Api.Platform.Observability;
 using Cicclo.Api.Platform.Persistence;
 using Cicclo.Api.Services.GetCatalog;
 using Cicclo.Api.Wallet.GetBalance;
@@ -8,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 var bootstrapDemo = BootstrapDemoCommand.IsRequested(args);
 var builder = WebApplication.CreateBuilder(BootstrapDemoCommand.WithoutOption(args));
+builder.AddApiTelemetry();
 builder.Services.AddApiHealthChecks();
 builder.Services.AddHttpBoundary();
 builder.Services.AddApiOpenApi();
