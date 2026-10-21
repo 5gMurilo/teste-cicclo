@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** em andamento. Última tarefa concluída: T16 (15/37 com Done when marcado); ver STATE.md.
+**Execução:** em andamento. Última tarefa concluída: T21 (19/37 com Done when marcado); ver STATE.md.
 
 ## Execution Protocol
 
@@ -299,7 +299,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: client, Zod e tipos OpenAPI reais quando disponíveis.
 **Requirement**: BUY-01, BUY-04, SAFE-01, SAFE-02.
 **What**: Serializar body/header definidos e validar resposta de criação/replay separadamente de futuros GETs.
-**Done when**: [ ] Request exato suporta duplicatas e preferência; 200/201 têm parsing validado; código de erro real registrado; temporários explicitados se contrato ainda ausente, sem habilitar integração.
+**Done when**: [x] Request exato suporta duplicatas e preferência; 200/201 têm parsing validado; código de erro real registrado; temporários explicitados se contrato ainda ausente, sem habilitar integração.
 **Tests**: integration — teto de 6 casos: unitário/batch, duplicatas, preferência, header UUID/body/total, replay 200 e response inválido; POST não calcula preço autoritativo.
 **Gate**: F + CC; C2 antes de T21.
 **Commit**: `feat(checkout): consume the idempotent booking contract`
@@ -310,7 +310,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: createBooking; instalar expo-crypto no primeiro uso; mutation Query sem retry/pausa implícita.
 **Requirement**: BUY-01, BUY-02, BUY-03, BUY-04, BUY-08, BUY-13.
 **What**: Criar key/body imutáveis uma vez, guarda síncrona e estados idle/submitting/confirmed/rejected/unknown.
-**Done when**: [ ] Duplo toque antes do render gera um fetch; erro posterior ao envio conserva intenção; substituto de UUID/tempo só no limite; sem geração de chave no render/transport.
+**Done when**: [x] Duplo toque antes do render gera um fetch; erro posterior ao envio conserva intenção; substituto de UUID/tempo só no limite; sem geração de chave no render/transport.
 **Tests**: integration — teto de 8 casos: dois toques mesmo tick, UUID único, payload imutável, 201, replay 200, recusa definitiva, timeout/5xx/parse unknown, conflito bloqueado.
 **Gate**: F + CC.
 **Tools**: Context7 Query networkMode e Expo Crypto; usar APIs compatíveis com versões resolvidas.
@@ -322,7 +322,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Intenção original, parser de deadline e queries de wallet/catalog.
 **Requirement**: BUY-02, BUY-08, BUY-09, BUY-10, BUY-11, BUY-12, BUY-13, SEL-08.
 **What**: Implementar verify explícito, revisão PRICE_CHANGED, allowlist de recusa e controle de Retry-After sem fila automática.
-**Done when**: [ ] verify usa key/body byte a byte originais; catálogo posterior não os altera; consentimento novo gera nova chave somente após rejeição definitiva/revisão; conflito ou retenção vencida/desconhecida não libera compra nova.
+**Done when**: [x] verify usa key/body byte a byte originais; catálogo posterior não os altera; consentimento novo gera nova chave somente após rejeição definitiva/revisão; conflito ou retenção vencida/desconhecida não libera compra nova.
 **Tests**: integration — teto de 10 casos: rede/timeout/5xx/2xx inválido, replay mesmo body/chave após catálogo mudar, PRICE_CHANGED sem reenvio silencioso, saldo insuficiente real, 429 segundos/data, conflito e ausência de POST por reconexão automática.
 **Gate**: F + CC.
 **Commit**: `feat(checkout): reconcile uncertain outcomes with explicit consent`
@@ -333,7 +333,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: QueryClient e key pública wallet; prefixo público bookings definido junto ao primeiro consumidor de invalidação e reutilizado em T23/T25.
 **Requirement**: BUY-05, BUY-07, SAFE-01.
 **What**: Cancelar GET em voo antes de setar saldo confirmado compatível e invalidar queries pertinentes sem inventar metadados.
-**Done when**: [ ] GET antigo não derruba 1020; updatedAt não é inventado; response POST não é inserido como detalhe sem compatibilidade; cache failure não reenvia compra confirmada.
+**Done when**: [x] GET antigo não derruba 1020; updatedAt não é inventado; response POST não é inserido como detalhe sem compatibilidade; cache failure não reenvia compra confirmada.
 **Tests**: integration — teto de 6 casos: resposta antiga diferida após cancel, saldo confirmado 1020, wallet ausente, schema metadata preservada/refetch, invalidation seletiva, erro de refetch mantendo confirmed.
 **Gate**: F + CC; política de consistência real registrada em C2.
 **Commit**: `feat(checkout): apply confirmed balances without stale query races`
@@ -344,7 +344,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Coordenador montado uma vez no provider acima das tabs, cache helper e seleção existente.
 **Requirement**: BUY-01, BUY-02, BUY-03, BUY-04, BUY-05, BUY-06, BUY-07, BUY-08, BUY-09, BUY-10, BUY-11, BUY-12, BUY-13, BUY-14, UX-01.
 **What**: Habilitar CTA só após C2 e conectar revisão/pending/unknown/rejected/success a comandos públicos, sem lógica financeira no JSX.
-**Done when**: [ ] C2 comprovado; seleção só limpa em sucesso; estado sobrevive troca de tabs; sucesso tem ID/itens/saldo e CTA a Serviços; demo compra 5000→3110 e replay sem segundo débito, sem reset de saldo não autorizado.
+**Done when**: [~] C2 comprovado; seleção só limpa em sucesso; estado sobrevive troca de tabs; sucesso tem ID/itens/saldo e CTA a Serviços; demo compra 5000→3110 e replay sem segundo débito, sem reset de saldo não autorizado.
 **Tests**: integration — teto de 10 casos de fluxo com providers reais: sucesso, replay, duplo toque, recusa, PRICE_CHANGED/revisão, unknown/verificar, rate limit, navegação durante pending, seleção preservada em erro e limpeza em confirmed.
 **Gate**: F + B no fechamento E3 + C2 + CC.
 **Commit**: `feat(checkout): expose safe purchase and recovery interactions`
@@ -709,7 +709,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **15/37 tarefas com Done when marcado** (última: T16); demais abertas ou pendentes de gate externo.
+- Implementação: **19/37 tarefas com Done when marcado** (última: T21); demais abertas ou pendentes de gate externo.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1/C2/C3/CP1 não comprovadas; N1 não executado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.
