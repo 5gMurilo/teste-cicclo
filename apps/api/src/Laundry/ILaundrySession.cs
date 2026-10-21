@@ -89,6 +89,16 @@ public interface ILaundrySession : IQueueSession, IAsyncDisposable
     Task<decimal> CancelWithRefundAsync(
         Guid walletId, Guid bookingId, Guid itemId, BookingItemStatus from, Guid? machineId, decimal amount, DateTime cancelledAt, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Falha confirmada da execução: com item, item in_progress nesta máquina → failed (histórico de máquina e tempos
+    /// preservado) e máquina running dele → out_of_service sem item; sem item, ocupação sintética → out_of_service sem a
+    /// marca. Não credita: o refund do item real é lançado por <see cref="CreditRefundAsync"/> na mesma transação.
+    /// </summary>
+    Task FailRunAsync(Guid machineId, Guid? itemId, DateTime failedAt, CancellationToken cancellationToken);
+
+    /// <summary>Wallet creditada com o valor e um lançamento refund do item (único pelo índice); devolve o saldo após o crédito.</summary>
+    Task<decimal> CreditRefundAsync(Guid walletId, Guid bookingId, Guid itemId, decimal amount, DateTime creditedAt, CancellationToken cancellationToken);
+
     /// <summary>Bloqueia (por último na ordem de locks) o relato aberto do item e devolve seu id; null se não há.</summary>
     Task<Guid?> LockOpenIncidentAsync(Guid itemId, CancellationToken cancellationToken);
 

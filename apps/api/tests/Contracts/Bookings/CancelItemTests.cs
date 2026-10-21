@@ -348,7 +348,7 @@ public sealed class CancelItemTests(PostgresFixture postgres)
         database.RowsAsync("SELECT name || '|' || state || '|' || coalesce(active_item_id::text, 'null') || '|' || updated_at FROM machines ORDER BY id");
 
     /// <summary>Medições de cicclo_wallet_refunds_total do host, com as dimensões recebidas.</summary>
-    private sealed class RefundCounter : IDisposable
+    internal sealed class RefundCounter : IDisposable
     {
         private readonly MeterListener listener = new();
         private readonly ConcurrentQueue<string> measurements = new();
