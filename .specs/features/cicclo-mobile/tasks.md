@@ -489,7 +489,7 @@ Nenhuma tarefa desta fase começa antes de CP1. Cada comando abaixo requer seu p
 **Reuses**: client, status, OfferCountdown e detalhe existente; uma ação de domínio.
 **Requirement**: QUEUE-01, QUEUE-03, QUEUE-04, QUEUE-05, UX-01.
 **What**: Implementar confirm com bloqueio visual na expiração e submissão pendente, respeitando 410 mesmo com tempo local restante.
-**Done when**: [ ] Só oferta atual habilita; zero não envia; 409/410 refaz leitura e informa estado real; sem transição local presumida para in_progress.
+**Done when**: [~] Só oferta atual habilita; zero não envia; 409/410 refaz leitura e informa estado real; sem transição local presumida para in_progress.
 **Tests**: integration — teto de 5 casos: sucesso, zero sem POST, 410 antes do zero local, 409, duplo toque e retorno do background após expirar.
 **Gate**: CP1 + F + CC.
 **Commit**: `feat(bookings): confirm eligible machine offers`
@@ -711,7 +711,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **31/37 tarefas com Done when marcado** (última: T32); demais abertas ou pendentes de gate externo.
+- Implementação: **31/37 tarefas com Done when marcado** (última: T33); demais abertas ou pendentes de gate externo.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1, C2 e C3 provados contra a API real em 2026-10-21; N1 aprovado pelo usuário no iOS em relato global (AD-006); CP1 (P1) não comprovado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.

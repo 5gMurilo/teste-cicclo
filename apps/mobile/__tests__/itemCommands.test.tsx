@@ -12,7 +12,6 @@ jest.mock('../src/shared/api/capabilities', () => ({
 }));
 
 const APP_DIR = './src/app';
-const nbsp = (text: string) => text.replace(/R\$ /g, 'R$ ');
 const BOOKING_ID = '00000000-0000-4000-8000-000000000001';
 const ITEM_ID = '10000000-0000-4000-8000-000000000001';
 const MACHINE_ID = '20000000-0000-4000-8000-000000000009';
@@ -155,5 +154,95 @@ describe('T31: activate a paid pending item', () => {
   });
 });
 
-// Reuse in later tasks.
-export { nbsp, MACHINE_ID };
+describe('T33: confirm an eligible machine offer', () => {
+  const OFFER_SECONDS = 60;
+  let clock: number;
+  const offer = (secondsLeft: number) =>
+    item('to_be_confirmed', { machineId: MACHINE_ID, expiresAt: new Date(clock + secondsLeft * 1000).toISOString() });
+
+  beforeEach(() => {
+    clock = Date.parse('2026-10-21T12:00:00Z');
+    jest.spyOn(Date, 'now').mockImplementation(() => clock);
+    detail = { status: 200, body: booking(offer(OFFER_SECONDS)) };
+  });
+
+  afterEach(() => jest.restoreAllMocks());
+
+  it('shows the countdown and confirms the current offer; the status comes from the server, not from the click', async () => {
+    commandReply = () => ({ status: 200, body: item('in_progress', { machineId: MACHINE_ID }) });
+    await openDetail();
+    expect(await screen.findByText('Tempo restante: 60 s')).toBeOnTheScreen();
+    expect(screen.getByText('Máquina ofertada, aguardando confirmação')).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Confirmar wash' }));
+    expect(screen.getByText('Máquina ofertada, aguardando confirmação')).toBeOnTheScreen();
+
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(posts[0].url).toBe(commandUrl('confirm'));
+    detail = { status: 200, body: booking(item('in_progress', { machineId: MACHINE_ID })) };
+    await queryClient.invalidateQueries({ queryKey: ['bookings'] });
+    expect(await screen.findByText('Em execução')).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Confirmar wash' })).toBeNull();
+  });
+
+  it('sends nothing when the deadline has already been reached on the local clock', async () => {
+    detail = { status: 200, body: booking(offer(0)) };
+    await openDetail();
+    await screen.findByText('Oferta vencida');
+
+    expect(screen.queryByRole('button', { name: 'Confirmar wash' })).toBeNull();
+    expect(posts).toHaveLength(0);
+  });
+
+  it('does not send when the offer ran out while the app was away and the timer never fired', async () => {
+    await openDetail();
+    await screen.findByText('Tempo restante: 60 s');
+    // renderRouter installs Jest fake timers, so the clock is moved through Jest, not through a Date spy.
+    jest.setSystemTime(Date.now() + (OFFER_SECONDS + 1) * 1000);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Confirmar wash' }));
+
+    expect(posts).toHaveLength(0);
+    expect(screen.queryByRole('button', { name: 'Confirmar wash' })).toBeNull();
+  });
+
+  it('respects a 410 even with time left on the local clock, refetches and explains', async () => {
+    commandReply = () => ({ status: 410, body: { errorCode: 'MACHINE_OFFER_EXPIRED' } });
+    await openDetail();
+    await screen.findByText('Tempo restante: 60 s');
+    const before = gets;
+    detail = { status: 200, body: booking(item('queued', { queuePosition: 1 })) };
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Confirmar wash' }));
+
+    expect(await screen.findByText(/A oferta venceu e a execução voltou para a fila/)).toBeOnTheScreen();
+    await waitFor(() => expect(screen.getByText('Na fila')).toBeOnTheScreen());
+    expect(gets).toBeGreaterThan(before);
+  });
+
+  it('refetches on a 409 and shows the real state', async () => {
+    commandReply = () => ({ status: 409, body: { errorCode: 'INVALID_STATE_TRANSITION' } });
+    await openDetail();
+    await screen.findByText('Tempo restante: 60 s');
+    detail = { status: 200, body: booking(item('queued', { queuePosition: 3 })) };
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Confirmar wash' }));
+
+    expect(await screen.findByText(/O estado da execução mudou/)).toBeOnTheScreen();
+    await waitFor(() => expect(screen.getByText('Posição na fila: 3')).toBeOnTheScreen());
+  });
+
+  it('sends a double tap only once', async () => {
+    let finish: (reply: Reply) => void = () => undefined;
+    commandReply = () => new Promise<Reply>((resolve) => (finish = resolve));
+    await openDetail();
+    await screen.findByText('Tempo restante: 60 s');
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Confirmar wash' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Confirmar wash' }));
+
+    expect(posts).toHaveLength(1);
+    finish({ status: 200, body: item('in_progress', { machineId: MACHINE_ID }) });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Confirmar wash' })).toBeEnabled());
+  });
+});
