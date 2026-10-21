@@ -71,9 +71,18 @@ Depois do bootstrap (seção "Seed e volume"), a API lê os dados autoritativos 
 
 ```sh
 curl http://localhost:5001/api/v1/wallet
+curl http://localhost:5001/api/v1/services
 ```
 
 `GET /api/v1/wallet` responde 200 `application/json` com `{ "balanceCents": 5000, "currency": "BRL", "updatedAt": "<UTC>" }` na base recém-preparada. Valores monetários são centavos inteiros (int64) convertidos do `numeric(12,2)` sem arredondamento. A wallet é resolvida no servidor: parâmetros como `walletId` ou `userId` são ignorados e não trocam a conta.
+
+`GET /api/v1/services` responde `{ "services": [...] }` ordenado por `code` (a ordem não é prioridade de execução). Na base recém-preparada: `dry` (Secagem, `dryer`, 2090 centavos) e `wash` (Lavagem, `washer`, 1890 centavos), ambos com `canBeBooked: true` e `unavailabilityReason: null`. Cada item traz `code`, `name`, `machineType`, `unitPriceCents`, `currency`, `isActive`, `canBeBooked` e `unavailabilityReason`, sempre presente:
+
+- serviço inativo: `canBeBooked: false` e `SERVICE_DISABLED`, mesmo sem máquina operacional;
+- serviço ativo sem máquina do tipo em `available`, `reserved` ou `running`: `canBeBooked: false` e `NO_OPERATIONAL_MACHINE`;
+- máquinas reservadas ou em execução continuam contando como capacidade operacional.
+
+`canBeBooked` é **informativo**: o futuro comando de compra revalidará serviço, capacidade e preço no servidor no momento da contratação. A API ainda não oferece compra nesta etapa. Wallet e catálogo compartilham o mesmo limite de leituras.
 
 Erros usam `application/problem+json` com `type` `urn:cicclo:problem:<slug>`, `errorCode`, `traceId` e `errors` (null quando não há erro de campo):
 

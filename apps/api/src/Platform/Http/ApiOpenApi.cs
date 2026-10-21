@@ -9,13 +9,29 @@ public static class ApiOpenApi
     public const string DocumentPath = "/openapi/v1.json";
 
     public static IServiceCollection AddApiOpenApi(this IServiceCollection services) =>
-        services.AddOpenApi(options => options.AddDocumentTransformer((document, _, _) =>
+        services.AddOpenApi(options =>
         {
-            document.Info.Title = "Cicclo API";
-            document.Info.Version = "v1";
-            document.Info.Description = "API da demonstração Cicclo. Valores monetários em centavos inteiros (BRL).";
-            return Task.CompletedTask;
-        }));
+            options.AddDocumentTransformer((document, _, _) =>
+            {
+                document.Info.Title = "Cicclo API";
+                document.Info.Version = "v1";
+                document.Info.Description = "API da demonstração Cicclo. Valores monetários em centavos inteiros (BRL).";
+                return Task.CompletedTask;
+            });
+
+            // O gerador expressa enum anulável como oneOf [null, $ref] e também inclui null no enum referenciado;
+            // com os dois, um valor null casa duas alternativas e viola oneOf. A nulabilidade fica só no oneOf.
+            options.AddSchemaTransformer((schema, context, _) =>
+            {
+                var type = Nullable.GetUnderlyingType(context.JsonTypeInfo.Type) ?? context.JsonTypeInfo.Type;
+                if (type.IsEnum && schema.Enum is { } values)
+                {
+                    schema.Enum = [.. values.Where(value => value is not null && value.GetValueKind() != JsonValueKind.Null)];
+                }
+
+                return Task.CompletedTask;
+            });
+        });
 
     public static WebApplication MapApiOpenApi(this WebApplication app)
     {
