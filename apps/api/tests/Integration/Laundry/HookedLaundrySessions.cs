@@ -51,6 +51,11 @@ internal sealed class HookedLaundrySessions(ILaundrySessions inner, Func<Task> b
             Guid walletId, Guid bookingId, Guid itemId, BookingItemStatus from, Guid? machineId, decimal amount, DateTime cancelledAt, CancellationToken cancellationToken) =>
             inner.CancelWithRefundAsync(walletId, bookingId, itemId, from, machineId, amount, cancelledAt, cancellationToken);
 
+        public Task<Guid?> LockOpenIncidentAsync(Guid itemId, CancellationToken cancellationToken) => inner.LockOpenIncidentAsync(itemId, cancellationToken);
+
+        public Task RecordIncidentAsync(Guid incidentId, Guid machineId, Guid itemId, string? description, DateTime reportedAt, CancellationToken cancellationToken) =>
+            inner.RecordIncidentAsync(incidentId, machineId, itemId, description, reportedAt, cancellationToken);
+
         public async Task CommitAsync()
         {
             await beforeCommit();

@@ -44,7 +44,7 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
         typeof(Cicclo.Api.Bookings.CancelItem.CancelItemEndpoint),
         typeof(Cicclo.Api.Laundry.GetMachines.GetMachinesEndpoint), typeof(Cicclo.Api.Laundry.GetMachines.PostgresMachinesQuery),
         typeof(Cicclo.Api.Laundry.Simulation.SimulationEndpoints), typeof(Cicclo.Api.Laundry.Simulation.OccupyMachineEndpoint),
-        typeof(Cicclo.Api.Laundry.Simulation.CompleteMachineEndpoint),
+        typeof(Cicclo.Api.Laundry.Simulation.CompleteMachineEndpoint), typeof(Cicclo.Api.Laundry.ReportIssue.ReportIssueEndpoint),
     ];
 
     [Fact]
@@ -71,6 +71,9 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
                 typeof(Cicclo.Api.Laundry.GetMachines.MachineStateContract), typeof(Cicclo.Api.Laundry.Simulation.OccupyMachine),
                 typeof(Cicclo.Api.Laundry.Simulation.OccupyMachineOutcome), typeof(Cicclo.Api.Laundry.Simulation.SimulationResponse),
                 typeof(Cicclo.Api.Laundry.Simulation.CompleteMachine), typeof(Cicclo.Api.Laundry.Simulation.CompleteMachineResult),
+                typeof(MachineIncident), typeof(IncidentStatus), typeof(Cicclo.Api.Laundry.ReportIssue.ReportIssue),
+                typeof(Cicclo.Api.Laundry.ReportIssue.ReportIssueResult), typeof(Cicclo.Api.Laundry.ReportIssue.ReportIssueRequest),
+                typeof(Cicclo.Api.Laundry.ReportIssue.ReportIssueResponse), typeof(Cicclo.Api.Laundry.ReportIssue.IssueDescription),
             },
             domainTypes.ToHashSet());
         var violations = domainTypes
@@ -88,7 +91,7 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
         var entities = context.GetService<IDesignTimeModel>().Model.GetEntityTypes().ToList();
 
         Assert.Equal(
-            ["machines", "service_request_items", "service_requests", "services", "wallet_transactions", "wallets"],
+            ["machine_incidents", "machines", "service_request_items", "service_requests", "services", "wallet_transactions", "wallets"],
             entities.Select(entity => entity.GetTableName()).Order(StringComparer.Ordinal));
         Assert.All(entities, entity => Assert.Empty(entity.GetSeedData()));
     }

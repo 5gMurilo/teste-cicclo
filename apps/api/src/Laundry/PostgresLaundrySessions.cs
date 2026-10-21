@@ -193,6 +193,24 @@ public sealed class PostgresLaundrySessions(IDbContextFactory<CiccloDbContext> c
             return balance;
         }
 
+        public async Task<Guid?> LockOpenIncidentAsync(Guid itemId, CancellationToken cancellationToken)
+        {
+            var incidents = await db.Database
+                .SqlQuery<Guid>($"SELECT id AS \"Value\" FROM machine_incidents WHERE request_item_id = {itemId} AND status = 'reported' FOR UPDATE")
+                .ToListAsync(cancellationToken);
+            return incidents.Count == 0 ? null : incidents.Single();
+        }
+
+        public async Task RecordIncidentAsync(Guid incidentId, Guid machineId, Guid itemId, string? description, DateTime reportedAt, CancellationToken cancellationToken) =>
+            PostgresQueueSession.Expect(
+                await db.Database.ExecuteSqlAsync(
+                    $"""
+                    INSERT INTO machine_incidents (id, machine_id, request_item_id, status, description, reported_at)
+                    VALUES ({incidentId}, {machineId}, {itemId}, 'reported', {description}, {reportedAt})
+                    """,
+                    cancellationToken),
+                "relato do item");
+
         public Task CommitAsync() => transaction.CommitAsync(CancellationToken.None);
 
         public async ValueTask DisposeAsync()

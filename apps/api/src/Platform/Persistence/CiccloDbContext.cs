@@ -23,6 +23,8 @@ public sealed class CiccloDbContext(DbContextOptions<CiccloDbContext> options) :
 
     public DbSet<LedgerEntry> LedgerEntries => Set<LedgerEntry>();
 
+    public DbSet<MachineIncident> MachineIncidents => Set<MachineIncident>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasSequence<long>(Configurations.BookingItemConfiguration.QueueTicketSequence);

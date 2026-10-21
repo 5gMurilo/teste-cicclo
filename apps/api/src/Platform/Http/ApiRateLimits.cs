@@ -34,6 +34,9 @@ public static class ApiRateLimits
     /// <summary>Cancelamento de item: `RateLimiting:ItemCancel:PermitLimit`, padrão 10.</summary>
     public const string ItemCancel = "item-cancel";
 
+    /// <summary>Relato de defeito de item: `RateLimiting:IssueReports:PermitLimit`, padrão 3.</summary>
+    public const string IssueReports = "issue-reports";
+
     public const string UnknownPartition = "unknown";
 
     private static readonly TimeSpan Window = TimeSpan.FromMinutes(1);
@@ -45,6 +48,7 @@ public static class ApiRateLimits
         (BookingCreate, "BookingCreate", 5),
         (ItemCommands, "ItemCommands", 15),
         (ItemCancel, "ItemCancel", 10),
+        (IssueReports, "IssueReports", 3),
     ];
 
     public static IServiceCollection AddApiRateLimits(this IServiceCollection services, IConfiguration configuration)
