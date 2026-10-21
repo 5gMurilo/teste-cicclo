@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** em andamento. T1 concluída em 2026-10-21 (E0); T2–T37 abertas.
+**Execução:** em andamento. T1 (E0) a T9 concluídas em 2026-10-21; T10 com código e gate B verdes, aguardando C1 (demo com API real); T11–T37 abertas.
 
 ## Execution Protocol
 
@@ -127,7 +127,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Toolchain existente, API URL do ambiente a confirmar.
 **Requirement**: NAV-03, SAFE-02, QUAL-01.
 **What**: Ler origem API e nome demo, criar erro de configuração tratável e `.env.example` não secreto do app.
-**Done when**: [ ] Nome vazio vira Visitante; origem HTTP(S) não contém credenciais/path/query/hash; nenhuma URL silenciosa de fallback; acesso a env compatível com bundling Expo.
+**Done when**: [x] Nome vazio vira Visitante; origem HTTP(S) não contém credenciais/path/query/hash; nenhuma URL silenciosa de fallback; acesso a env compatível com bundling Expo.
 **Tests**: unit — teto de 6 casos: nome definido/vazio, URL válida, ausente, malformada e com caminho/credencial indevida; nenhum segredo na fixture.
 **Gate**: Q + CC.
 **Commit**: `feat(config): validate public mobile environment`
@@ -138,7 +138,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Modelos de erro da spec; Zod instalado neste primeiro consumidor.
 **Requirement**: SAFE-01, SAFE-02, BUY-12, BUY-13.
 **What**: Definir erro tipado, parser de ProblemDetails desconhecido e deadline Retry-After por segundos/HTTP-date.
-**Done when**: [ ] Status/errorCode/traceId sanitizados são preservados; detail não dirige regra; payload malformado não vira sucesso ou saldo default; não classifica sozinho toda recusa financeira.
+**Done when**: [x] Status/errorCode/traceId sanitizados são preservados; detail não dirige regra; payload malformado não vira sucesso ou saldo default; não classifica sozinho toda recusa financeira.
 **Tests**: unit — teto de 8 casos: ProblemDetails válido, campos ausentes/tipo errado, erro desconhecido, detail alterado sem mudar classificação, Retry-After segundos/data/passado/inválido.
 **Gate**: Q + CC.
 **Commit**: `feat(api): normalize problem details and retry deadlines`
@@ -149,7 +149,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: env, normalizador e fetch nativo.
 **Requirement**: SAFE-01, SAFE-02, BUY-01, BUY-08.
 **What**: Centralizar prefixo/headers, parse JSON, timeout 15s e AbortSignal, retornando unknown para o endpoint validar.
-**Done when**: [ ] Prefixo aparece uma vez; GET propaga signal; POST preserva header/body recebidos; timeout/cleanup funcionam; transporte não inventa chave ou rollback.
+**Done when**: [x] Prefixo aparece uma vez; GET propaga signal; POST preserva header/body recebidos; timeout/cleanup funcionam; transporte não inventa chave ou rollback.
 **Tests**: unit — teto de 9 casos: GET, POST/header/body, JSON sucesso, corpo vazio, HTML, JSON inválido, não-2xx, abort externo, timeout e limpeza; fake fetch async fiel.
 **Gate**: Q + CC.
 **Commit**: `feat(api): centralize cancellable json transport`
@@ -160,7 +160,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: app Expo existente; config pública; dependências Router e pares resolvidos pelo SDK 58.
 **Requirement**: NAV-01, NAV-02, BOOK-07, UX-01, UX-02.
 **What**: Migrar entrypoint/config, root e rotas finas numa única troca executável; tabs services/index/checkout com Home inicial e estados honestos temporários.
-**Done when**: [ ] Ordem/inicial corretas; sem lógica de domínio nas rotas; safe area sem duplicação; teste antigo migrado por requisito aprovado; sem catálogo fake.
+**Done when**: [x] Ordem/inicial corretas; sem lógica de domínio nas rotas; safe area sem duplicação; teste antigo migrado por requisito aprovado; sem catálogo fake.
 **Tests**: integration — teto de 4 casos de Router: Home inicial, ordem das tabs, navegação para cada aba, placeholders honestos sem POST; usar submódulo de testes compatível, fora da pasta app.
 **Gate**: B + CC; export é obrigatório por mudar entrypoint.
 **Tools**: Context7 para Expo Router e migração de testes; nenhuma atualização de Expo/RN por preferência.
@@ -174,7 +174,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Transporte e Zod; QueryClient criado nesta primeira query, estável no root.
 **Requirement**: READ-01, READ-02, READ-03, SAFE-01.
 **What**: Implementar schema, GET com signal, key/options públicos de wallet e configuração inicial Query.
-**Done when**: [ ] Inteiro seguro BRL/updatedAt validado pelo contrato; sem default monetário; QueryClient único; helper de testes com cache isolado e retries desativados.
+**Done when**: [x] Inteiro seguro BRL/updatedAt validado pelo contrato; sem default monetário; QueryClient único; helper de testes com cache isolado e retries desativados.
 **Tests**: integration — teto de 5 casos: wallet válida, centavos inválidos/fora da faixa segura, campo obrigatório ausente, erro e retry, cancelamento/signal; schema/tipos compatíveis se OpenAPI disponível.
 **Gate**: F + CC; C1 necessário para saída E1.
 **Commit**: `feat(wallet): query validated confirmed balances`
@@ -185,7 +185,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Props conectadas pelo layout à query wallet; env; money formatter e tokens mínimos introduzidos com este primeiro consumidor.
 **Requirement**: NAV-03, READ-01, READ-02, READ-03, UX-01, UX-02.
 **What**: Renderizar saudação à esquerda e saldo/status à direita; layout fornece dados/retry, shared não importa features.
-**Done when**: [ ] Loading não mostra moeda; falha tem retry; valor é BRL real; nome longo/fonte ampliada têm quebra controlada; um dono de inset; formatador não aceita dinheiro inválido.
+**Done when**: [x] Loading não mostra moeda; falha tem retry; valor é BRL real; nome longo/fonte ampliada têm quebra controlada; um dono de inset; formatador não aceita dinheiro inválido.
 **Tests**: integration — teto de 6 casos: nome/default, wallet 5000, loading, erro/retry, saldo desatualizado rotulado, labels e font scaling; unitário de BRL/inteiro junto ao helper criado.
 **Gate**: F + CC.
 **Commit**: `feat(wallet): present shared balance and greeting states`
@@ -196,7 +196,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Transporte, QueryClient, Zod e padrão público wallet.
 **Requirement**: READ-04, READ-05, READ-06, SAFE-01.
 **What**: Implementar o único GET catálogo com schema próprio, key e options; documentar contrato real ou temporário.
-**Done when**: [ ] Preço/nome vêm da resposta; códigos/desativação/motivos preservados; sem tipos manuais paralelos a gerados; registry contratual registra origem do schema.
+**Done when**: [x] Preço/nome vêm da resposta; códigos/desativação/motivos preservados; sem tipos manuais paralelos a gerados; registry contratual registra origem do schema.
 **Tests**: integration — teto de 5 casos: catálogo válido, preço variável, vazio, item indisponível, obrigatório inválido/erro; fixtures não entram no bundle real.
 **Gate**: F + CC; C1 necessário para saída E1.
 **Commit**: `feat(catalog): query authoritative service availability`
@@ -207,7 +207,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Tipo público do catálogo, tokens/money; sem acessar Context ou HTTP.
 **Requirement**: READ-04, READ-06, UX-01.
 **What**: Apresentar nome/preço/estado textual; aceitar quantidades/callbacks opcionais para seleção futura sem fingir compra habilitada.
-**Done when**: [ ] Serviço indisponível tem motivo, não só cor; ação não aparece funcional sem callback; props pequenas e labels incluem serviço/preço.
+**Done when**: [x] Serviço indisponível tem motivo, não só cor; ação não aparece funcional sem callback; props pequenas e labels incluem serviço/preço.
 **Tests**: integration — teto de 4 casos: serviço disponível, indisponível/desativado, preço da prop e ação ausente/desabilitada; disabled não chama callback.
 **Gate**: F + CC.
 **Commit**: `feat(catalog): render accessible service cards`
@@ -218,7 +218,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Query pública catálogo, ServiceCard, header já conectado no layout.
 **Requirement**: READ-04, READ-05, READ-06, BOOK-07, UX-01.
 **What**: Conectar Home ao catálogo e oferecer loading/empty/error/retry, ainda sem seleção ou POST.
-**Done when**: [ ] Rota só compõe screen; nenhuma regra de preço no JSX; demo C1 confirma dados reais; E1 pronta somente com B+C1.
+**Done when**: [~] Rota só compõe screen; nenhuma regra de preço no JSX; demo C1 confirma dados reais; E1 pronta somente com B+C1.
 **Tests**: integration — teto de 5 casos: loading, ready, vazio, erro/retry, serviço indisponível; afirmar ausência de POST.
 **Gate**: F + B no fechamento E1 + C1 + CC.
 **Commit**: `feat(home): compose live catalog reading states`
@@ -709,7 +709,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **1/37 tarefas executadas** (T1 concluída em 2026-10-21); demais checkboxes de Done when abertas.
+- Implementação: **9/37 tarefas concluídas**; T10 implementada e commitada, **pendente de C1** (`[~]`: nada de demo real executado); demais checkboxes de Done when abertas.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1/C2/C3/CP1 não comprovadas; N1 não executado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.

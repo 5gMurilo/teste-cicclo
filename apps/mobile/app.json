@@ -2,9 +2,11 @@
   "expo": {
     "name": "Cicclo",
     "slug": "cicclo",
+    "scheme": "cicclo",
     "version": "1.0.0",
     "orientation": "portrait",
     "platforms": ["android", "ios"],
-    "userInterfaceStyle": "automatic"
+    "userInterfaceStyle": "automatic",
+    "plugins": ["expo-router", "expo-status-bar"]
   }
 }
