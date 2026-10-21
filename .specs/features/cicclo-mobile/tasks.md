@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** em andamento. Última tarefa concluída: T21 (19/37 com Done when marcado); ver STATE.md.
+**Execução:** em andamento. Última tarefa concluída: T28 (21/37 com Done when marcado); ver STATE.md.
 
 ## Execution Protocol
 
@@ -357,7 +357,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Status da API/contrato; sem importar catálogo ou checkout.
 **Requirement**: BOOK-02, BOOK-03, BOOK-05, SAFE-01.
 **What**: Definir estados conhecidos e seletores de booking ativo/terminal, preservando lotes mistos.
-**Done when**: [ ] Algum item não terminal mantém booking ativo; todos terminais vão ao histórico; status desconhecido não é terminal nem habilita ação financeira.
+**Done when**: [x] Algum item não terminal mantém booking ativo; todos terminais vão ao histórico; status desconhecido não é terminal nem habilita ação financeira.
 **Tests**: unit — teto de 5 casos: cada não terminal parametrizado, todos terminais, misto, desconhecido e coleção malformada rejeitada na fronteira.
 **Gate**: Q + CC.
 **Commit**: `feat(bookings): centralize active and historical status rules`
@@ -368,7 +368,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Prefixo de bookings da T20, HTTP e schema do GET real, não do POST.
 **Requirement**: BOOK-01, BOOK-02, BOOK-03, BOOK-07, SAFE-01.
 **What**: Implementar list query e parâmetros/paginação efetivos, atualizando registro de contrato.
-**Done when**: [ ] Schemas e tipos GET corretos; key inclui parâmetros reais; ordem e alcance de páginas definidos; endpoint ausente não vira lista fake vazia.
+**Done when**: [~] Schemas e tipos GET corretos; key inclui parâmetros reais; ordem e alcance de páginas definidos; endpoint ausente não vira lista fake vazia.
 **Tests**: integration — teto de 5 casos: registros reais de fixture, ordem por data, página/limite conforme contrato, response inválido, erro/endpoint ausente; zero rede real em Jest.
 **Gate**: F + CC; C3 para saída E4.
 **Commit**: `feat(bookings): query authoritative booking lists`
@@ -379,7 +379,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: listQuery, status e tokens; rota services compõe a screen.
 **Requirement**: BOOK-01, BOOK-02, BOOK-03, BOOK-04, BOOK-07, UX-01.
 **What**: Listar com FlatList/key estável, filtros locais, loading/error/retry e CTA Home quando vazio.
-**Done when**: [ ] Lote misto não perde itens concluídos no resumo; filtros não fingem completude paginada; data/ID/valor histórico/status legíveis; sem comandos P1 ainda.
+**Done when**: [~] Lote misto não perde itens concluídos no resumo; filtros não fingem completude paginada; data/ID/valor histórico/status legíveis; sem comandos P1 ainda.
 **Tests**: integration — teto de 6 casos: loading, erro/retry, dois empty states, misto ativo, todos terminais e data decrescente; link usa bookingId real.
 **Gate**: F + CC.
 **Commit**: `feat(bookings): present active services and history filters`
@@ -390,7 +390,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: HTTP, prefixo público bookings, schema específico do GET detalhe.
 **Requirement**: BOOK-05, BOOK-06, SAFE-01.
 **What**: Validar ID antes de consultar e expor query de detalhe com preço histórico/status por item.
-**Done when**: [ ] ID inválido não envia GET; inexistente é recuperável; response é do contrato real e não reinterpretação de DTO POST; machine/queue/expiresAt só da API.
+**Done when**: [~] ID inválido não envia GET; inexistente é recuperável; response é do contrato real e não reinterpretação de DTO POST; machine/queue/expiresAt só da API.
 **Tests**: integration — teto de 5 casos: válido, inválido sem fetch, 404, DTO inválido, preço histórico diferente do catálogo.
 **Gate**: F + CC; C3 para saída E4.
 **Commit**: `feat(bookings): query validated booking details`
@@ -401,7 +401,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: detailQuery/status; rota fina bookings/[id] e retorno explícito.
 **Requirement**: BOOK-05, BOOK-06, BOOK-07, UX-01.
 **What**: Compor itens, preço contratado, status/fila/oferta informativos e erros, sem controles de endpoint ausente.
-**Done when**: [ ] Retorno para Serviços funciona; seleção não é apagada; cancelled/failed não implicam texto de refund sem campo autoritativo; máquinas identificadas como simuladas.
+**Done when**: [~] Retorno para Serviços funciona; seleção não é apagada; cancelled/failed não implicam texto de refund sem campo autoritativo; máquinas identificadas como simuladas.
 **Tests**: integration — teto de 6 casos: pronto, loading, UUID inválido/404, retry, preço histórico, estados e ausência de ações P1; retorno preserva seleção.
 **Gate**: F + CC.
 **Commit**: `feat(bookings): display authoritative booking details`
@@ -412,7 +412,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: AppState, focusManager/onlineManager e expo-network instalado no primeiro uso; integração única no CheckoutProvider.
 **Requirement**: SAFE-03, SAFE-04, SAFE-05, SEL-03, BUY-02, BUY-09.
 **What**: Observar lifecycle/rede, limpar listeners e exigir revalidação de wallet/catalog antes de permitir seleção/compra após reconectar.
-**Done when**: [ ] undefined inicial não autoriza operação; header antigo é rotulado; reconexão/foreground refaz GETs e bloqueia compra até sucesso; zero POST sem gesto; subscriptions não duplicam.
+**Done when**: [x] undefined inicial não autoriza operação; header antigo é rotulado; reconexão/foreground refaz GETs e bloqueia compra até sucesso; zero POST sem gesto; subscriptions não duplicam.
 **Tests**: integration — teto de 8 casos: rede inicial indeterminada, offline, reconnect com GET diferido, erro de refetch, active/background, unmount, rerender sem duplicação, unknown continua exigindo verify explícito.
 **Gate**: F + CC.
 **Tools**: Context7 expo-network/Query lifecycle; sem instalar NetInfo também.
@@ -424,7 +424,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Resultado confirmado e rota detalhe criada em T26; queries públicas, sem detalhes internos de bookings.
 **Requirement**: BUY-06, BUY-07, BOOK-01, BOOK-05, SEL-06.
 **What**: Conectar CTA pós-compra ao detalhe real e validar convergência da lista/detalhe após contratação.
-**Done when**: [ ] Nenhuma rota inexistente; booking confirmado aparece após invalidação/refetch; retornar à Home mantém novo saldo confirmado; C3/demo E4 atendidos.
+**Done when**: [~] Nenhuma rota inexistente; booking confirmado aparece após invalidação/refetch; retornar à Home mantém novo saldo confirmado; C3/demo E4 atendidos.
 **Tests**: integration — teto de 4 casos: compra→detalhe, compra→Serviços/lista, retorno às tabs e falha GET pós-sucesso sem POST repetido.
 **Gate**: F + B no fechamento E4 + C3 + CC.
 **Commit**: `feat(checkout): link confirmed purchases to live tracking`
@@ -709,7 +709,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **19/37 tarefas com Done when marcado** (última: T21); demais abertas ou pendentes de gate externo.
+- Implementação: **21/37 tarefas com Done when marcado** (última: T28); demais abertas ou pendentes de gate externo.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1/C2/C3/CP1 não comprovadas; N1 não executado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.

@@ -15,14 +15,15 @@ const CHECKOUT_POSITION = 3;
 
 export default function TabsLayout() {
   const wallet = useQuery(walletOptions());
-  const { quantity } = useCheckout().derived;
+  const checkout = useCheckout();
+  const { quantity } = checkout.derived;
 
   return (
     <View style={{ flex: 1 }}>
       <AppHeader
         displayName={readDisplayName()}
-        balance={toBalanceState(wallet)}
-        onRetry={() => void wallet.refetch()}
+        balance={toBalanceState({ ...wallet, retained: checkout.readsRetained })}
+        onRetry={checkout.revalidate}
       />
       <Tabs screenOptions={{ headerShown: false }}>
         <Tabs.Screen name="services" options={{ title: 'Serviços' }} />

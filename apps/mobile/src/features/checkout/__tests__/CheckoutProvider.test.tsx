@@ -108,13 +108,23 @@ describe('CheckoutProvider', () => {
   });
 
   it('blocks additions while the wallet is loading and after a wallet error', async () => {
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    globalThis.fetch = jest.fn((url: string | URL | Request) =>
+      held.then(() => respond(String(url).endsWith('/wallet') ? walletReply : servicesReply)),
+    ) as unknown as typeof fetch;
     const { result } = await mountProvider();
     expect(result.current.readiness).toBe('loading');
     await act(async () => {
       expect(result.current.add('wash')).toEqual({ ok: false, reason: 'data-unavailable' });
     });
+    release();
+    await waitFor(() => expect(result.current.readiness).toBe('ready'));
 
     walletReply = { status: 404, body: { errorCode: 'NOT_FOUND' } };
+    globalThis.fetch = jest.fn((url: string | URL | Request) =>
+      respond(String(url).endsWith('/wallet') ? walletReply : servicesReply),
+    ) as unknown as typeof fetch;
     const failed = await mountProvider();
     await waitFor(() => expect(failed.result.current.readiness).toBe('unavailable'));
     await act(async () => {
