@@ -19,4 +19,8 @@ public sealed class PostgresMachinesQuery(CiccloDbContext db)
         var machines = await db.Machines.AsNoTracking().OrderBy(machine => machine.Name).ToListAsync(cancellationToken);
         return machines.Count == 0 ? throw new DatabaseUnavailableException("Máquinas demo ausentes: execute o bootstrap.") : machines;
     }
+
+    /// <summary>Estado atual de uma máquina, lido depois do commit de um comando; null se ela não existe.</summary>
+    public async Task<Machine?> FindAsync(Guid machineId, CancellationToken cancellationToken) =>
+        await db.Machines.AsNoTracking().SingleOrDefaultAsync(machine => machine.Id == machineId, cancellationToken);
 }

@@ -49,18 +49,22 @@ public static class ApiOpenApi
 
     /// <summary>
     /// Erros da operação com o corpo <see cref="ApiProblem"/>: os específicos informados (status e descrição) e os comuns
-    /// 429 com Retry-After (descrição da política), 500 e 503.
+    /// 429 com Retry-After (descrição da política), 500 e 503. Sem política de limite (null), a operação não documenta 429.
     /// </summary>
     public static RouteHandlerBuilder ProducesApiProblems(
-        this RouteHandlerBuilder builder, string rateLimitDescription, params (int Status, string Description)[] specific)
+        this RouteHandlerBuilder builder, string? rateLimitDescription, params (int Status, string Description)[] specific)
     {
         foreach (var (status, _) in specific)
         {
             builder.Produces<ApiProblem>(status, ApiProblems.ContentType);
         }
 
+        if (rateLimitDescription is not null)
+        {
+            builder.Produces<ApiProblem>(StatusCodes.Status429TooManyRequests, ApiProblems.ContentType);
+        }
+
         return builder
-            .Produces<ApiProblem>(StatusCodes.Status429TooManyRequests, ApiProblems.ContentType)
             .Produces<ApiProblem>(StatusCodes.Status500InternalServerError, ApiProblems.ContentType)
             .Produces<ApiProblem>(StatusCodes.Status503ServiceUnavailable, ApiProblems.ContentType)
             .AddOpenApiOperationTransformer((operation, _, _) =>
@@ -70,16 +74,20 @@ public static class ApiOpenApi
                     operation.Responses![status.ToString(System.Globalization.CultureInfo.InvariantCulture)].Description = description;
                 }
 
-                var limited = (OpenApiResponse)operation.Responses!["429"];
-                limited.Description = rateLimitDescription;
-                limited.Headers ??= new Dictionary<string, IOpenApiHeader>();
-                limited.Headers["Retry-After"] = new OpenApiHeader
+                if (rateLimitDescription is not null)
                 {
-                    Description = "Segundos inteiros até a próxima janela.",
-                    Required = true,
-                    Schema = new OpenApiSchema { Type = JsonSchemaType.Integer, Format = "int32", Minimum = "1" },
-                };
-                operation.Responses["500"].Description = "Falha inesperada; corpo sanitizado com traceId.";
+                    var limited = (OpenApiResponse)operation.Responses!["429"];
+                    limited.Description = rateLimitDescription;
+                    limited.Headers ??= new Dictionary<string, IOpenApiHeader>();
+                    limited.Headers["Retry-After"] = new OpenApiHeader
+                    {
+                        Description = "Segundos inteiros até a próxima janela.",
+                        Required = true,
+                        Schema = new OpenApiSchema { Type = JsonSchemaType.Integer, Format = "int32", Minimum = "1" },
+                    };
+                }
+
+                operation.Responses!["500"].Description = "Falha inesperada; corpo sanitizado com traceId.";
                 operation.Responses["503"].Description = "PostgreSQL indisponível ou base demo não preparada.";
                 return Task.CompletedTask;
             });
