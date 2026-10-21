@@ -1,4 +1,5 @@
 using Cicclo.Api.Platform;
+using Cicclo.Api.Platform.BackgroundServices;
 using Cicclo.Api.Platform.Health;
 using Cicclo.Api.Platform.Http;
 using Cicclo.Api.Platform.Observability;
@@ -18,8 +19,12 @@ builder.Services.AddOptions<LaundryOptions>()
     .Bind(builder.Configuration.GetSection(LaundryOptions.SectionName))
     .ValidateDataAnnotations()
     .ValidateOnStart();
-builder.Services.AddDbContext<CiccloDbContext>((services, options) =>
-    options.UseNpgsql(services.GetRequiredService<IConfiguration>().GetConnectionString(CiccloDbContext.ConnectionStringName)));
+builder.Services.AddDbContext<CiccloDbContext>(
+    (services, options) =>
+        options.UseNpgsql(services.GetRequiredService<IConfiguration>().GetConnectionString(CiccloDbContext.ConnectionStringName)),
+    optionsLifetime: ServiceLifetime.Singleton);
+// Casos de uso transacionais abrem um contexto novo por sessão, com as mesmas opções do contexto por escopo.
+builder.Services.AddDbContextFactory<CiccloDbContext>();
 builder.Services.AddScoped<PostgresWalletBalanceQuery>();
 builder.Services.AddScoped<PostgresServiceCatalogQuery>();
 
@@ -38,6 +43,7 @@ if (bootstrapDemo)
     return await scope.ServiceProvider.GetRequiredService<BootstrapDemoCommand>().RunAsync(cancellation.Token);
 }
 
+builder.Services.AddOfferReconciliation();
 var app = builder.Build();
 app.UseHttpBoundary();
 app.UseRateLimiter();
