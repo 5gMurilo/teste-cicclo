@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 
+import { capabilities } from '../../shared/api/capabilities';
 import { catalogOptions } from '../catalog/queries';
 import { walletOptions } from '../wallet/queries';
 import {
@@ -18,11 +19,25 @@ import {
   type CheckoutSelection,
 } from './checkoutReducer';
 import { checkAdd, deriveSelection, type AddCheck, type DerivedSelection } from './checkoutSelectors';
+import { useBookingSubmission, type SubmissionState } from './useBookingSubmission';
 
 /** `unavailable`: a read failed or has no data; additions are blocked until both reads succeed. */
 export type CheckoutReadiness = 'loading' | 'unavailable' | 'ready';
 
 export type PriceChange = { code: string; name: string; fromCents: number; toCents: number };
+
+export type AddResult = AddCheck | { ok: false; reason: 'purchase-pending' };
+
+export type PurchaseControls = {
+  /** False until the real API proves the purchase contract (capabilities.purchase). */
+  enabled: boolean;
+  state: SubmissionState;
+  /** Ready, valid, reviewed and not already in flight. */
+  canConfirm: boolean;
+  confirm: () => Promise<void>;
+  verify: () => Promise<void>;
+  dismiss: () => void;
+};
 
 type CheckoutContextValue = {
   selection: CheckoutSelection;
@@ -30,10 +45,11 @@ type CheckoutContextValue = {
   readiness: CheckoutReadiness;
   /** Selected services whose catalog price differs from the one the user saw when selecting. */
   priceChanges: PriceChange[];
-  add: (code: string) => AddCheck;
+  add: (code: string) => AddResult;
   remove: (code: string) => void;
   setPreference: (code: string | null) => void;
   clear: () => void;
+  purchase: PurchaseControls;
   /** Explicit new review: accepts the current catalog prices as the ones the user has seen. */
   acknowledgePriceChanges: () => void;
 };
@@ -83,8 +99,17 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     [commit],
   );
 
+  // The selection is cleared only by a confirmed purchase, never by a rejection or an unknown outcome.
+  const clearAfterPurchase = useCallback(() => dispatch({ type: 'clear' }), [dispatch]);
+  const submission = useBookingSubmission({
+    keyRetentionMs: capabilities.keyRetentionMs,
+    onConfirmed: clearAfterPurchase,
+  });
+  const purchasePending = submission.state.status === 'submitting' || submission.state.status === 'unknown';
+
   const add = useCallback(
-    (code: string): AddCheck => {
+    (code: string): AddResult => {
+      if (purchasePending) return { ok: false, reason: 'purchase-pending' };
       if (readiness !== 'ready') return { ok: false, reason: 'data-unavailable' };
       const current = storeRef.current;
       const check = checkAdd(current.selection, code, catalog.data, wallet.data);
@@ -97,7 +122,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
       });
       return check;
     },
-    [commit, readiness, catalog.data, wallet.data],
+    [commit, purchasePending, readiness, catalog.data, wallet.data],
   );
 
   const value = useMemo<CheckoutContextValue>(() => {
@@ -108,15 +133,46 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
         ? [{ code: line.code, name: line.name, fromCents: seen, toCents: line.unitPriceCents }]
         : [];
     });
+    const canConfirm =
+      capabilities.purchase &&
+      readiness === 'ready' &&
+      submission.state.status === 'idle' &&
+      derived.quantity > 0 &&
+      derived.totalCents !== null &&
+      derived.problems.length === 0 &&
+      priceChanges.length === 0;
+
     return {
       selection: store.selection,
       derived,
       readiness,
       priceChanges,
       add,
-      remove: (code) => dispatch({ type: 'remove', code }),
-      setPreference: (code) => dispatch({ type: 'setPreference', code }),
-      clear: () => dispatch({ type: 'clear' }),
+      // Editing is frozen while a purchase is in flight or unresolved: that intent is immutable.
+      remove: (code) => {
+        if (!purchasePending) dispatch({ type: 'remove', code });
+      },
+      setPreference: (code) => {
+        if (!purchasePending) dispatch({ type: 'setPreference', code });
+      },
+      clear: () => {
+        if (!purchasePending) dispatch({ type: 'clear' });
+      },
+      purchase: {
+        enabled: capabilities.purchase,
+        state: submission.state,
+        canConfirm,
+        confirm: async () => {
+          if (!canConfirm || derived.totalCents === null) return;
+          await submission.submit({
+            serviceCodes: derived.serviceCodes,
+            expectedTotalCents: derived.totalCents,
+            preferredFirstServiceCode: store.selection.preferredFirstServiceCode,
+          });
+        },
+        verify: submission.verify,
+        dismiss: submission.dismiss,
+      },
       acknowledgePriceChanges: () => {
         const current = storeRef.current;
         const seenPrices = Object.fromEntries(
@@ -125,7 +181,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
         commit({ ...current, seenPrices: { ...current.seenPrices, ...seenPrices } });
       },
     };
-  }, [store, catalog.data, wallet.data, readiness, add, dispatch, commit]);
+  }, [store, catalog.data, wallet.data, readiness, add, dispatch, commit, submission, purchasePending]);
 
   return <CheckoutContext.Provider value={value}>{children}</CheckoutContext.Provider>;
 }

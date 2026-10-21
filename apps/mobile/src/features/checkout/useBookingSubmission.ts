@@ -116,6 +116,8 @@ type Options = {
   now?: () => Date;
   /** How long the server remembers a key for replay; null while unproven (gate C2). */
   keyRetentionMs?: number | null;
+  /** Runs once, right after a purchase is confirmed and before the cache is brought up to date. */
+  onConfirmed?: (booking: ConfirmedBooking) => void;
 };
 
 const IDLE: SubmissionState = { status: 'idle' };
@@ -124,6 +126,7 @@ export function useBookingSubmission({
   generateKey = randomUUID,
   now = () => new Date(),
   keyRetentionMs = null,
+  onConfirmed,
 }: Options = {}) {
   const queryClient = useQueryClient();
   // The ref is the synchronous guard: it changes before any await, so two taps in one tick cannot both pass.
@@ -151,9 +154,10 @@ export function useBookingSubmission({
       }
       // Confirmation comes first; the cache catches up afterwards and can never undo it.
       commit({ status: 'confirmed', intent, booking });
+      onConfirmed?.(booking);
       await applyConfirmedBooking(queryClient, booking);
     },
-    [commit, queryClient],
+    [commit, onConfirmed, queryClient],
   );
 
   const blockedByRetryAfter = useCallback(

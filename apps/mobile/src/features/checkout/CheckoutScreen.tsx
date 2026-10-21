@@ -1,14 +1,80 @@
 import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { formatBRL } from '../../shared/lib/money';
 import { colors, spacing } from '../../shared/theme/tokens';
 import { useCheckout } from './CheckoutProvider';
+import { rejectionMessage, unknownMessage } from './messages';
 
 export function CheckoutScreen() {
   const checkout = useCheckout();
   const router = useRouter();
+  const { purchase } = checkout;
   const { lines, quantity, totalCents, confirmedBalanceCents, availableCents, problems } = checkout.derived;
+  const state = purchase.state;
+
+  if (state.status === 'submitting') {
+    return (
+      <View style={styles.center} accessible accessibilityLabel="Contratando" accessibilityState={{ busy: true }}>
+        <Text accessibilityRole="header" style={styles.title}>
+          Contratando…
+        </Text>
+        <Text style={styles.message}>Aguarde. Não feche o app nem repita a ação.</Text>
+      </View>
+    );
+  }
+
+  if (state.status === 'confirmed') {
+    const { booking } = state;
+    return (
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text accessibilityRole="header" style={styles.title}>
+          Contratação confirmada
+        </Text>
+        <Text style={styles.detail}>{`Código: ${booking.bookingId}`}</Text>
+        {booking.items.map((item) => (
+          <Text key={item.itemId} style={styles.detail}>{`${item.serviceCode}: ${formatBRL(item.unitPriceCents)}`}</Text>
+        ))}
+        <Row label="Valor cobrado" cents={booking.chargedAmountCents} />
+        <Row label="Saldo restante" cents={booking.remainingBalanceCents} />
+        <ActionButton label="Ver serviços" onPress={() => router.navigate('/services')} />
+        <ActionButton
+          label="Nova seleção"
+          onPress={() => {
+            purchase.dismiss();
+            router.navigate('/');
+          }}
+        />
+      </ScrollView>
+    );
+  }
+
+  if (state.status === 'rejected') {
+    return (
+      <Settled
+        title="Contratação não realizada"
+        message={rejectionMessage(state.reason, state.retryAfterAt)}
+        retryAfterAt={state.retryAfterAt}
+        actionLabel="Voltar à revisão"
+        onAction={purchase.dismiss}
+      />
+    );
+  }
+
+  if (state.status === 'unknown') {
+    const blocked = state.cause === 'idempotency-conflict' || state.cause === 'retention-expired';
+    return (
+      <Settled
+        title="Resultado não confirmado"
+        message={unknownMessage(state.cause, state.retryAfterAt)}
+        retryAfterAt={state.retryAfterAt}
+        actionLabel="Verificar contratação"
+        onAction={() => void purchase.verify()}
+        actionHidden={blocked}
+      />
+    );
+  }
 
   if (quantity === 0) {
     return (
@@ -104,10 +170,68 @@ export function CheckoutScreen() {
       <Text style={styles.notice}>
         Ao contratar, o valor é cobrado imediatamente, mesmo que o serviço entre em fila. As máquinas são simuladas.
       </Text>
-      <Text accessibilityRole="alert" style={styles.notice}>
-        A contratação ainda não está habilitada nesta versão.
-      </Text>
+      {purchase.enabled ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={totalCents === null ? 'Confirmar contratação' : `Confirmar contratação de ${formatBRL(totalCents)}`}
+          accessibilityState={{ disabled: !purchase.canConfirm }}
+          disabled={!purchase.canConfirm}
+          onPress={() => void purchase.confirm()}
+          style={[styles.cta, !purchase.canConfirm && styles.ctaDisabled]}
+        >
+          <Text style={styles.ctaText}>Confirmar contratação</Text>
+        </Pressable>
+      ) : (
+        <Text accessibilityRole="alert" style={styles.notice}>
+          A contratação ainda não está habilitada nesta versão.
+        </Text>
+      )}
     </ScrollView>
+  );
+}
+
+/** Result view of a rejected or unknown purchase; its action stays disabled until Retry-After passes. */
+function Settled(props: {
+  title: string;
+  message: string;
+  retryAfterAt: number | null;
+  actionLabel: string;
+  onAction: () => void;
+  actionHidden?: boolean;
+}) {
+  const { retryAfterAt } = props;
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (retryAfterAt === null) return;
+    const wait = retryAfterAt - Date.now();
+    if (wait <= 0) return;
+    const timer = setTimeout(() => setNow(Date.now()), wait);
+    return () => clearTimeout(timer);
+  }, [retryAfterAt]);
+
+  const waiting = retryAfterAt !== null && now < retryAfterAt;
+  return (
+    <View style={styles.center}>
+      <Text accessibilityRole="header" style={styles.title}>
+        {props.title}
+      </Text>
+      <Text accessibilityRole="alert" style={styles.error}>
+        {props.message}
+      </Text>
+      {props.actionHidden ? null : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={props.actionLabel}
+          accessibilityState={{ disabled: waiting }}
+          disabled={waiting}
+          onPress={props.onAction}
+          style={[styles.cta, waiting && styles.ctaDisabled]}
+        >
+          <Text style={styles.ctaText}>{props.actionLabel}</Text>
+        </Pressable>
+      )}
+    </View>
   );
 }
 
@@ -159,6 +283,16 @@ const styles = StyleSheet.create({
   name: { fontSize: 16, fontWeight: '600', color: colors.text },
   detail: { fontSize: 16, color: colors.text },
   radio: { minHeight: 44, justifyContent: 'center' },
+  cta: {
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.text,
+    borderRadius: 8,
+  },
+  ctaDisabled: { opacity: 0.4 },
+  ctaText: { fontSize: 16, fontWeight: '600', color: colors.background },
   button: {
     minHeight: 44,
     justifyContent: 'center',

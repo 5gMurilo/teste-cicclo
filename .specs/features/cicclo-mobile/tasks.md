@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** em andamento. Última tarefa concluída: T20 (19/37 com Done when marcado); ver STATE.md.
+**Execução:** em andamento. Última tarefa concluída: T21 (19/37 com Done when marcado); ver STATE.md.
 
 ## Execution Protocol
 
@@ -344,7 +344,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Coordenador montado uma vez no provider acima das tabs, cache helper e seleção existente.
 **Requirement**: BUY-01, BUY-02, BUY-03, BUY-04, BUY-05, BUY-06, BUY-07, BUY-08, BUY-09, BUY-10, BUY-11, BUY-12, BUY-13, BUY-14, UX-01.
 **What**: Habilitar CTA só após C2 e conectar revisão/pending/unknown/rejected/success a comandos públicos, sem lógica financeira no JSX.
-**Done when**: [ ] C2 comprovado; seleção só limpa em sucesso; estado sobrevive troca de tabs; sucesso tem ID/itens/saldo e CTA a Serviços; demo compra 5000→3110 e replay sem segundo débito, sem reset de saldo não autorizado.
+**Done when**: [~] C2 comprovado; seleção só limpa em sucesso; estado sobrevive troca de tabs; sucesso tem ID/itens/saldo e CTA a Serviços; demo compra 5000→3110 e replay sem segundo débito, sem reset de saldo não autorizado.
 **Tests**: integration — teto de 10 casos de fluxo com providers reais: sucesso, replay, duplo toque, recusa, PRICE_CHANGED/revisão, unknown/verificar, rate limit, navegação durante pending, seleção preservada em erro e limpeza em confirmed.
 **Gate**: F + B no fechamento E3 + C2 + CC.
 **Commit**: `feat(checkout): expose safe purchase and recovery interactions`
@@ -709,7 +709,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **19/37 tarefas com Done when marcado** (última: T20); demais abertas ou pendentes de gate externo.
+- Implementação: **19/37 tarefas com Done when marcado** (última: T21); demais abertas ou pendentes de gate externo.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1/C2/C3/CP1 não comprovadas; N1 não executado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.
