@@ -65,6 +65,26 @@ curl http://localhost:5001/health/ready
 
 Em `Development`, o documento OpenAPI 3.1 gerado pelos endpoints reais fica em `GET /openapi/v1.json` (por exemplo, `curl http://localhost:5001/openapi/v1.json`). Ele lista somente operações já entregues e não é publicado em outros ambientes.
 
+### Consultas da demonstração
+
+Depois do bootstrap (seção "Seed e volume"), a API lê os dados autoritativos do PostgreSQL a cada chamada:
+
+```sh
+curl http://localhost:5001/api/v1/wallet
+```
+
+`GET /api/v1/wallet` responde 200 `application/json` com `{ "balanceCents": 5000, "currency": "BRL", "updatedAt": "<UTC>" }` na base recém-preparada. Valores monetários são centavos inteiros (int64) convertidos do `numeric(12,2)` sem arredondamento. A wallet é resolvida no servidor: parâmetros como `walletId` ou `userId` são ignorados e não trocam a conta.
+
+Erros usam `application/problem+json` com `type` `urn:cicclo:problem:<slug>`, `errorCode`, `traceId` e `errors` (null quando não há erro de campo):
+
+| Status | errorCode | Quando |
+| --- | --- | --- |
+| 429 | `RATE_LIMIT_EXCEEDED` | Mais de 60 leituras por minuto do mesmo IP; o cabeçalho `Retry-After` informa os segundos de espera. |
+| 503 | `DATABASE_UNAVAILABLE` | Conexão não configurada, PostgreSQL inacessível ou base demo não preparada. Nenhum saldo é inventado. |
+| 500 | `INTERNAL_ERROR` | Falha inesperada; o corpo não expõe SQL, stack trace ou dados de conexão. |
+
+O limite de leituras é uma janela fixa de 1 minuto por endereço IP remoto, sem fila, configurável por `RateLimiting:Reads:PermitLimit` (padrão 60). Cabeçalhos como `X-Forwarded-For` não são considerados. Os endpoints de saúde não entram nesse limite.
+
 ## Validação
 
 ```sh

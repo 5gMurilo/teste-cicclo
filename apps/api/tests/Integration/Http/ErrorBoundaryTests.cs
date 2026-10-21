@@ -56,6 +56,7 @@ public sealed class ErrorBoundaryTests
     [InlineData("connection-failure")]
     [InlineData("missing-initial-table")]
     [InlineData("update-over-lost-connection")]
+    [InlineData("ef-transient-wrapper")]
     public async Task P03_KnownUnavailabilityReturns503(string kind)
     {
         await using var host = await IsolatedHttpHost.StartAsync(MapFailures);
@@ -92,6 +93,7 @@ public sealed class ErrorBoundaryTests
     [InlineData("unique-violation-on-save")]
     [InlineData("sql-syntax-error")]
     [InlineData("unknown-table")]
+    [InlineData("invalid-operation-over-syntax-error")]
     public async Task P05_GenericPersistenceFailuresStay500(string kind)
     {
         await using var host = await IsolatedHttpHost.StartAsync(MapFailures);
@@ -160,10 +162,14 @@ public sealed class ErrorBoundaryTests
                     throw new PostgresException("relation \"wallets\" does not exist", "ERROR", "ERROR", PostgresErrorCodes.UndefinedTable);
                 case "update-over-lost-connection":
                     throw new DbUpdateException("save failed", new NpgsqlException("Exception while reading from stream", new IOException("connection reset")));
+                case "ef-transient-wrapper":
+                    throw new InvalidOperationException("transient failure", new NpgsqlException("Failed to connect", new System.Net.Sockets.SocketException()));
                 case "unexpected":
                     throw new InvalidOperationException($"{LeakySql}; {Secret}");
                 case "unique-violation-on-save":
                     throw new DbUpdateException("save failed", new PostgresException("duplicate key value violates unique constraint", "ERROR", "ERROR", PostgresErrorCodes.UniqueViolation));
+                case "invalid-operation-over-syntax-error":
+                    throw new InvalidOperationException("query failed", new PostgresException("syntax error", "ERROR", "ERROR", PostgresErrorCodes.SyntaxError));
                 case "sql-syntax-error":
                     throw new PostgresException("syntax error at or near \"SELEC\"", "ERROR", "ERROR", PostgresErrorCodes.SyntaxError);
                 case "unknown-table":

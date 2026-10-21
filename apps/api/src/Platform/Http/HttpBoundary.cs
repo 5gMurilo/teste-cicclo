@@ -18,6 +18,7 @@ public static class HttpBoundary
             options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
             options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.Never;
             options.SerializerOptions.UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow;
+            options.SerializerOptions.NumberHandling = JsonNumberHandling.Strict;
         });
         services.Configure<KestrelServerOptions>(options => options.Limits.MaxRequestBodySize = MaxRequestBodyBytes);
         return services;

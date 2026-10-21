@@ -71,6 +71,7 @@ public sealed class HostConfigurationTests
         Assert.Same(JsonNamingPolicy.CamelCase, json.PropertyNamingPolicy);
         Assert.Equal(JsonIgnoreCondition.Never, json.DefaultIgnoreCondition);
         Assert.Equal(JsonUnmappedMemberHandling.Disallow, json.UnmappedMemberHandling);
+        Assert.Equal(JsonNumberHandling.Strict, json.NumberHandling);
         Assert.Equal(16 * 1024, kestrel.Limits.MaxRequestBodySize);
     }
 

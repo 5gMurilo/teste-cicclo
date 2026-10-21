@@ -49,6 +49,8 @@ public sealed partial class ApiExceptionHandler(ILogger<ApiExceptionHandler> log
             || IsMissingInitialTable(postgres),
         NpgsqlException npgsql => npgsql.IsTransient,
         DbUpdateException { InnerException: { } inner } => IsDatabaseUnavailable(inner),
+        // EF Core envolve falhas transitórias do provedor em InvalidOperationException quando não há retry configurado.
+        InvalidOperationException { InnerException: NpgsqlException inner } => IsDatabaseUnavailable(inner),
         _ => false,
     };
 
