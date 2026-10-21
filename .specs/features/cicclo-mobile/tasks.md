@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** em andamento. Última tarefa concluída: T22 (20/37 com Done when marcado); ver STATE.md.
+**Execução:** em andamento. Última tarefa concluída: T23 (20/37 com Done when marcado); ver STATE.md.
 
 ## Execution Protocol
 
@@ -368,7 +368,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Prefixo de bookings da T20, HTTP e schema do GET real, não do POST.
 **Requirement**: BOOK-01, BOOK-02, BOOK-03, BOOK-07, SAFE-01.
 **What**: Implementar list query e parâmetros/paginação efetivos, atualizando registro de contrato.
-**Done when**: [ ] Schemas e tipos GET corretos; key inclui parâmetros reais; ordem e alcance de páginas definidos; endpoint ausente não vira lista fake vazia.
+**Done when**: [~] Schemas e tipos GET corretos; key inclui parâmetros reais; ordem e alcance de páginas definidos; endpoint ausente não vira lista fake vazia.
 **Tests**: integration — teto de 5 casos: registros reais de fixture, ordem por data, página/limite conforme contrato, response inválido, erro/endpoint ausente; zero rede real em Jest.
 **Gate**: F + CC; C3 para saída E4.
 **Commit**: `feat(bookings): query authoritative booking lists`
@@ -709,7 +709,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **20/37 tarefas com Done when marcado** (última: T22); demais abertas ou pendentes de gate externo.
+- Implementação: **20/37 tarefas com Done when marcado** (última: T23); demais abertas ou pendentes de gate externo.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1/C2/C3/CP1 não comprovadas; N1 não executado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.
