@@ -235,7 +235,7 @@ public sealed class ActivateItemTests(PostgresFixture postgres)
         Assert.Empty(OpenApiContract.Problems(openApi, new RequiredOperation(Route, "POST", "ActivateBookingItem")));
         var operation = OpenApiContract.Read(openApi).Document!.Paths[Route].Operations![HttpMethod.Post];
         Assert.Equal(["Bookings"], operation.Tags!.Select(tag => tag.Name));
-        Assert.Equal(["200", "400", "404", "429", "500", "503"], operation.Responses!.Keys.Order(StringComparer.Ordinal));
+        Assert.Equal(["200", "400", "404", "409", "429", "500", "503"], operation.Responses!.Keys.Order(StringComparer.Ordinal));
         Assert.Null(operation.RequestBody);
         Assert.Equal(["bookingId", "itemId"], operation.Parameters!.Select(parameter => parameter.Name));
         Assert.All(operation.Parameters!, parameter =>

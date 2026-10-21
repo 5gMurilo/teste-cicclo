@@ -9,8 +9,8 @@ namespace Cicclo.Api.Wallet.ListTransactions;
 public sealed record TransactionResponse(
     [property: Required, Description("Identificador do lançamento.")] Guid TransactionId,
     [property: Required, Description("Booking que originou o lançamento.")] Guid BookingId,
-    [property: Required, Description("Item do booking quando o lançamento se refere a uma única execução; null no débito, que pertence ao booking inteiro.")] Guid? ItemId,
-    [property: Required, Description("Tipo do lançamento: debit (cobrança de uma compra). Novos tipos só existem quando o caso de uso correspondente for entregue.")] TransactionKindContract Kind,
+    [property: Required, Description("Item do booking quando o lançamento se refere a uma única execução (refund); null no débito, que pertence ao booking inteiro.")] Guid? ItemId,
+    [property: Required, Description("Tipo do lançamento: debit (cobrança de uma compra, sem itemId) ou refund (devolução do preço histórico de uma execução, com itemId).")] TransactionKindContract Kind,
     [property: Required, Range(1, 999_999_999_999), Description("Valor do lançamento em centavos inteiros (int64), sempre positivo; o sentido vem de kind.")] long AmountCents,
     [property: Required, Range(0, 999_999_999_999), Description("Saldo da wallet logo depois deste lançamento, em centavos inteiros (int64); histórico, não é o saldo atual.")] long BalanceAfterCents,
     [property: Required, Description("Instante UTC do lançamento.")] DateTime CreatedAt)
@@ -23,6 +23,7 @@ public sealed record TransactionResponse(
             entry.Kind switch
             {
                 LedgerEntryKind.Debit => TransactionKindContract.Debit,
+                LedgerEntryKind.Refund => TransactionKindContract.Refund,
                 _ => throw new ArgumentOutOfRangeException(nameof(entry), entry.Kind, "Tipo de lançamento sem contrato HTTP."),
             },
             MoneyCents.FromDecimal(entry.Amount),
@@ -35,4 +36,7 @@ public enum TransactionKindContract
 {
     [JsonStringEnumMemberName("debit")]
     Debit,
+
+    [JsonStringEnumMemberName("refund")]
+    Refund,
 }

@@ -1,12 +1,18 @@
 namespace Cicclo.Api.Bookings;
 
-/// <summary>Estados de item existentes nesta etapa; cancelamento e desfechos de execução chegam com seus casos de uso.</summary>
+/// <summary>
+/// Estados de item. Cancelled é o término voluntário antes de iniciar (com refund único); completed e failed são os
+/// desfechos de execução, persistíveis pelo schema e publicados pelos comandos de simulação quando entregues.
+/// </summary>
 public enum BookingItemStatus
 {
     PendingActivation,
     Queued,
     ToBeConfirmed,
     InProgress,
+    Cancelled,
+    Completed,
+    Failed,
 }
 
 /// <summary>
@@ -40,4 +46,7 @@ public sealed class BookingItem(Guid id, Guid bookingId, string serviceCode, dec
     public DateTime? ExpiresAt { get; private set; }
 
     public DateTime? StartedAt { get; private set; }
+
+    /// <summary>Instante UTC do cancelamento; existe só em cancelled.</summary>
+    public DateTime? CancelledAt { get; private set; }
 }

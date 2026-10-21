@@ -105,7 +105,7 @@ public sealed class QueueSchemaTests(PostgresFixture postgres)
         Assert.Equal(before, await database.RowsAsync(financialSql));
         Assert.Equal(7, before.Count);
         Assert.Equal(TestDatabase.MigrationIds, await database.RowsAsync("SELECT \"MigrationId\" FROM \"__EFMigrationsHistory\" ORDER BY 1"));
-        Assert.EndsWith("_QueueOffers", TestDatabase.MigrationIds[^1]);
+        Assert.Contains(TestDatabase.MigrationIds, id => id.EndsWith("_QueueOffers", StringComparison.Ordinal));
         Assert.Equal(
             [
                 $"item|{Pending}|pending_activation|null|null|null|null|null|null",
@@ -189,7 +189,7 @@ public sealed class QueueSchemaTests(PostgresFixture postgres)
     [InlineData($"UPDATE service_request_items SET started_at = expires_at WHERE id = '{Running}'", "ck_service_request_items_started")]
     [InlineData($"UPDATE service_request_items SET started_at = offered_at - interval '1 microsecond' WHERE id = '{Running}'", "ck_service_request_items_started")]
     [InlineData($"UPDATE service_request_items SET status = 'in_progress' WHERE id = '{Offered}'", "ck_service_request_items_started")]
-    [InlineData($"UPDATE service_request_items SET status = 'completed' WHERE id = '{Queued}'", "ck_service_request_items_status")]
+    [InlineData($"UPDATE service_request_items SET status = 'expired' WHERE id = '{Queued}'", "ck_service_request_items_status")]
     [InlineData($"UPDATE machines SET active_item_id = '{Queued}' WHERE id = '{Washer2Id}'", "ck_machines_active_item")]
     [InlineData($"UPDATE machines SET active_item_id = NULL WHERE id = '{DemoData.WasherId}'", "ck_machines_active_item")]
     [InlineData($"UPDATE machines SET state = 'out_of_service' WHERE id = '{DemoData.WasherId}'", "ck_machines_active_item")]

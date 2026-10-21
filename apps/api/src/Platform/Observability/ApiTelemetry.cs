@@ -3,6 +3,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using Cicclo.Api.Bookings;
 using Cicclo.Api.Laundry;
+using Cicclo.Api.Wallet;
 using Microsoft.Extensions.Options;
 using OpenTelemetry;
 using OpenTelemetry.Exporter;
@@ -63,7 +64,7 @@ public static class ApiTelemetry
                 .AddService(ServiceName, serviceVersion: Version)
                 .AddAttributes([new("deployment.environment.name", builder.Environment.EnvironmentName)]))
             .WithTracing(tracing => tracing.AddAspNetCoreInstrumentation().AddSource(CreateBookingActivities))
-            .WithMetrics(metrics => metrics.AddAspNetCoreInstrumentation().AddMeter(LaundryMetrics.MeterName, BookingMetrics.MeterName))
+            .WithMetrics(metrics => metrics.AddAspNetCoreInstrumentation().AddMeter(LaundryMetrics.MeterName, BookingMetrics.MeterName, RefundMetrics.MeterName))
             .WithLogging();
 
         if (endpoint is not null)

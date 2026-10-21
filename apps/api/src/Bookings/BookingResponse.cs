@@ -29,8 +29,8 @@ public sealed record BookingItemResponse(
     [property: Required, Description("Identificador da execução.")] Guid ItemId,
     [property: Required, Description("Código do serviço contratado.")] string ServiceCode,
     [property: Required, Range(1, 999_999_999_999), Description("Preço histórico cobrado por esta execução, em centavos inteiros (int64).")] long UnitPriceCents,
-    [property: Required, Description("Estado atual: pending_activation (paga, aguardando ativação), queued (na fila), to_be_confirmed (máquina ofertada aguardando confirmação) ou in_progress (em execução).")] BookingItemStatusContract Status,
-    [property: Required, Description("Máquina da oferta corrente (to_be_confirmed) ou da execução (in_progress); null nos demais estados.")] Guid? MachineId,
+    [property: Required, Description("Estado atual: pending_activation (paga, aguardando ativação), queued (na fila), to_be_confirmed (máquina ofertada aguardando confirmação), in_progress (em execução), cancelled (cancelada antes de iniciar, com refund do preço histórico), completed ou failed (desfechos da execução).")] BookingItemStatusContract Status,
+    [property: Required, Description("Máquina da oferta corrente (to_be_confirmed) ou da execução (in_progress); null nos demais estados, inclusive cancelled.")] Guid? MachineId,
     [property: Required, Range(1, int.MaxValue), Description("Posição 1-based derivada da fila do tipo de máquina (ticket, depois id); null fora de queued. Não é promessa de posição futura.")] int? QueuePosition,
     [property: Required, Description("Prazo UTC para confirmar a oferta; a confirmação só vale antes dele. Null fora de to_be_confirmed. Pode estar no passado até a reconciliação.")] DateTime? ExpiresAt)
 {
@@ -45,6 +45,9 @@ public sealed record BookingItemResponse(
                 BookingItemStatus.Queued => BookingItemStatusContract.Queued,
                 BookingItemStatus.ToBeConfirmed => BookingItemStatusContract.ToBeConfirmed,
                 BookingItemStatus.InProgress => BookingItemStatusContract.InProgress,
+                BookingItemStatus.Cancelled => BookingItemStatusContract.Cancelled,
+                BookingItemStatus.Completed => BookingItemStatusContract.Completed,
+                BookingItemStatus.Failed => BookingItemStatusContract.Failed,
                 _ => throw new ArgumentOutOfRangeException(nameof(item), item.Status, "Estado de item sem contrato HTTP."),
             },
             item.MachineId,
@@ -66,4 +69,13 @@ public enum BookingItemStatusContract
 
     [JsonStringEnumMemberName("in_progress")]
     InProgress,
+
+    [JsonStringEnumMemberName("cancelled")]
+    Cancelled,
+
+    [JsonStringEnumMemberName("completed")]
+    Completed,
+
+    [JsonStringEnumMemberName("failed")]
+    Failed,
 }

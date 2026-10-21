@@ -43,6 +43,9 @@ public interface IQueueSession
     Task OfferAsync(Guid itemId, Guid machineId, DateTime offeredAt, DateTime expiresAt, CancellationToken cancellationToken);
 }
 
+/// <summary>Preço histórico do item e valor do refund já lançado para ele (null se nenhum).</summary>
+public sealed record RefundableItem(decimal UnitPrice, decimal? RefundedAmount);
+
 /// <summary>Abre uma transação nova de lavanderia por chamada.</summary>
 public interface ILaundrySessions
 {
@@ -60,6 +63,16 @@ public interface ILaundrySession : IQueueSession, IAsyncDisposable
 
     /// <summary>Oferta confirmada: to_be_confirmed → in_progress com started_at, e máquina reserved → running.</summary>
     Task StartAsync(Guid itemId, Guid machineId, DateTime startedAt, CancellationToken cancellationToken);
+
+    /// <summary>Preço histórico e refund existente de um item já bloqueado por <see cref="IQueueSession.LockItemsAsync"/>.</summary>
+    Task<RefundableItem> ReadRefundableAsync(Guid itemId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Cancelamento com refund, tudo nesta transação: item (no estado de origem) → cancelled sem atribuição; máquina
+    /// reservada para ele → available; wallet creditada com o valor; um lançamento refund do item. Devolve o saldo após o crédito.
+    /// </summary>
+    Task<decimal> CancelWithRefundAsync(
+        Guid walletId, Guid bookingId, Guid itemId, BookingItemStatus from, Guid? machineId, decimal amount, DateTime cancelledAt, CancellationToken cancellationToken);
 
     Task CommitAsync();
 }

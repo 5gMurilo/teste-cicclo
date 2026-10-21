@@ -1,3 +1,4 @@
+using Cicclo.Api.Bookings;
 using Cicclo.Api.Laundry;
 
 namespace Cicclo.Api.Tests.Integration.Laundry;
@@ -36,6 +37,12 @@ internal sealed class HookedLaundrySessions(ILaundrySessions inner, Func<Task> b
 
         public Task StartAsync(Guid itemId, Guid machineId, DateTime startedAt, CancellationToken cancellationToken) =>
             inner.StartAsync(itemId, machineId, startedAt, cancellationToken);
+
+        public Task<RefundableItem> ReadRefundableAsync(Guid itemId, CancellationToken cancellationToken) => inner.ReadRefundableAsync(itemId, cancellationToken);
+
+        public Task<decimal> CancelWithRefundAsync(
+            Guid walletId, Guid bookingId, Guid itemId, BookingItemStatus from, Guid? machineId, decimal amount, DateTime cancelledAt, CancellationToken cancellationToken) =>
+            inner.CancelWithRefundAsync(walletId, bookingId, itemId, from, machineId, amount, cancelledAt, cancellationToken);
 
         public async Task CommitAsync()
         {

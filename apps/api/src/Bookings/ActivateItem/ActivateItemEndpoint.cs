@@ -23,9 +23,17 @@ public static class ActivateItemEndpoint
                         return GetBooking.GetBookingEndpoint.BookingNotFound(context);
                     }
 
-                    if (await useCase.ExecuteAsync(bookingId, itemId, cancellationToken) == ActivateItemOutcome.NotFound)
+                    switch (await useCase.ExecuteAsync(bookingId, itemId, cancellationToken))
                     {
-                        return ItemNotFound(context);
+                        case ActivateItemOutcome.NotFound:
+                            return ItemNotFound(context);
+                        case ActivateItemOutcome.InvalidState:
+                            return ApiProblems.Create(
+                                context,
+                                StatusCodes.Status409Conflict,
+                                ApiProblems.InvalidStateTransition,
+                                "Transição de estado inválida",
+                                "O item está cancelado ou já terminou; não pode ser ativado e nada foi alterado.");
                     }
 
                     var booking = await projection.FindAsync(bookingId, cancellationToken)
@@ -40,12 +48,14 @@ public static class ActivateItemEndpoint
                 + "o item recebe oferta exclusiva de 60 s (to_be_confirmed, com machineId e expiresAt). Com máquina ocupada ou fila anterior, fica "
                 + "queued com queuePosition derivada, sem ultrapassar quem chegou antes. Não cobra nada: o débito aconteceu na compra. Repetir a "
                 + "ativação de um item queued, to_be_confirmed ou in_progress responde 200 com o estado atual, sem ticket novo; como todo comando, "
-                + "a fila do tipo é reconciliada antes da resposta, então uma oferta já vencida volta ao fim da fila. O corpo da requisição não é lido.")
+                + "a fila do tipo é reconciliada antes da resposta, então uma oferta já vencida volta ao fim da fila. Item cancelled, completed ou failed "
+                + "responde 409 INVALID_STATE_TRANSITION sem mudança. O corpo da requisição não é lido.")
             .Produces<BookingItemResponse>(StatusCodes.Status200OK)
             .ProducesApiProblems(
                 "Limite da política de comandos de item excedido (15/min por IP por padrão, compartilhado entre activate e confirm).",
                 (StatusCodes.Status400BadRequest, "bookingId ou itemId não é UUID (VALIDATION_ERROR)."),
-                (StatusCodes.Status404NotFound, "BOOKING_NOT_FOUND (booking inexistente na wallet demo) ou ITEM_NOT_FOUND (item inexistente ou de outro booking); nada muda."))
+                (StatusCodes.Status404NotFound, "BOOKING_NOT_FOUND (booking inexistente na wallet demo) ou ITEM_NOT_FOUND (item inexistente ou de outro booking); nada muda."),
+                (StatusCodes.Status409Conflict, "INVALID_STATE_TRANSITION: o item está cancelled, completed ou failed; nada muda."))
             .WithResponseExample(StatusCodes.Status200OK, GetBooking.GetBookingEndpoint.Example.Items[1]);
         return api;
     }

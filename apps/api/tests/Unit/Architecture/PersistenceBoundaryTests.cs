@@ -41,6 +41,7 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
         typeof(PostgresQueueSession), typeof(CreateBookingEndpoint), typeof(Cicclo.Api.Bookings.ListBookings.ListBookingsEndpoint),
         typeof(Cicclo.Api.Wallet.ListTransactions.PostgresLedgerQuery), typeof(Cicclo.Api.Wallet.ListTransactions.ListTransactionsEndpoint),
         typeof(Cicclo.Api.Bookings.ActivateItem.ActivateItemEndpoint), typeof(Cicclo.Api.Bookings.ConfirmItem.ConfirmItemEndpoint),
+        typeof(Cicclo.Api.Bookings.CancelItem.CancelItemEndpoint),
     ];
 
     [Fact]
@@ -61,6 +62,8 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
                 typeof(OfferPolicy), typeof(QueueCoordinator), typeof(IQueueSession), typeof(ILaundrySession), typeof(ILaundrySessions),
                 typeof(Cicclo.Api.Laundry.ConfirmOffer.ConfirmOffer), typeof(Cicclo.Api.Laundry.ConfirmOffer.ConfirmOfferResult),
                 typeof(Cicclo.Api.Laundry.ReconcileOffers.ReconcileOffers), typeof(LaundryMetrics), typeof(QueueChanges),
+                typeof(Cicclo.Api.Bookings.CancelItem.CancelItem), typeof(Cicclo.Api.Bookings.CancelItem.CancelItemResult),
+                typeof(Cicclo.Api.Bookings.CancelItem.CancelItemResponse), typeof(RefundPolicy), typeof(RefundPlan), typeof(RefundMetrics),
             },
             domainTypes.ToHashSet());
         var violations = domainTypes

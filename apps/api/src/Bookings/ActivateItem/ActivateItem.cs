@@ -13,6 +13,9 @@ public enum ActivateItemOutcome
 
     /// <summary>Item inexistente ou de outro booking.</summary>
     NotFound,
+
+    /// <summary>Item cancelado ou com desfecho de execução: nada mudou.</summary>
+    InvalidState,
 }
 
 /// <summary>
@@ -37,6 +40,11 @@ public sealed partial class ActivateItem(ILaundrySessions sessions, QueueCoordin
             if (result.Outcome == ActivationOutcome.NotFound)
             {
                 return ActivateItemOutcome.NotFound;
+            }
+
+            if (result.Outcome == ActivationOutcome.InvalidState)
+            {
+                return ActivateItemOutcome.InvalidState;
             }
 
             await session.CommitAsync();

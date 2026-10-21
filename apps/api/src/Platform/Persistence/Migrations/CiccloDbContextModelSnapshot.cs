@@ -77,6 +77,10 @@ namespace Cicclo.Api.Platform.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("request_id");
 
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cancelled_at");
+
                     b.Property<DateTime?>("ExpiresAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
@@ -139,13 +143,15 @@ namespace Cicclo.Api.Platform.Persistence.Migrations
 
                     b.ToTable("service_request_items", null, t =>
                         {
-                            t.HasCheckConstraint("ck_service_request_items_assignment", "(status IN ('to_be_confirmed', 'in_progress')) = (machine_id IS NOT NULL)\nAND (status IN ('to_be_confirmed', 'in_progress')) = (offered_at IS NOT NULL)\nAND (status IN ('to_be_confirmed', 'in_progress')) = (expires_at IS NOT NULL)\nAND (offered_at IS NULL OR (expires_at > offered_at AND offered_at >= queued_at))");
+                            t.HasCheckConstraint("ck_service_request_items_assignment", "(status IN ('to_be_confirmed', 'in_progress', 'completed', 'failed')) = (machine_id IS NOT NULL)\nAND (status IN ('to_be_confirmed', 'in_progress', 'completed', 'failed')) = (offered_at IS NOT NULL)\nAND (status IN ('to_be_confirmed', 'in_progress', 'completed', 'failed')) = (expires_at IS NOT NULL)\nAND (offered_at IS NULL OR (expires_at > offered_at AND offered_at >= queued_at))");
 
-                            t.HasCheckConstraint("ck_service_request_items_queue_entry", "(status = 'pending_activation') = (queue_ticket IS NULL) AND (status = 'pending_activation') = (queued_at IS NULL)");
+                            t.HasCheckConstraint("ck_service_request_items_cancelled", "(status = 'cancelled') = (cancelled_at IS NOT NULL)");
 
-                            t.HasCheckConstraint("ck_service_request_items_started", "(status = 'in_progress') = (started_at IS NOT NULL) AND (started_at IS NULL OR (started_at >= offered_at AND started_at < expires_at))");
+                            t.HasCheckConstraint("ck_service_request_items_queue_entry", "CASE status\n    WHEN 'pending_activation' THEN queue_ticket IS NULL AND queued_at IS NULL\n    WHEN 'cancelled' THEN (queue_ticket IS NULL) = (queued_at IS NULL)\n    ELSE queue_ticket IS NOT NULL AND queued_at IS NOT NULL\nEND");
 
-                            t.HasCheckConstraint("ck_service_request_items_status", "status IN ('pending_activation', 'queued', 'to_be_confirmed', 'in_progress')");
+                            t.HasCheckConstraint("ck_service_request_items_started", "(status IN ('in_progress', 'completed', 'failed')) = (started_at IS NOT NULL) AND (started_at IS NULL OR (started_at >= offered_at AND started_at < expires_at))");
+
+                            t.HasCheckConstraint("ck_service_request_items_status", "status IN ('pending_activation', 'queued', 'to_be_confirmed', 'in_progress', 'cancelled', 'completed', 'failed')");
 
                             t.HasCheckConstraint("ck_service_request_items_unit_price_positive", "unit_price > 0");
                         });
@@ -295,6 +301,10 @@ namespace Cicclo.Api.Platform.Persistence.Migrations
                     b.HasIndex("WalletId")
                         .HasDatabaseName("ix_wallet_transactions_wallet_id");
 
+                    b.HasIndex(new[] { "BookingItemId" }, "ux_wallet_transactions_item_refund")
+                        .IsUnique()
+                        .HasFilter("kind = 'refund'");
+
                     b.ToTable("wallet_transactions", null, t =>
                         {
                             t.HasCheckConstraint("ck_wallet_transactions_amount_positive", "amount > 0");
@@ -303,7 +313,9 @@ namespace Cicclo.Api.Platform.Persistence.Migrations
 
                             t.HasCheckConstraint("ck_wallet_transactions_debit_without_item", "kind <> 'debit' OR request_item_id IS NULL");
 
-                            t.HasCheckConstraint("ck_wallet_transactions_kind", "kind IN ('debit')");
+                            t.HasCheckConstraint("ck_wallet_transactions_kind", "kind IN ('debit', 'refund')");
+
+                            t.HasCheckConstraint("ck_wallet_transactions_refund_with_item", "kind <> 'refund' OR request_item_id IS NOT NULL");
                         });
                 });
 

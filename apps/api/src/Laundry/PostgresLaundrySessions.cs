@@ -1,5 +1,7 @@
 using System.Data;
+using Cicclo.Api.Bookings;
 using Cicclo.Api.Platform.Persistence;
+using Cicclo.Api.Platform.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -83,6 +85,63 @@ public sealed class PostgresLaundrySessions(IDbContextFactory<CiccloDbContext> c
                     """,
                     cancellationToken),
                 "máquina reservada para o item");
+        }
+
+        public async Task<RefundableItem> ReadRefundableAsync(Guid itemId, CancellationToken cancellationToken)
+        {
+            var rows = await db.Database
+                .SqlQuery<RefundableItem>(
+                    $"""
+                    SELECT i.unit_price AS "UnitPrice",
+                           (SELECT t.amount FROM wallet_transactions t WHERE t.request_item_id = i.id AND t.kind = 'refund') AS "RefundedAmount"
+                    FROM service_request_items i WHERE i.id = {itemId}
+                    """)
+                .ToListAsync(cancellationToken);
+            return rows.Single();
+        }
+
+        public async Task<decimal> CancelWithRefundAsync(
+            Guid walletId, Guid bookingId, Guid itemId, BookingItemStatus from, Guid? machineId, decimal amount, DateTime cancelledAt, CancellationToken cancellationToken)
+        {
+            var fromText = BookingItemConfiguration.ToText(from);
+            PostgresQueueSession.Expect(
+                await db.Database.ExecuteSqlAsync(
+                    $"""
+                    UPDATE service_request_items
+                    SET status = 'cancelled', cancelled_at = {cancelledAt}, machine_id = NULL, offered_at = NULL, expires_at = NULL
+                    WHERE id = {itemId} AND request_id = {bookingId} AND status = {fromText}
+                    """,
+                    cancellationToken),
+                "item não iniciado para cancelar");
+            if (machineId is { } machine)
+            {
+                PostgresQueueSession.Expect(
+                    await db.Database.ExecuteSqlAsync(
+                        $"""
+                        UPDATE machines SET state = 'available', active_item_id = NULL, updated_at = {cancelledAt}
+                        WHERE id = {machine} AND state = 'reserved' AND active_item_id = {itemId}
+                        """,
+                        cancellationToken),
+                    "máquina reservada para o item cancelado");
+            }
+
+            var balance = (await db.Database
+                .SqlQuery<decimal>(
+                    $"""
+                    UPDATE wallets SET balance = balance + {amount}, updated_at = {cancelledAt}
+                    WHERE id = {walletId}
+                    RETURNING balance AS "Value"
+                    """)
+                .ToListAsync(cancellationToken)).Single();
+            PostgresQueueSession.Expect(
+                await db.Database.ExecuteSqlAsync(
+                    $"""
+                    INSERT INTO wallet_transactions (id, wallet_id, request_id, request_item_id, kind, amount, balance_after, created_at)
+                    VALUES ({Guid.CreateVersion7(new DateTimeOffset(cancelledAt, TimeSpan.Zero))}, {walletId}, {bookingId}, {itemId}, 'refund', {amount}, {balance}, {cancelledAt})
+                    """,
+                    cancellationToken),
+                "lançamento de refund");
+            return balance;
         }
 
         public Task CommitAsync() => transaction.CommitAsync(CancellationToken.None);
