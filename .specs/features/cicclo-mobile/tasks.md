@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** em andamento. Última tarefa concluída: T30 (21/37 com Done when marcado); ver STATE.md.
+**Execução:** em andamento. 28/37 com Done when marcado; C1, C2 e C3 provados contra a API real em 2026-10-21; pendentes N1 (T29, usuário) e o fechamento de T30; P1 (T31-T37) não iniciado.
 
 ## Execution Protocol
 
@@ -218,7 +218,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Query pública catálogo, ServiceCard, header já conectado no layout.
 **Requirement**: READ-04, READ-05, READ-06, BOOK-07, UX-01.
 **What**: Conectar Home ao catálogo e oferecer loading/empty/error/retry, ainda sem seleção ou POST.
-**Done when**: [~] Rota só compõe screen; nenhuma regra de preço no JSX; demo C1 confirma dados reais; E1 pronta somente com B+C1.
+**Done when**: [x] Rota só compõe screen; nenhuma regra de preço no JSX; demo C1 confirma dados reais; E1 pronta somente com B+C1.
 **Tests**: integration — teto de 5 casos: loading, ready, vazio, erro/retry, serviço indisponível; afirmar ausência de POST.
 **Gate**: F + B no fechamento E1 + C1 + CC.
 **Commit**: `feat(home): compose live catalog reading states`
@@ -344,7 +344,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Coordenador montado uma vez no provider acima das tabs, cache helper e seleção existente.
 **Requirement**: BUY-01, BUY-02, BUY-03, BUY-04, BUY-05, BUY-06, BUY-07, BUY-08, BUY-09, BUY-10, BUY-11, BUY-12, BUY-13, BUY-14, UX-01.
 **What**: Habilitar CTA só após C2 e conectar revisão/pending/unknown/rejected/success a comandos públicos, sem lógica financeira no JSX.
-**Done when**: [~] C2 comprovado; seleção só limpa em sucesso; estado sobrevive troca de tabs; sucesso tem ID/itens/saldo e CTA a Serviços; demo compra 5000→3110 e replay sem segundo débito, sem reset de saldo não autorizado.
+**Done when**: [x] C2 comprovado; seleção só limpa em sucesso; estado sobrevive troca de tabs; sucesso tem ID/itens/saldo e CTA a Serviços; demo compra 5000→3110 e replay sem segundo débito, sem reset de saldo não autorizado.
 **Tests**: integration — teto de 10 casos de fluxo com providers reais: sucesso, replay, duplo toque, recusa, PRICE_CHANGED/revisão, unknown/verificar, rate limit, navegação durante pending, seleção preservada em erro e limpeza em confirmed.
 **Gate**: F + B no fechamento E3 + C2 + CC.
 **Commit**: `feat(checkout): expose safe purchase and recovery interactions`
@@ -368,7 +368,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Prefixo de bookings da T20, HTTP e schema do GET real, não do POST.
 **Requirement**: BOOK-01, BOOK-02, BOOK-03, BOOK-07, SAFE-01.
 **What**: Implementar list query e parâmetros/paginação efetivos, atualizando registro de contrato.
-**Done when**: [~] Schemas e tipos GET corretos; key inclui parâmetros reais; ordem e alcance de páginas definidos; endpoint ausente não vira lista fake vazia.
+**Done when**: [x] Schemas e tipos GET corretos; key inclui parâmetros reais; ordem e alcance de páginas definidos; endpoint ausente não vira lista fake vazia.
 **Tests**: integration — teto de 5 casos: registros reais de fixture, ordem por data, página/limite conforme contrato, response inválido, erro/endpoint ausente; zero rede real em Jest.
 **Gate**: F + CC; C3 para saída E4.
 **Commit**: `feat(bookings): query authoritative booking lists`
@@ -379,7 +379,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: listQuery, status e tokens; rota services compõe a screen.
 **Requirement**: BOOK-01, BOOK-02, BOOK-03, BOOK-04, BOOK-07, UX-01.
 **What**: Listar com FlatList/key estável, filtros locais, loading/error/retry e CTA Home quando vazio.
-**Done when**: [~] Lote misto não perde itens concluídos no resumo; filtros não fingem completude paginada; data/ID/valor histórico/status legíveis; sem comandos P1 ainda.
+**Done when**: [x] Lote misto não perde itens concluídos no resumo; filtros não fingem completude paginada; data/ID/valor histórico/status legíveis; sem comandos P1 ainda.
 **Tests**: integration — teto de 6 casos: loading, erro/retry, dois empty states, misto ativo, todos terminais e data decrescente; link usa bookingId real.
 **Gate**: F + CC.
 **Commit**: `feat(bookings): present active services and history filters`
@@ -390,7 +390,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: HTTP, prefixo público bookings, schema específico do GET detalhe.
 **Requirement**: BOOK-05, BOOK-06, SAFE-01.
 **What**: Validar ID antes de consultar e expor query de detalhe com preço histórico/status por item.
-**Done when**: [~] ID inválido não envia GET; inexistente é recuperável; response é do contrato real e não reinterpretação de DTO POST; machine/queue/expiresAt só da API.
+**Done when**: [x] ID inválido não envia GET; inexistente é recuperável; response é do contrato real e não reinterpretação de DTO POST; machine/queue/expiresAt só da API.
 **Tests**: integration — teto de 5 casos: válido, inválido sem fetch, 404, DTO inválido, preço histórico diferente do catálogo.
 **Gate**: F + CC; C3 para saída E4.
 **Commit**: `feat(bookings): query validated booking details`
@@ -401,7 +401,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: detailQuery/status; rota fina bookings/[id] e retorno explícito.
 **Requirement**: BOOK-05, BOOK-06, BOOK-07, UX-01.
 **What**: Compor itens, preço contratado, status/fila/oferta informativos e erros, sem controles de endpoint ausente.
-**Done when**: [~] Retorno para Serviços funciona; seleção não é apagada; cancelled/failed não implicam texto de refund sem campo autoritativo; máquinas identificadas como simuladas.
+**Done when**: [x] Retorno para Serviços funciona; seleção não é apagada; cancelled/failed não implicam texto de refund sem campo autoritativo; máquinas identificadas como simuladas.
 **Tests**: integration — teto de 6 casos: pronto, loading, UUID inválido/404, retry, preço histórico, estados e ausência de ações P1; retorno preserva seleção.
 **Gate**: F + CC.
 **Commit**: `feat(bookings): display authoritative booking details`
@@ -424,7 +424,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Resultado confirmado e rota detalhe criada em T26; queries públicas, sem detalhes internos de bookings.
 **Requirement**: BUY-06, BUY-07, BOOK-01, BOOK-05, SEL-06.
 **What**: Conectar CTA pós-compra ao detalhe real e validar convergência da lista/detalhe após contratação.
-**Done when**: [~] Nenhuma rota inexistente; booking confirmado aparece após invalidação/refetch; retornar à Home mantém novo saldo confirmado; C3/demo E4 atendidos.
+**Done when**: [x] Nenhuma rota inexistente; booking confirmado aparece após invalidação/refetch; retornar à Home mantém novo saldo confirmado; C3/demo E4 atendidos.
 **Tests**: integration — teto de 4 casos: compra→detalhe, compra→Serviços/lista, retorno às tabs e falha GET pós-sucesso sem POST repetido.
 **Gate**: F + B no fechamento E4 + C3 + CC.
 **Commit**: `feat(checkout): link confirmed purchases to live tracking`
@@ -709,7 +709,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **21/37 tarefas com Done when marcado** (última: T30); demais abertas ou pendentes de gate externo.
+- Implementação: **28/37 tarefas com Done when marcado**; T29 e T30 aguardam N1 (executado pelo usuário); T31-T37 (P1) dependem de CP1.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1/C2/C3/CP1 não comprovadas; N1 não executado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.

@@ -47,7 +47,7 @@ Marcar cada cenário como PASS, FAIL ou BLOCKED (sem aparelho, sem API ou ferram
 3. Esperado: tela de contratação confirmada; header em R$ 31,10; seleção limpa; botão para a contratação leva ao detalhe.
 4. Depois do cenário, restaurar o saldo pelo reset da demo (API parada).
 
-Pré-condição de produto: este cenário só é possível com a capacidade de compra habilitada (`capabilities.purchase`), que depende do gate C2 contra a API real.
+A compra real está habilitada (gate C2 provado contra a API real em 2026-10-21). Se a demo já foi usada, restaure o saldo antes.
 
 ### 4. Seleção e badge
 
