@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** em andamento. T1 (E0) a T9 concluídas em 2026-10-21; T10 com código e gate B verdes, aguardando C1 (demo com API real); T11–T37 abertas.
+**Execução:** em andamento. Última tarefa concluída: T11 (10/37 com Done when marcado); ver STATE.md.
 
 ## Execution Protocol
 
@@ -231,7 +231,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Nenhum estado remoto; só tipos e ações de seleção.
 **Requirement**: SEL-05, SEL-07, SEL-09.
 **What**: Implementar add/remove/setPreference/clear como transformação pura sem fetch.
-**Done when**: [ ] Remove elimina zeros; preferência inexistente não é mantida; remover última ocorrência preferida limpa preferência; input não é mutado.
+**Done when**: [x] Remove elimina zeros; preferência inexistente não é mantida; remover última ocorrência preferida limpa preferência; input não é mutado.
 **Tests**: unit — teto de 7 casos: add inicial/repetido, remove, remove ausente, preferência válida, última preferida removida, clear e imutabilidade.
 **Gate**: Q + CC.
 **Commit**: `feat(checkout): model local quantities and preference`
@@ -709,7 +709,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **9/37 tarefas concluídas**; T10 implementada e commitada, **pendente de C1** (`[~]`: nada de demo real executado); demais checkboxes de Done when abertas.
+- Implementação: **10/37 tarefas com Done when marcado** (última: T11); demais abertas ou pendentes de gate externo.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1/C2/C3/CP1 não comprovadas; N1 não executado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.
