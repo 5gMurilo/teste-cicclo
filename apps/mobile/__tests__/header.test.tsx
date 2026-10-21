@@ -16,6 +16,14 @@ function reply(status: number, body: unknown): Promise<Response> {
 
 const WALLET = { balanceCents: 5000, currency: 'BRL', updatedAt: '2026-10-21T12:00:00Z' };
 
+// The header only cares about /wallet; any other request (the Home catalog) gets an empty list.
+function serveWallet(wallet: (call: number) => Promise<Response>) {
+  let walletCalls = 0;
+  globalThis.fetch = jest.fn((url: string | URL | Request) =>
+    String(url).endsWith('/wallet') ? wallet(++walletCalls) : reply(200, { services: [] }),
+  ) as unknown as typeof fetch;
+}
+
 beforeEach(() => {
   process.env.EXPO_PUBLIC_API_URL = 'http://api.test:5001';
   delete process.env.EXPO_PUBLIC_DEMO_DISPLAY_NAME;
@@ -25,7 +33,7 @@ afterEach(() => queryClient.clear());
 
 describe('shared header in the tab layout', () => {
   it('greets Visitante and shows the API balance 5000 as R$ 50,00 on every tab', async () => {
-    globalThis.fetch = jest.fn(() => reply(200, WALLET)) as unknown as typeof fetch;
+    serveWallet(() => reply(200, WALLET));
 
     await renderRouter(APP_DIR);
 
@@ -38,10 +46,7 @@ describe('shared header in the tab layout', () => {
   });
 
   it('shows an error without a balance and recovers through the retry action', async () => {
-    let calls = 0;
-    globalThis.fetch = jest.fn(() =>
-      ++calls === 1 ? reply(404, { errorCode: 'NOT_FOUND' }) : reply(200, WALLET),
-    ) as unknown as typeof fetch;
+    serveWallet((n) => (n === 1 ? reply(404, { errorCode: 'NOT_FOUND' }) : reply(200, WALLET)));
 
     await renderRouter(APP_DIR);
 
@@ -53,10 +58,7 @@ describe('shared header in the tab layout', () => {
   });
 
   it('keeps the last confirmed balance but labels it outdated when a refresh fails', async () => {
-    let calls = 0;
-    globalThis.fetch = jest.fn(() =>
-      ++calls === 1 ? reply(200, WALLET) : reply(404, { errorCode: 'NOT_FOUND' }),
-    ) as unknown as typeof fetch;
+    serveWallet((n) => (n === 1 ? reply(200, WALLET) : reply(404, { errorCode: 'NOT_FOUND' })));
 
     await renderRouter(APP_DIR);
     expect(await screen.findByText('R$ 50,00')).toBeOnTheScreen();

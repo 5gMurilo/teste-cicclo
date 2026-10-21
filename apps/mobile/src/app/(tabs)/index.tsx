@@ -1,10 +1,5 @@
-import { PlaceholderScreen } from '../../shared/layout/PlaceholderScreen';
+import { HomeScreen } from '../../features/home/HomeScreen';
 
 export default function HomeRoute() {
-  return (
-    <PlaceholderScreen
-      title="Home"
-      message="O catálogo de serviços ainda não está conectado à API."
-    />
-  );
+  return <HomeScreen />;
 }
