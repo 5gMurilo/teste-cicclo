@@ -118,3 +118,21 @@ test('postgres configuration persists data and leaves the seed to the post-migra
   assert.doesNotMatch(text('apps/api/.dockerignore'), /^init$/m);
   assert.match(text('apps/api/Dockerfile'), /COPY init\/ \.\/init\//);
 });
+
+test('local demo services stay on loopback and receive the password only as data', () => {
+  const services = parse(text('apps/api/docker-compose.yml')).services;
+  assert.deepEqual(services.bootstrap.command, ['--bootstrap-demo']);
+  assert.equal(services.bootstrap.image, services.api.image);
+  for (const name of ['bootstrap', 'api']) {
+    const service = services[name];
+    assert.deepEqual(service.profiles, ['app']);
+    assert.equal(service.depends_on.postgres.condition, 'service_healthy');
+    assert.doesNotMatch(service.environment.ConnectionStrings__Cicclo, /password/i);
+    assert.match(service.environment.PGPASSWORD, /^\$\{POSTGRES_PASSWORD:\?/);
+  }
+  assert.ok(services.api.ports.every((port) => port.startsWith('127.0.0.1:')));
+  assert.ok(!Object.values(services.api.environment).some((value) => /cors/i.test(String(value))));
+  const script = text('apps/api/scripts/start-demo.sh');
+  assert.match(script, /run --rm --no-TTY bootstrap/);
+  assert.doesNotMatch(script, /^\s*(source|\.)\s|\beval\b|down\b.*--volumes|volume rm/m);
+});
