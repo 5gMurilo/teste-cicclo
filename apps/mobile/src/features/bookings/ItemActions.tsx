@@ -10,6 +10,7 @@ import { OfferCountdown } from './components/OfferCountdown';
 import { confirmEnabled, useConfirmItem } from './confirmItem';
 import { commandErrorMessage, type CommandState } from './itemCommand';
 import { bookingsKey } from './queryKeys';
+import { canReportIssue, useReportIssue } from './reportIssue';
 import type { BookingItem } from './schema';
 
 /** The commands an item currently offers. Hidden entirely when the API capability is not proven. */
@@ -18,6 +19,7 @@ export function ItemActions({ bookingId, item }: { bookingId: string; item: Book
   const activate = useActivateItem(bookingId);
   const confirm = useConfirmItem(bookingId);
   const cancel = useCancelItem(bookingId);
+  const report = useReportIssue(bookingId);
   const [askingCancel, setAskingCancel] = useState(false);
   // The deadline we already saw expire: from then on the offer cannot be confirmed from this screen.
   const [expiredDeadline, setExpiredDeadline] = useState<string | null>(null);
@@ -83,6 +85,20 @@ export function ItemActions({ bookingId, item }: { bookingId: string; item: Book
             : 'Execução cancelada.'}
         </Text>
       ) : null}
+      {canReportIssue(item.status) && !(report.state.status === 'done' && report.state.itemId === item.itemId) ? (
+        <ActionButton
+          label={`Relatar problema em ${item.serviceCode}`}
+          busy={isPendingFor(report.state, item.itemId)}
+          disabled={report.state.status === 'pending'}
+          onPress={() => void report.run(item.itemId)}
+        />
+      ) : null}
+      {report.state.status === 'done' && report.state.itemId === item.itemId ? (
+        <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.note}>
+          Relato enviado para verificação.
+        </Text>
+      ) : null}
+      <Failure state={report.state} itemId={item.itemId} />
       <Failure state={cancel.state} itemId={item.itemId} />
       <Failure state={activate.state} itemId={item.itemId} />
       <Failure state={confirm.state} itemId={item.itemId} />

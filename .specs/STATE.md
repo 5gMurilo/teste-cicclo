@@ -61,10 +61,10 @@
 ## Handoff
 
 - **Feature**: `.specs/features/cicclo-mobile/spec.md`.
-- **Phase / Task**: Execute inline e sequencial. Última tarefa fechada: T34.
-- **Completed**: P0 fechado; T31, T33 e T34 pendentes da prova CP1; T32 fechada. T34 = cancelItem.ts (elegibilidade central em status.ts, pergunta antes de cancelar, estorno só do que a resposta confirma, saldo do cache só com resposta válida, erro sem crédito) e wallet/cache.ts compartilhado com a compra (31/37 com Done when marcado).
+- **Phase / Task**: Execute inline e sequencial. Última tarefa fechada: T35.
+- **Completed**: P0 fechado; T32 fechada; T31, T33, T34 e T35 pendentes da prova CP1. T35 = reportIssue.ts (POST sem corpo, 202 validado, 'Relato enviado para verificação' sem qualquer texto de estorno, ação só em in_progress e uma vez por tela) (31/37 com Done when marcado).
 - **In-progress**: Nenhuma.
-- **Next step**: T35 (relatar problema sem prometer estorno).
+- **Next step**: T36 (polling condicional de lista e detalhe).
 - **Blockers**: nenhum para P0. `dotnet` fora do PATH da sessão do agente (workspace e testes de bootstrap que compilam a API falham por isso; não é do mobile).
-- **Branches** (atual: `feat/mobile-06-service-lifecycle`): chore/mobile-00-baseline 08e6c7d; chore/mobile-05-p0-readiness 1a4ff65; feat/mobile-01-catalog-wallet 6bd529c; feat/mobile-02-selection-review 0a34316; feat/mobile-03-safe-booking 9674db3; feat/mobile-04-booking-tracking ad3d9a8; feat/mobile-06-service-lifecycle 6bf2569; mobile-worktree f3ac3ca.
+- **Branches** (atual: `feat/mobile-06-service-lifecycle`): chore/mobile-00-baseline 08e6c7d; chore/mobile-05-p0-readiness 1a4ff65; feat/mobile-01-catalog-wallet 6bd529c; feat/mobile-02-selection-review 0a34316; feat/mobile-03-safe-booking 9674db3; feat/mobile-04-booking-tracking ad3d9a8; feat/mobile-06-service-lifecycle 046e364; mobile-worktree f3ac3ca.
 - **Uncommitted files**: `.omc/` e `apps/mobile/.omc/` (estado de ferramenta, não versionar).

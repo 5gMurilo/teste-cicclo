@@ -1,5 +1,6 @@
 import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 
+import { capabilities } from '../src/shared/api/capabilities';
 import { queryClient } from '../src/shared/api/queryClient';
 
 // Item commands are gated by capabilities proven against the real API; these tests exercise the enabled path.
@@ -351,5 +352,74 @@ describe('T34: cancel before start, refund only when confirmed', () => {
 
     expect(await screen.findByText('Execução cancelada.')).toBeOnTheScreen();
     expect(screen.queryByText(/Estorno confirmado/)).toBeNull();
+  });
+});
+
+describe('T35: report an issue without promising a refund', () => {
+  const INCIDENT_ID = '019a0a3c-6f00-7000-8000-000000000001';
+
+  beforeEach(() => {
+    detail = { status: 200, body: booking(item('in_progress', { machineId: MACHINE_ID })) };
+    commandReply = () => ({ status: 202, body: { incidentId: INCIDENT_ID, status: 'reported' } });
+  });
+
+  it('accepts the report: sends an empty POST, says it went for verification, mentions no refund, and cannot be repeated', async () => {
+    await openDetail();
+
+    await fireEvent.press(await screen.findByRole('button', { name: 'Relatar problema em wash' }));
+
+    expect(await screen.findByText('Relato enviado para verificação.')).toBeOnTheScreen();
+    expect(posts).toHaveLength(1);
+    expect(posts[0].url).toBe(commandUrl('report-issue'));
+    expect(posts[0].body).toBeUndefined();
+    expect(screen.queryByText(/estorno|reembolso|devolv|crédito/i)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Relatar problema em wash' })).toBeNull();
+    expect(queryClient.getQueryData(['wallet'])).toMatchObject({ balanceCents: 3110 });
+  });
+
+  it.each(['pending_activation', 'queued', 'to_be_confirmed', 'completed', 'cancelled', 'failed'])(
+    'offers no report for an item that is %s',
+    async (status) => {
+      detail = { status: 200, body: booking(item(status, status === 'to_be_confirmed' ? { machineId: MACHINE_ID, expiresAt: '2099-01-01T00:00:00Z' } : {})) };
+      await openDetail();
+      await screen.findByRole('header', { name: 'Contratação 00000000' });
+
+      expect(screen.queryByRole('button', { name: /^Relatar problema/ })).toBeNull();
+    },
+  );
+
+  it('explains a 409 and shows the real state instead of recording anything', async () => {
+    commandReply = () => ({ status: 409, body: { errorCode: 'INVALID_STATE_TRANSITION' } });
+    await openDetail();
+    await screen.findByText('Em execução');
+    detail = { status: 200, body: booking(item('completed')) };
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Relatar problema em wash' }));
+
+    expect(await screen.findByText(/O estado da execução mudou/)).toBeOnTheScreen();
+    await waitFor(() => expect(screen.getByText('Concluído')).toBeOnTheScreen());
+    expect(screen.queryByText('Relato enviado para verificação.')).toBeNull();
+  });
+
+  it('keeps the button usable after a rate limit, with the wait time', async () => {
+    commandReply = () => ({ status: 429, body: { errorCode: 'RATE_LIMIT_EXCEEDED' }, headers: { 'Retry-After': '30' } });
+    await openDetail();
+
+    await fireEvent.press(await screen.findByRole('button', { name: 'Relatar problema em wash' }));
+
+    expect(await screen.findByText(/Muitas tentativas\. Aguarde até/)).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Relatar problema em wash' })).toBeEnabled();
+  });
+
+  it('hides the action when the capability is not proven on the API', async () => {
+    capabilities.itemCommands.reportIssue = false;
+    try {
+      await openDetail();
+      await screen.findByText('Em execução');
+
+      expect(screen.queryByRole('button', { name: /^Relatar problema/ })).toBeNull();
+    } finally {
+      capabilities.itemCommands.reportIssue = true;
+    }
   });
 });
