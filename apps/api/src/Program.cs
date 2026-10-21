@@ -2,6 +2,7 @@ using Cicclo.Api.Platform;
 using Cicclo.Api.Platform.Health;
 using Cicclo.Api.Platform.Http;
 using Cicclo.Api.Platform.Persistence;
+using Cicclo.Api.Services.GetCatalog;
 using Cicclo.Api.Wallet.GetBalance;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,6 +19,7 @@ builder.Services.AddOptions<LaundryOptions>()
 builder.Services.AddDbContext<CiccloDbContext>((services, options) =>
     options.UseNpgsql(services.GetRequiredService<IConfiguration>().GetConnectionString(CiccloDbContext.ConnectionStringName)));
 builder.Services.AddScoped<PostgresWalletBalanceQuery>();
+builder.Services.AddScoped<PostgresServiceCatalogQuery>();
 
 if (bootstrapDemo)
 {
@@ -39,7 +41,7 @@ app.UseHttpBoundary();
 app.UseRateLimiter();
 app.MapApiOpenApi();
 app.MapHealthEndpoints();
-app.MapGroup("/api/v1").RequireRateLimiting(ApiReadRateLimit.Policy).MapWalletEndpoint();
+app.MapGroup("/api/v1").RequireRateLimiting(ApiReadRateLimit.Policy).MapWalletEndpoint().MapServicesEndpoint();
 app.Run();
 return 0;
 

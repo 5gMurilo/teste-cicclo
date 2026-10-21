@@ -6,6 +6,9 @@ namespace Cicclo.Api.Platform.Http;
 /// </summary>
 public static class MoneyCents
 {
+    /// <summary>Moeda única da demonstração; não há catálogo multi-moeda.</summary>
+    public const string Currency = "BRL";
+
     public const decimal MaxAmount = 9_999_999_999.99m;
 
     public static long FromDecimal(decimal amount)
