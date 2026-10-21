@@ -24,8 +24,8 @@ public sealed class BookingPricingTests
         Assert.Null(result.CalculatedTotalCents);
         Assert.Equal(decimal.Parse(total, System.Globalization.CultureInfo.InvariantCulture), result.Price!.Total);
         Assert.Equal(
-            codes.Order(StringComparer.Ordinal).Select(code => $"{code}|{(code == "wash" ? 18.90m : 20.90m)}"),
-            result.Price.Items.Select(item => $"{item.ServiceCode}|{item.UnitPrice}"));
+            codes.Order(StringComparer.Ordinal).Select(code => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{code}|{(code == "wash" ? 18.90m : 20.90m)}")),
+            result.Price.Items.Select(item => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{item.ServiceCode}|{item.UnitPrice}")));
     }
 
     [Theory]

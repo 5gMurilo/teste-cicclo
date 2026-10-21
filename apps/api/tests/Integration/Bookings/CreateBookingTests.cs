@@ -1,3 +1,4 @@
+using System.Globalization;
 using Cicclo.Api.Bookings;
 using Cicclo.Api.Bookings.CreateBooking;
 using Cicclo.Api.Platform.Http;
@@ -55,14 +56,14 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
         Assert.Equal(remainingCents, MoneyCents.FromDecimal(booking.RemainingBalance));
         Assert.Equal(
             codes.Order(StringComparer.Ordinal).Select(code => code == "wash" ? "wash|18.90|PendingActivation" : "dry|20.90|PendingActivation"),
-            booking.Items.Select(item => $"{item.ServiceCode}|{item.UnitPrice}|{item.Status}"));
+            booking.Items.Select(item => string.Create(CultureInfo.InvariantCulture, $"{item.ServiceCode}|{item.UnitPrice}|{item.Status}")));
         Assert.Equal(codes.Length, booking.Items.Select(item => item.ItemId).Distinct().Count());
         Assert.Equal(DateTimeKind.Utc, booking.CreatedAt.Kind);
 
         var charged = booking.ChargedAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
         Assert.Equal($"{booking.BookingId}|{key}|{charged}|{intent.Fingerprint}", (await database.RowsAsync("SELECT id, idempotency_key, total_amount::text, request_fingerprint FROM service_requests")).Single());
         Assert.Equal(
-            booking.Items.Select(item => $"{item.ItemId}|{booking.BookingId}|{item.ServiceCode}|{item.UnitPrice:0.00}|pending_activation").Order(StringComparer.Ordinal),
+            booking.Items.Select(item => string.Create(CultureInfo.InvariantCulture, $"{item.ItemId}|{booking.BookingId}|{item.ServiceCode}|{item.UnitPrice:0.00}|pending_activation")).Order(StringComparer.Ordinal),
             await database.RowsAsync("SELECT id, request_id, service_code, unit_price::text, status FROM service_request_items ORDER BY id::text"));
         Assert.Equal(
             $"{booking.BookingId}|debit|{charged}|{remaining}|True",
@@ -242,7 +243,7 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
         Assert.Equal(created.Booking.CreatedAt, replay.Booking.CreatedAt);
         Assert.Equal(
             ["dry|20.90|PendingActivation", "wash|18.90|PendingActivation"],
-            replay.Booking.Items.Select(item => $"{item.ServiceCode}|{item.UnitPrice}|{item.Status}"));
+            replay.Booking.Items.Select(item => string.Create(CultureInfo.InvariantCulture, $"{item.ServiceCode}|{item.UnitPrice}|{item.Status}")));
         Assert.Equal("1|2|1|0.00", (await database.RowsAsync(
             "SELECT (SELECT count(*) FROM service_requests), (SELECT count(*) FROM service_request_items), (SELECT count(*) FROM wallet_transactions), (SELECT balance::text FROM wallets)")).Single());
     }
@@ -547,8 +548,8 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
         BookingIntent.Create(codes, preferred, expectedTotalCents, 10).Intent!;
 
     private static string Describe(BookingSnapshot booking) =>
-        $"{booking.BookingId}|{booking.ChargedAmount}|{booking.RemainingBalance}|{booking.CreatedAt:O}|"
-        + string.Join(';', booking.Items.Select(item => $"{item.ItemId}:{item.ServiceCode}:{item.UnitPrice}:{item.Status}"));
+        string.Create(CultureInfo.InvariantCulture, $"{booking.BookingId}|{booking.ChargedAmount}|{booking.RemainingBalance}|{booking.CreatedAt:O}|")
+        + string.Join(';', booking.Items.Select(item => string.Create(CultureInfo.InvariantCulture, $"{item.ItemId}:{item.ServiceCode}:{item.UnitPrice}:{item.Status}")));
 
     private static string Named(TestDatabase database, string applicationName) =>
         new NpgsqlConnectionStringBuilder(database.ConnectionString) { ApplicationName = applicationName }.ConnectionString;
