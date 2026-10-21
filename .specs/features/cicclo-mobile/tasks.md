@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** em andamento. Última tarefa concluída: T12 (11/37 com Done when marcado); ver STATE.md.
+**Execução:** em andamento. Última tarefa concluída: T13 (12/37 com Done when marcado); ver STATE.md.
 
 ## Execution Protocol
 
@@ -253,7 +253,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Reducer/seletores e queries públicas wallet/catalog; inserir provider no root.
 **Requirement**: SEL-02, SEL-03, SEL-04, SEL-06, SEL-07.
 **What**: Expor seleção e ações públicas validadas; persistir somente durante a sessão, sem saldo no Context.
-**Done when**: [ ] Adição valida dados/limites antes de dispatch; remoção continua possível; provider único acima das tabs; estado derivado não é segunda fonte de wallet/catalog.
+**Done when**: [x] Adição valida dados/limites antes de dispatch; remoção continua possível; provider único acima das tabs; estado derivado não é segunda fonte de wallet/catalog.
 **Tests**: integration — teto de 6 casos: seleção atravessa abas, insuficiência, wallet loading/erro, indisponibilidade, limite e limpeza preferência.
 **Gate**: F + CC.
 **Commit**: `feat(checkout): retain validated selection above tab navigation`
@@ -709,7 +709,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **11/37 tarefas com Done when marcado** (última: T12); demais abertas ou pendentes de gate externo.
+- Implementação: **12/37 tarefas com Done when marcado** (última: T13); demais abertas ou pendentes de gate externo.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1/C2/C3/CP1 não comprovadas; N1 não executado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.
