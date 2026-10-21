@@ -93,6 +93,45 @@ public sealed class ReadinessTests(PostgresFixture postgres)
         await AssertHealthAsync(client, "/health/ready", HttpStatusCode.OK, "Healthy");
     }
 
+    [Fact]
+    public async Task H08_WalletAndServicesWithoutMachinesIsNotReady()
+    {
+        var database = await postgres.CreateDatabaseAsync();
+        await database.BootstrapAsync();
+        await database.ExecuteAsync("DELETE FROM machines;");
+        await using var factory = ApiFactory.Create(database.ConnectionString);
+        using var client = factory.CreateClient();
+
+        await AssertHealthAsync(client, "/health/ready", HttpStatusCode.ServiceUnavailable, "Unhealthy");
+        await AssertHealthAsync(client, "/health/live", HttpStatusCode.OK, "Healthy");
+    }
+
+    [Fact]
+    public async Task H09_WalletAndMachinesWithoutServicesIsNotReady()
+    {
+        var database = await postgres.CreateDatabaseAsync();
+        await database.BootstrapAsync();
+        await database.ExecuteAsync("DELETE FROM services;");
+        await using var factory = ApiFactory.Create(database.ConnectionString);
+        using var client = factory.CreateClient();
+
+        await AssertHealthAsync(client, "/health/ready", HttpStatusCode.ServiceUnavailable, "Unhealthy");
+        await AssertHealthAsync(client, "/health/live", HttpStatusCode.OK, "Healthy");
+    }
+
+    [Fact]
+    public async Task H10_ServicesAndMachinesWithoutDemoWalletIsNotReady()
+    {
+        var database = await postgres.CreateDatabaseAsync();
+        await database.BootstrapAsync();
+        await database.ExecuteAsync("DELETE FROM wallets;");
+        await using var factory = ApiFactory.Create(database.ConnectionString);
+        using var client = factory.CreateClient();
+
+        await AssertHealthAsync(client, "/health/ready", HttpStatusCode.ServiceUnavailable, "Unhealthy");
+        await AssertHealthAsync(client, "/health/live", HttpStatusCode.OK, "Healthy");
+    }
+
     private static async Task AssertHealthAsync(HttpClient client, string path, HttpStatusCode status, string body)
     {
         using var response = await client.GetAsync(path);
