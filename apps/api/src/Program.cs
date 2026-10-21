@@ -25,7 +25,9 @@ using Cicclo.Api.Wallet.ListTransactions;
 using Microsoft.EntityFrameworkCore;
 
 var bootstrapDemo = BootstrapDemoCommand.IsRequested(args);
-var builder = WebApplication.CreateBuilder(BootstrapDemoCommand.WithoutOption(args));
+var resetDemo = ResetDemoCommand.IsRequested(args);
+var resetConfirmation = ResetDemoCommand.Confirmation(args);
+var builder = WebApplication.CreateBuilder(BootstrapDemoCommand.WithoutOption(ResetDemoCommand.WithoutOptions(args)));
 builder.AddApiTelemetry();
 builder.Services.AddApiHealthChecks();
 builder.Services.AddHttpBoundary();
@@ -37,7 +39,8 @@ builder.Services.AddOptions<LaundryOptions>()
     .ValidateOnStart();
 builder.Services.AddDbContext<CiccloDbContext>(
     (services, options) =>
-        options.UseNpgsql(services.GetRequiredService<IConfiguration>().GetConnectionString(CiccloDbContext.ConnectionStringName)),
+        options.UseNpgsql(services.GetRequiredService<IConfiguration>().GetConnectionString(CiccloDbContext.ConnectionStringName))
+            .AddInterceptors(new ApiConnectionIdentity()),
     optionsLifetime: ServiceLifetime.Singleton);
 // Casos de uso transacionais abrem um contexto novo por sessão, com as mesmas opções do contexto por escopo.
 builder.Services.AddDbContextFactory<CiccloDbContext>();
@@ -60,6 +63,20 @@ if (bootstrapDemo)
     };
     using var scope = host.Services.CreateScope();
     return await scope.ServiceProvider.GetRequiredService<BootstrapDemoCommand>().RunAsync(cancellation.Token);
+}
+
+if (resetDemo)
+{
+    builder.Services.AddSingleton<DemoSeedSql>();
+    builder.Services.AddSingleton<ResetDemoCommand>();
+    using var host = builder.Build();
+    using var cancellation = new CancellationTokenSource();
+    Console.CancelKeyPress += (_, eventArgs) =>
+    {
+        eventArgs.Cancel = true;
+        cancellation.Cancel();
+    };
+    return await host.Services.GetRequiredService<ResetDemoCommand>().RunAsync(resetConfirmation, cancellation.Token);
 }
 
 builder.Services.AddOfferReconciliation();

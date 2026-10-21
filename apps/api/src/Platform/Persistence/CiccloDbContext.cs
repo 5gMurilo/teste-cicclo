@@ -11,6 +11,10 @@ public sealed class CiccloDbContext(DbContextOptions<CiccloDbContext> options) :
 {
     public const string ConnectionStringName = "Cicclo";
 
+    /// <summary>Identifica em pg_stat_activity as conexões do host da API e do worker, que o reset-demo exige paradas.</summary>
+    public const string ApiApplicationName = "cicclo.api";
+
+
     public DbSet<WalletAccount> Wallets => Set<WalletAccount>();
 
     public DbSet<LaundryService> Services => Set<LaundryService>();
