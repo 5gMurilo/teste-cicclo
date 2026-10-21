@@ -61,10 +61,10 @@
 ## Handoff
 
 - **Feature**: `.specs/features/cicclo-mobile/spec.md`.
-- **Phase / Task**: Execute inline e sequencial. Última tarefa fechada: T31.
-- **Completed**: P0 fechado e verificado; ícones das abas feitos (f9a92bc). T31 implementada: itemCommand.ts (base dos comandos, um por vez, sem retry, invalida bookings) e activateItem.ts; ação Ativar no detalhe só com capabilities.itemCommands.activate; ligada só depois da prova CP1 na API real (30/37 com Done when marcado).
+- **Phase / Task**: Execute inline e sequencial. Última tarefa fechada: T32.
+- **Completed**: P0 fechado; T31 pendente da prova CP1 na API real; T32 = OfferCountdown (prazo do servidor, 60/1/0 s, recálculo ao voltar ao foreground, rótulo falado fixo, onExpired uma vez por expiresAt, intervalos limpos); ainda não ligado a nenhuma tela (T33 liga) (31/37 com Done when marcado).
 - **In-progress**: Nenhuma.
-- **Next step**: T32 (OfferCountdown a partir do expiresAt do servidor). A prova ao vivo dos quatro comandos acontece depois de T37 e liga os sinalizadores de capacidade.
+- **Next step**: T33 (confirmar oferta elegível, com OfferCountdown no detalhe).
 - **Blockers**: nenhum para P0. `dotnet` fora do PATH da sessão do agente (workspace e testes de bootstrap que compilam a API falham por isso; não é do mobile).
-- **Branches** (atual: `feat/mobile-06-service-lifecycle`): chore/mobile-00-baseline 08e6c7d; chore/mobile-05-p0-readiness 1a4ff65; feat/mobile-01-catalog-wallet 6bd529c; feat/mobile-02-selection-review 0a34316; feat/mobile-03-safe-booking 9674db3; feat/mobile-04-booking-tracking ad3d9a8; feat/mobile-06-service-lifecycle f9a92bc; mobile-worktree f3ac3ca.
+- **Branches** (atual: `feat/mobile-06-service-lifecycle`): chore/mobile-00-baseline 08e6c7d; chore/mobile-05-p0-readiness 1a4ff65; feat/mobile-01-catalog-wallet 6bd529c; feat/mobile-02-selection-review 0a34316; feat/mobile-03-safe-booking 9674db3; feat/mobile-04-booking-tracking ad3d9a8; feat/mobile-06-service-lifecycle 5110a91; mobile-worktree f3ac3ca.
 - **Uncommitted files**: `.omc/` e `apps/mobile/.omc/` (estado de ferramenta, não versionar).

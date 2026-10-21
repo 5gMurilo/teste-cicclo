@@ -478,7 +478,7 @@ Nenhuma tarefa desta fase começa antes de CP1. Cada comando abaixo requer seu p
 **Reuses**: expiresAt do detalhe, Date.now e callback de refetch fornecido pelo consumidor.
 **Requirement**: QUEUE-03, QUEUE-04, SAFE-05, UX-01.
 **What**: Exibir restante calculado por timestamps, disparar expiração uma vez por oferta e limpar timer.
-**Done when**: [ ] 60/1/0s corretos; foreground recalcula; não muda status; não anuncia cada segundo ao leitor de tela; timer inexistente depois de unmount.
+**Done when**: [x] 60/1/0s corretos; foreground recalcula; não muda status; não anuncia cada segundo ao leitor de tela; timer inexistente depois de unmount.
 **Tests**: integration — teto de 6 casos com clock fake: 60s, 1s, zero, timestamp já vencido, background/retorno e cleanup/rerender; callback de expiração não se repete no zero.
 **Gate**: CP1 + F + CC.
 **Commit**: `feat(bookings): render server-based offer countdowns`
@@ -711,7 +711,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **30/37 tarefas com Done when marcado** (última: T31); demais abertas ou pendentes de gate externo.
+- Implementação: **31/37 tarefas com Done when marcado** (última: T32); demais abertas ou pendentes de gate externo.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1, C2 e C3 provados contra a API real em 2026-10-21; N1 aprovado pelo usuário no iOS em relato global (AD-006); CP1 (P1) não comprovado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.
