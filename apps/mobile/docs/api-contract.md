@@ -51,3 +51,5 @@ Observações: logo após a compra o item chegou `to_be_confirmed` com `machineI
 | `report-issue` | 202 `{ incidentId, status: "reported" }` em item `in_progress`; 429 `RATE_LIMIT_EXCEEDED` na quarta chamada no minuto (política de 3 por minuto) | | Mesmo `incidentId` na repetição; 409 antes de iniciar |
 
 **Decisão:** as quatro capacidades foram ligadas (`capabilities.itemCommands.*`) com esta evidência, por pedido do usuário, que precisa usar as ações. Os itens da coluna "Não observado" seguem sem prova real; estão cobertos só com API simulada e pela descrição do OpenAPI. Repetir `live/lifecycle.live.test.ts` com a saída salva em arquivo, depois de restaurar a demo, completa a prova.
+
+**Uso real pelo usuário (2026-10-21):** depois de ligar as capacidades, o usuário relatou que **aceitou uma oferta (Confirmar) e relatou um problema (Relatar problema) pelo app contra a API real, e funcionaram**. É relato, sem captura nem resposta registrada, mas cobre o `confirm` e o `report-issue` de ponta a ponta com o `fetch` do React Native, que o teste ao vivo (Node) não exercita. `activate` e `cancel` não foram citados no relato.

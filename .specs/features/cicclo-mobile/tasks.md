@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** P0 fechado (30/37): C1, C2 e C3 provados contra a API real; N1 aprovado pelo usuário no iOS e aceito para o Android por decisão dele (AD-006, AD-007); Verifier PASS. P1 (T31-T37) em execução.
+**Execução:** 35/37 com Done when marcado. P0 fechado e verificado; P1 implementado e ligado, com T34 (cancelar) e T37 (oferta na lista) ainda `[~]` à espera da prova ao vivo limpa; Verifier de P1 pendente.
 
 ## Execution Protocol
 
@@ -467,10 +467,11 @@ Nenhuma tarefa desta fase começa antes de CP1. Cada comando abaixo requer seu p
 **Reuses**: client/detailQuery/status; estender seletor de ação existente e integrar CTA mínimo ao detalhe.
 **Requirement**: QUEUE-01, QUEUE-02, QUEUE-05, UX-01.
 **What**: Implementar o único endpoint activate, mutation sem retry/pausa e disponibilidade pelo status/capacidade.
-**Done when**: [~] Só pending_activation oferece CTA; resultado é consultado/invalida detalhe/lista; queued explica pago; 409 faz refetch; ausência de suporte oculta ação.
+**Done when**: [x] Só pending_activation oferece CTA; resultado é consultado/invalida detalhe/lista; queued explica pago; 409 faz refetch; ausência de suporte oculta ação.
 **Tests**: integration — teto de 5 casos: sem capacidade, pending_activation, resposta queued/oferta, estado indevido sem POST, 409 e ação pending não duplicada.
 **Gate**: CP1 + F + CC.
 **Commit**: `feat(bookings): activate paid pending service items`
+**Fechamento CP1**: evidência real parcial, registrada em apps/mobile/docs/api-contract.md: ativação observada ao vivo (item ativo e itens pendentes do lote); caso `queued` sem prova real.
 
 #### T32: renderizar contagem por prazo do servidor
 **Where**: `apps/mobile/src/features/bookings/components/OfferCountdown.tsx`
@@ -489,10 +490,11 @@ Nenhuma tarefa desta fase começa antes de CP1. Cada comando abaixo requer seu p
 **Reuses**: client, status, OfferCountdown e detalhe existente; uma ação de domínio.
 **Requirement**: QUEUE-01, QUEUE-03, QUEUE-04, QUEUE-05, UX-01.
 **What**: Implementar confirm com bloqueio visual na expiração e submissão pendente, respeitando 410 mesmo com tempo local restante.
-**Done when**: [~] Só oferta atual habilita; zero não envia; 409/410 refaz leitura e informa estado real; sem transição local presumida para in_progress.
+**Done when**: [x] Só oferta atual habilita; zero não envia; 409/410 refaz leitura e informa estado real; sem transição local presumida para in_progress.
 **Tests**: integration — teto de 5 casos: sucesso, zero sem POST, 410 antes do zero local, 409, duplo toque e retorno do background após expirar.
 **Gate**: CP1 + F + CC.
 **Commit**: `feat(bookings): confirm eligible machine offers`
+**Fechamento CP1**: evidência real parcial, registrada em apps/mobile/docs/api-contract.md: 410 observado ao vivo e confirmação em uso real pelo usuário (relato); repetição do confirm sem prova real.
 
 #### T34: cancelar somente antes do início e refletir refund confirmado
 **Where**: `apps/mobile/src/features/bookings/cancelItem.ts`
@@ -511,10 +513,11 @@ Nenhuma tarefa desta fase começa antes de CP1. Cada comando abaixo requer seu p
 **Reuses**: client, contrato real de report-issue, detalhe/status.
 **Requirement**: QUEUE-08, QUEUE-07, UX-01.
 **What**: Implementar report endpoint com feedback de verificação e sem alterar saldo.
-**Done when**: [~] 202 ou sucesso contratual diz Relato enviado para verificação; ausência de suporte oculta ação; nunca adiciona painel de operador.
+**Done when**: [x] 202 ou sucesso contratual diz Relato enviado para verificação; ausência de suporte oculta ação; nunca adiciona painel de operador.
 **Tests**: integration — teto de 4 casos: aceito sem crédito, rejeitado/409, capacidade ausente, pending impede repetição; não apresentar texto de estorno.
 **Gate**: CP1 + F + CC.
 **Commit**: `feat(bookings): report incidents without implying refunds`
+**Fechamento CP1**: evidência real parcial, registrada em apps/mobile/docs/api-contract.md: 202 e limite de 3/min observados ao vivo e relato em uso real pelo usuário; repetição com o mesmo incidentId sem prova real.
 
 #### T36: atualizar apenas serviços visíveis e não terminais
 **Where**: `apps/mobile/src/features/bookings/useBookingPolling.ts`
@@ -711,7 +714,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **32/37 tarefas com Done when marcado** (última: T37); demais abertas ou pendentes de gate externo.
+- Implementação: **35/37 tarefas com Done when marcado**; T34 e T37 aguardam a prova ao vivo limpa depois do reset da demo.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1, C2 e C3 provados contra a API real em 2026-10-21; N1 aprovado pelo usuário no iOS em relato global (AD-006); CP1 (P1) não comprovado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.
