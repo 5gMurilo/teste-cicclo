@@ -106,6 +106,7 @@ public sealed class PostgresLaundrySessions(IDbContextFactory<CiccloDbContext> c
                     """,
                     cancellationToken),
                 "item em execução para concluir");
+            queue.RecordItemChange(item);
             PostgresQueueSession.Expect(
                 await db.Database.ExecuteSqlAsync(
                     $"""
@@ -126,6 +127,7 @@ public sealed class PostgresLaundrySessions(IDbContextFactory<CiccloDbContext> c
                     """,
                     cancellationToken),
                 "oferta corrente para iniciar");
+            queue.RecordItemChange(itemId);
             PostgresQueueSession.Expect(
                 await db.Database.ExecuteSqlAsync(
                     $"""
@@ -162,6 +164,7 @@ public sealed class PostgresLaundrySessions(IDbContextFactory<CiccloDbContext> c
                     """,
                     cancellationToken),
                 "item não iniciado para cancelar");
+            queue.RecordItemChange(itemId);
             if (machineId is { } machine)
             {
                 PostgresQueueSession.Expect(
@@ -200,6 +203,7 @@ public sealed class PostgresLaundrySessions(IDbContextFactory<CiccloDbContext> c
                     """,
                     cancellationToken),
                 "item em execução para falhar");
+            queue.RecordItemChange(item);
             PostgresQueueSession.Expect(
                 await db.Database.ExecuteSqlAsync(
                     $"""
@@ -272,7 +276,12 @@ public sealed class PostgresLaundrySessions(IDbContextFactory<CiccloDbContext> c
                 await db.Database.ExecuteSqlAsync($"UPDATE machine_incidents SET status = 'confirmed' WHERE id = {incidentId} AND status = 'reported'", cancellationToken),
                 "relato aberto para confirmar");
 
-        public Task CommitAsync() => transaction.CommitAsync(CancellationToken.None);
+        public async Task CommitAsync()
+        {
+            // A revisão dos bookings alterados confirma junto da mutação, ou não confirma.
+            await queue.IncrementRevisionsAsync([], CancellationToken.None);
+            await transaction.CommitAsync(CancellationToken.None);
+        }
 
         public async ValueTask DisposeAsync()
         {

@@ -11,6 +11,35 @@ namespace Cicclo.Api.Laundry;
 /// </summary>
 public sealed class PostgresQueueSession(CiccloDbContext db) : IQueueSession
 {
+    /// <summary>Itens mutados nesta transação; seus bookings distintos recebem a revisão em <see cref="IncrementRevisionsAsync"/>.</summary>
+    private readonly HashSet<Guid> changedItems = [];
+
+    /// <summary>Registra um item cujo estado persistido esta transação alterou.</summary>
+    internal void RecordItemChange(Guid itemId) => changedItems.Add(itemId);
+
+    /// <summary>
+    /// Imediatamente antes do commit, na mesma transação: +1 em cada booking distinto dos itens alterados. Itens inseridos
+    /// nesta transação são ignorados, porque seu booking nasce nela e confirma na revisão inicial. Sem outro item
+    /// alterado, não envia nada ao banco.
+    /// </summary>
+    internal async Task IncrementRevisionsAsync(IReadOnlyCollection<Guid> createdItemIds, CancellationToken cancellationToken)
+    {
+        changedItems.ExceptWith(createdItemIds);
+        if (changedItems.Count == 0)
+        {
+            return;
+        }
+
+        var itemIds = changedItems.ToArray();
+        await db.Database.ExecuteSqlAsync(
+            $"""
+            UPDATE service_requests SET revision = revision + 1
+            WHERE id IN (SELECT request_id FROM service_request_items WHERE id = ANY({itemIds}))
+            """,
+            cancellationToken);
+        changedItems.Clear();
+    }
+
     public async Task<ItemLocation?> LocateItemAsync(Guid itemId, CancellationToken cancellationToken)
     {
         var locations = await db.BookingItems
@@ -52,7 +81,8 @@ public sealed class PostgresQueueSession(CiccloDbContext db) : IQueueSession
             .SqlQuery<long>($"SELECT nextval('queue_ticket_seq') AS \"Value\"")
             .ToListAsync(cancellationToken)).Single();
 
-    public async Task EnqueueAsync(Guid itemId, long ticket, DateTime queuedAt, CancellationToken cancellationToken) =>
+    public async Task EnqueueAsync(Guid itemId, long ticket, DateTime queuedAt, CancellationToken cancellationToken)
+    {
         Expect(
             await db.Database.ExecuteSqlAsync(
                 $"""
@@ -61,6 +91,8 @@ public sealed class PostgresQueueSession(CiccloDbContext db) : IQueueSession
                 """,
                 cancellationToken),
             "item pendente para enfileirar");
+        RecordItemChange(itemId);
+    }
 
     public async Task RequeueExpiredAsync(Guid itemId, Guid machineId, long ticket, DateTime requeuedAt, CancellationToken cancellationToken)
     {
@@ -81,6 +113,7 @@ public sealed class PostgresQueueSession(CiccloDbContext db) : IQueueSession
                 """,
                 cancellationToken),
             "oferta vencida para devolver à fila");
+        RecordItemChange(itemId);
     }
 
     public async Task OfferAsync(Guid itemId, Guid machineId, DateTime offeredAt, DateTime expiresAt, CancellationToken cancellationToken)
@@ -93,6 +126,7 @@ public sealed class PostgresQueueSession(CiccloDbContext db) : IQueueSession
                 """,
                 cancellationToken),
             "item da fila para ofertar");
+        RecordItemChange(itemId);
         Expect(
             await db.Database.ExecuteSqlAsync(
                 $"""

@@ -60,7 +60,7 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
             new HashSet<Type>
             {
                 typeof(WalletAccount), typeof(LaundryService), typeof(Machine), typeof(MachineType), typeof(MachineState),
-                typeof(Booking), typeof(BookingItem), typeof(BookingItemStatus), typeof(LedgerEntry), typeof(LedgerEntryKind),
+                typeof(Booking), typeof(BookingRevision), typeof(BookingItem), typeof(BookingItemStatus), typeof(LedgerEntry), typeof(LedgerEntryKind),
                 typeof(CreateBookingUseCase), typeof(ICreateBookingSessions), typeof(ICreateBookingSession), typeof(StoredBooking),
                 typeof(WalletBalance), typeof(ServiceCatalogEntry), typeof(BookingView), typeof(BookingItemView), typeof(BookingResponse),
                 typeof(CreateBookingRequest), typeof(BookingMetrics), typeof(Cicclo.Api.Bookings.ActivateItem.ActivateItem),
