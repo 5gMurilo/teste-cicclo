@@ -101,6 +101,10 @@ A compra real está habilitada (gate C2 provado contra a API real em 2026-10-21)
 
 Falhas encontradas viram tarefas corretivas atômicas, cada uma com teste de regressão, e o cenário falho é reexecutado antes de fechar este gate.
 
+## Decisão sobre o Android
+
+Em 2026-10-21 o usuário decidiu que a validação no iOS vale também para o Android (app híbrido). O ensaio abaixo continua disponível, mas não é exigido para fechar o gate; a decisão não é evidência de ensaio Android (AD-007).
+
 ## Android, opcional
 
 Para declarar também o Android, repetir os oito cenários com: emulador Android (`EXPO_PUBLIC_API_URL=http://10.0.2.2:5001 pnpm --filter @cicclo/mobile android`) ou aparelho (`http://<IP do Mac>:5001`), TalkBack no lugar do VoiceOver e fonte do sistema em 200% no lugar do texto ampliado do iOS. Enquanto isso não for feito, a entrega fica registrada como "validada no iOS".

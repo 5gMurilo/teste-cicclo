@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** P0 com 28/37 marcados. C1, C2 e C3 provados contra a API real; N1 aprovado pelo usuário no iOS (AD-006) em relato global, sem registro por cenário, por isso T29 e T30 ficam `[~]` (T30 publicou o README e registrou os comandos, mas seu Done when exige N1 e prova de todos os P0, incluindo Android); P1 (T31-T37) não iniciado.
+**Execução:** P0 fechado (30/37): C1, C2 e C3 provados contra a API real; N1 aprovado pelo usuário no iOS e aceito para o Android por decisão dele (AD-006, AD-007); Verifier PASS. P1 (T31-T37) em execução.
 
 ## Execution Protocol
 
@@ -437,10 +437,11 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: App integrado, API demo combinada e testes existentes.
 **Requirement**: UX-01, UX-02, QUAL-02, SAFE-03, SAFE-04.
 **What**: Preparar o checklist de smoke Android; o **usuário executa** e eu documento os resultados que ele reportar por cenário, sem E2E automatizado ou PASS inferido de export.
-**Done when**: [~] N1 executado pelo usuário e aprovado; registrar dispositivo/API/commit/data, fonte 200%, leitor de tela, gestos/safe areas, navegação e falhas de rede/background; ausência de aparelho é BLOCKED.
+**Done when**: [x] N1 executado pelo usuário e aprovado; registrar dispositivo/API/commit/data, fonte 200%, leitor de tela, gestos/safe areas, navegação e falhas de rede/background; ausência de aparelho é BLOCKED.
 **Tests**: manual — teto de 8 cenários: tabs/Home inicial; header/layout; wash 5000→3110 em cenário controlado; seleção/badge; histórico/detalhe; rede e retry explícito; suspensão/retomada; a11y/fonte ampliada. Cuidado com consumo de saldo em demo.
 **Gate**: N1 + B + D + CC.
 **Commit**: `docs(mobile): record verified android and accessibility evidence`
+**Fechamento**: aceito por decisão do usuário em 2026-10-21 (AD-006 e AD-007): validação no iOS vale também para o Android; não é evidência de ensaio Android nem de resultado por cenário.
 
 Correções descobertas em T29 tornam-se tarefas corretivas atômicas identificadas pelo arquivo/AC e com teste de regressão. A pré-aprovação cobre correções necessárias ao escopo, não uma tarefa genérica de refactor. Não marcar T29 concluída antes de corrigir e reexecutar os cenários falhos. Se não houver falhas, não criar commit de código vazio.
 
@@ -450,10 +451,11 @@ Correções descobertas em T29 tornam-se tarefas corretivas atômicas identifica
 **Reuses**: Baseline, registro contratual, evidência nativa e README raiz preservado.
 **Requirement**: QUAL-01, QUAL-02; fechamento dos 50 requisitos P0.
 **What**: Documentar instalação/ambientes/fluxo/estado/idempotência/limites e linkar pela raiz, incluindo resultados reais dos gates e limitações P1/P2.
-**Done when**: [~] Onboarding reproduzido; comandos/URL por dispositivo corretos; recovery entre reinícios não é prometido; W e B registrados; todos P0 têm prova; após commit, disparar Verifier/sensor V sem perguntar se deve validar.
+**Done when**: [x] Onboarding reproduzido; comandos/URL por dispositivo corretos; recovery entre reinícios não é prometido; W e B registrados; todos P0 têm prova; após commit, disparar Verifier/sensor V sem perguntar se deve validar.
 **Tests**: manual — teto de 6 conferências: instalação/execução, exemplos de URL não secretos, comandos de qualidade, confirmação vs pré-reserva, idempotência/limite de reinício, mapa de capacidades/limitações; teste bootstrap de documentação preservado.
 **Gate**: D + B + W + N1 + CC; V é fechamento automático após commit.
 **Commit**: `docs(mobile): publish reproducible p0 setup and evidence`
+**Fechamento**: aceito por decisão do usuário em 2026-10-21 (AD-006 e AD-007): validação no iOS vale também para o Android; não é evidência de ensaio Android nem de resultado por cenário.
 
 ### Phase 8: E6, ciclo de serviços P1 condicional
 
@@ -709,7 +711,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **28/37 tarefas com Done when marcado**; T29 e T30 aguardam o detalhamento do N1 e o Android; T31-T37 (P1) dependem de CP1.
+- Implementação: **30/37 tarefas com Done when marcado**; T31-T37 (P1) em execução, cada capacidade só liga depois de provada na API real (CP1).
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1, C2 e C3 provados contra a API real em 2026-10-21; N1 aprovado pelo usuário no iOS em relato global (AD-006); CP1 (P1) não comprovado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.
