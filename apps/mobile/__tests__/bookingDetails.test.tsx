@@ -2,6 +2,15 @@ import { fireEvent, renderRouter, screen } from 'expo-router/testing-library';
 
 import { queryClient } from '../src/shared/api/queryClient';
 
+// This file covers the detail with the item commands off; with them on, see itemCommands.test.tsx.
+jest.mock('../src/shared/api/capabilities', () => ({
+  capabilities: {
+    purchase: true,
+    keyRetentionMs: null,
+    itemCommands: { activate: false, confirm: false, cancel: false, reportIssue: false },
+  },
+}));
+
 const APP_DIR = './src/app';
 const nbsp = (text: string) => text.replace(/R\$ /g, 'R$ ');
 const ID = '00000000-0000-4000-8000-000000000001';
@@ -87,7 +96,7 @@ describe('booking details', () => {
     expect(screen.getByText('As máquinas são simuladas.')).toBeOnTheScreen();
   });
 
-  it('offers no action beyond going back: no activate, confirm, cancel or report', async () => {
+  it('offers no action beyond going back while the item commands are not enabled', async () => {
     detailReplies = [{ status: 200, body: booking([item(1, 'wash', 'to_be_confirmed', { expiresAt: '2026-10-21T12:01:00Z', machineId: '20000000-0000-4000-8000-000000000009' }), item(2, 'dry', 'pending_activation')]) }];
 
     await openDetail(ID);

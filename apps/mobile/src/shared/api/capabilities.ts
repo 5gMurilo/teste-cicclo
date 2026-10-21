@@ -16,7 +16,8 @@ export const capabilities = {
   keyRetentionMs: null as number | null,
   /**
    * P1 item commands (CP1): each one is switched on only in the commit that records its proof against the
-   * real API in docs/api-contract.md. A command that is off is hidden, never shown disabled or faked.
+   * real API in docs/api-contract.md ("Provas P1 contra a API real", which also lists what was not observed).
+   * A command that is off is hidden, never shown disabled or faked.
    */
-  itemCommands: { activate: false, confirm: false, cancel: false, reportIssue: false },
+  itemCommands: { activate: true, confirm: true, cancel: true, reportIssue: true },
 };
