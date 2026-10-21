@@ -85,7 +85,7 @@ public sealed class CreateBookingActivationTests(PostgresFixture postgres)
     [Fact]
     public async Task B04_PurchaseOfABusyTypeQueuesBehindEarlierItemsWithANewTicket()
     {
-        var database = await ReadyAsync(postgres, $"UPDATE machines SET state = 'running' WHERE id = '{WasherId}'");
+        var database = await ReadyAsync(postgres, $"UPDATE machines SET state = 'running', is_demo_occupied = true WHERE id = '{WasherId}'");
         var clock = Clock();
         var first = await BookingApi.UseCase(Real(database), clock).ExecuteAsync(Guid.NewGuid(), Intent(["wash"], 1890), CancellationToken.None);
         clock.Advance(TimeSpan.FromSeconds(3));

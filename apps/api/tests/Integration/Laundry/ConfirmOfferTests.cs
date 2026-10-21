@@ -95,7 +95,7 @@ public sealed class ConfirmOfferTests(PostgresFixture postgres)
                 await database.ExecuteAsync($"UPDATE machines SET state = 'running' WHERE id = '{WasherId}'");
                 break;
             case "queued item":
-                await database.ExecuteAsync($"UPDATE machines SET state = 'running', active_item_id = NULL WHERE id = '{WasherId}'");
+                await database.ExecuteAsync($"UPDATE machines SET state = 'running', active_item_id = NULL, is_demo_occupied = true WHERE id = '{WasherId}'");
                 target = await PendingAsync(database);
                 await ActivateAsync(Sessions(database, ConfirmApp), Coordinator(clock), target);
                 break;
@@ -255,7 +255,7 @@ public sealed class ConfirmOfferTests(PostgresFixture postgres)
         }
         else
         {
-            await database.ExecuteAsync($"UPDATE machines SET state = 'running', active_item_id = NULL WHERE id = '{WasherId}'");
+            await database.ExecuteAsync($"UPDATE machines SET state = 'running', active_item_id = NULL, is_demo_occupied = true WHERE id = '{WasherId}'");
         }
 
         var before = await database.RowsAsync(StateSql);

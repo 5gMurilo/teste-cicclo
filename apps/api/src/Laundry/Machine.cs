@@ -14,7 +14,10 @@ public enum MachineState
     OutOfService,
 }
 
-/// <summary>Capacidade física; reserved e running com item real apontam o item ativo.</summary>
+/// <summary>
+/// Capacidade física; reserved e running com item real apontam o item ativo. Running sem item é ocupação sintética da
+/// simulação (IsDemoOccupied), sem booking nem wallet.
+/// </summary>
 public sealed class Machine(Guid id, string name, MachineType machineType, MachineState state, DateTime updatedAt)
 {
     public Guid Id { get; private set; } = id;
@@ -29,4 +32,7 @@ public sealed class Machine(Guid id, string name, MachineType machineType, Machi
 
     /// <summary>Item com oferta corrente (reserved) ou em execução (running); null quando livre ou fora de serviço.</summary>
     public Guid? ActiveItemId { get; private set; }
+
+    /// <summary>Running sem item ativo, criado pela simulação; false em qualquer outro estado.</summary>
+    public bool IsDemoOccupied { get; private set; }
 }

@@ -57,7 +57,7 @@ public sealed class ActivateItemTests(PostgresFixture postgres)
     [Fact]
     public async Task V02_BusyMachineQueuesTheItemWithANewTicketAndDerivedPosition()
     {
-        var database = await ReadyAsync(postgres, $"UPDATE machines SET state = 'running' WHERE id = '{WasherId}'");
+        var database = await ReadyAsync(postgres, $"UPDATE machines SET state = 'running', is_demo_occupied = true WHERE id = '{WasherId}'");
         var clock = Clock();
         var booking = await BookingApi.PurchaseAsync(database, clock, ["wash", "wash"]);
         await using var factory = BookingApi.Create(database, clock, Unlimited);
@@ -83,12 +83,12 @@ public sealed class ActivateItemTests(PostgresFixture postgres)
     [Fact]
     public async Task V03_ActivationDoesNotOvertakeAnOlderQueuedItemWhenTheMachineIsFree()
     {
-        var database = await ReadyAsync(postgres, $"UPDATE machines SET state = 'running' WHERE id = '{WasherId}'; UPDATE wallets SET balance = 100.00;");
+        var database = await ReadyAsync(postgres, $"UPDATE machines SET state = 'running', is_demo_occupied = true WHERE id = '{WasherId}'; UPDATE wallets SET balance = 100.00;");
         var clock = Clock();
         var older = await BookingApi.PurchaseAsync(database, clock, ["wash"]);
         var booking = await BookingApi.PurchaseAsync(database, clock, ["wash", "dry"]);
         // A lavadora fica livre sem promoção; o item novo disputa a máquina com o item mais antigo da fila.
-        await database.ExecuteAsync($"UPDATE machines SET state = 'available' WHERE id = '{WasherId}'");
+        await database.ExecuteAsync($"UPDATE machines SET state = 'available', is_demo_occupied = false WHERE id = '{WasherId}'");
         await using var factory = BookingApi.Create(database, clock, Unlimited);
 
         var item = await BookingApi.JsonAsync(await ActivateAsync(factory.CreateClient(), booking.BookingId, Item(booking, "wash")));
@@ -103,7 +103,7 @@ public sealed class ActivateItemTests(PostgresFixture postgres)
     [InlineData("in_progress")]
     public async Task V04_RepeatedActivationReturns200WithTheCurrentStateWithoutTicketStartOrCharge(string state)
     {
-        var database = await ReadyAsync(postgres, state == "queued" ? $"UPDATE machines SET state = 'running' WHERE id = '{WasherId}'" : null);
+        var database = await ReadyAsync(postgres, state == "queued" ? $"UPDATE machines SET state = 'running', is_demo_occupied = true WHERE id = '{WasherId}'" : null);
         var clock = Clock();
         var booking = await BookingApi.PurchaseAsync(database, clock, ["wash"]);
         var wash = booking.Items[0].ItemId;

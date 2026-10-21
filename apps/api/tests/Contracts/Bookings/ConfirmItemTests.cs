@@ -190,7 +190,7 @@ public sealed class ConfirmItemTests(PostgresFixture postgres)
     [Fact]
     public async Task C07_InvalidIdsForeignItemsAndItemsWithoutAPendingOfferAreRejectedWithoutMutation()
     {
-        var database = await ReadyAsync(postgres, $"UPDATE wallets SET balance = 100.00; UPDATE machines SET state = 'running' WHERE id = '{DryerId}';");
+        var database = await ReadyAsync(postgres, $"UPDATE wallets SET balance = 100.00; UPDATE machines SET state = 'running', is_demo_occupied = true WHERE id = '{DryerId}';");
         var clock = Clock();
         var booking = await BookingApi.PurchaseAsync(database, clock, ["wash", "dry"]);
         var other = await BookingApi.PurchaseAsync(database, clock, ["wash"]);

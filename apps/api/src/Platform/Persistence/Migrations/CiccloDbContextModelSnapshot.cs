@@ -167,6 +167,12 @@ namespace Cicclo.Api.Platform.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("active_item_id");
 
+                    b.Property<bool>("IsDemoOccupied")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_demo_occupied");
+
                     b.Property<string>("MachineType")
                         .IsRequired()
                         .HasColumnType("text")
@@ -203,6 +209,8 @@ namespace Cicclo.Api.Platform.Persistence.Migrations
                     b.ToTable("machines", null, t =>
                         {
                             t.HasCheckConstraint("ck_machines_active_item", "(state IN ('reserved', 'running') OR active_item_id IS NULL) AND (state <> 'reserved' OR active_item_id IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_machines_demo_occupied", "is_demo_occupied = (state = 'running' AND active_item_id IS NULL)");
 
                             t.HasCheckConstraint("ck_machines_machine_type", "machine_type IN ('washer', 'dryer')");
 

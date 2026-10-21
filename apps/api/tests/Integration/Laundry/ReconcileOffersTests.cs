@@ -323,7 +323,7 @@ public sealed class ReconcileOffersTests(PostgresFixture postgres)
         await ActivateAsync(Sessions(database, SetupApp), Coordinator(clock), a);
         if (scenario != "offer still valid")
         {
-            await database.ExecuteAsync($"UPDATE machines SET state = 'running', active_item_id = NULL WHERE id = '{WasherId}'");
+            await database.ExecuteAsync($"UPDATE machines SET state = 'running', active_item_id = NULL, is_demo_occupied = true WHERE id = '{WasherId}'");
         }
 
         var before = await database.RowsAsync(StateSql);
