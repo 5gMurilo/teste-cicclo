@@ -145,7 +145,9 @@ curl -i -X POST http://localhost:5001/api/v1/bookings \
 
 `GET /api/v1/bookings?page=1&pageSize=20` lista os bookings da wallet demo como `{ "items": [...], "page": 1, "pageSize": 20, "hasNextPage": false }`, cada item com a mesma projeção do detalhe. A ordem é `createdAt` decrescente e `bookingId` decrescente (estável com instantes empatados). `page` é 1-based (padrão 1) e `pageSize` vai de 1 a 100 (padrão 20); fora disso, ou com valor não inteiro, a resposta é 400 `VALIDATION_ERROR`. Uma página além do fim responde 200 com `items` vazio.
 
-As leituras de contratações (detalhe e listagem) compartilham uma política própria: janela fixa de 1 minuto por IP, `RateLimiting:BookingReads:PermitLimit` (padrão 30), separada do limite de wallet e catálogo.
+`GET /api/v1/wallet/transactions?page=1&pageSize=20` devolve o histórico financeiro da wallet demo no mesmo formato paginado, em ordem `createdAt` decrescente e `transactionId` decrescente. Cada lançamento traz `transactionId`, `bookingId`, `itemId` (null no débito, que pertence ao booking inteiro), `kind` (`debit`), `amountCents` (sempre positivo) e `balanceAfterCents` (saldo gravado logo depois do lançamento, histórico; não é recalculado com o saldo atual). Uma compra `wash` numa wallet de 5000 aparece como `debit` de 1890 com `balanceAfterCents` 3110.
+
+As leituras de contratações e do histórico (detalhe, listagem e lançamentos) compartilham uma política própria: janela fixa de 1 minuto por IP, `RateLimiting:BookingReads:PermitLimit` (padrão 30), separada do limite de `GET /api/v1/wallet` e catálogo.
 
 ### Observabilidade
 
