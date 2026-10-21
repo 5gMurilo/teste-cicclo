@@ -45,11 +45,10 @@
 ## Handoff
 
 - **Feature**: `.specs/features/cicclo-mobile/spec.md`.
-- **Phase / Task**: Execute inline e sequencial. Última tarefa fechada: T30.
-- **Completed**: T1-T9, T11-T20, T22 e T27 fechadas; T10, T21, T23-T26, T28, T29 e T30 implementadas/preparadas e pendentes dos gates externos. T30 = apps/mobile/README.md (instalação, URLs por dispositivo, fluxo, idempotência, limitações, resultados reais: mobile passa; workspace falha só por falta de dotnet) e link na raiz (21/37 com Done when marcado).
-- **In-progress**: Nenhuma.
-- **Next step**: Verifier independente sobre o código P0; depois os gates com a API real (C1, C2, C3), N1 do usuário e a integração das branches.
-- **Pendente da API real**: C1 (T10 e demo de E1/E2), integração por fast-forward de E1 e E2 em `mobile-worktree`; C2 (CTA real em T21), C3 (T22-T28), N1 (T29, com o usuário). Decisão do usuário (2026-10-21): implementar o código de todas as etapas E com fakes primeiro e deixar a interação real com a API para depois de todas elas.
-- **Blockers**: C1/C2/C3 não provados. `dotnet` não aparece no PATH desta sessão (há `docker` e `psql`). `tests/bootstrap.test.mjs` teste 6 falha localmente por isso.
-- **Branches** (atual: `chore/mobile-05-p0-readiness`): chore/mobile-00-baseline 08e6c7d; chore/mobile-05-p0-readiness e444182; feat/mobile-01-catalog-wallet 6bd529c; feat/mobile-02-selection-review 0a34316; feat/mobile-03-safe-booking 9674db3; feat/mobile-04-booking-tracking ad3d9a8; mobile-worktree 08e6c7d.
-- **Uncommitted files**: `.omc/` e `apps/mobile/.omc/` (estado de ferramenta, não versionar).
+- **Phase / Task**: Código de P0 (E0 a E5) completo; Verifier independente rodou 2 iterações (1 fix loop) e terminou em PASS para o que é verificável sem a API real e sem o Android (`validation.md`, faixa `08e6c7d..db1ea75`, 252 testes, 28 mutantes mortos). Pausado por decisão do usuário (2026-10-21): tudo que exige a API real vem depois de todas as etapas.
+- **Completed**: T1 a T9, T11 a T20, T22 e T27 com Done when `[x]`; T10, T21, T23 a T26, T28, T29 e T30 implementadas/preparadas (`[~]`) e pendentes de gate externo.
+- **Pendente da API real e do usuário**: C1 (T10; demo Home/Checkout sem débito, saldo 5000, catálogo 1890/2090), C2 (T21; ligar `capabilities.purchase` e provar compra 5000 para 3110, replay, duplicatas, limite, códigos e retenção da chave, depois preencher `keyRetentionMs`), C3 (T23 a T26, T28), N1 (T29, executado pelo usuário com `apps/mobile/docs/native-validation.md`), e então integrar as branches por fast-forward em `mobile-worktree`. Só depois disso a entrega P0 pode ser declarada concluída; o Verifier deve ser reexecutado com esses resultados.
+- **Next step**: quando o usuário avisar que a API está no docker: subir com a base demo, apontar `EXPO_PUBLIC_API_URL`, provar C1, C2 e C3 contra a API real, registrar origem/data em `apps/mobile/docs/api-contract.md`, fechar os `[~]`, integrar E1 a E5 e reexecutar o Verifier. P1 (T31 a T37) só depois de CP1.
+- **Blockers**: C1/C2/C3 e N1 não provados. `dotnet` fora do PATH desta sessão (há `docker`); testes do workspace e do bootstrap que compilam a API falham por isso.
+- **Branches**: cadeia linear E0 `chore/mobile-00-baseline` (já em `mobile-worktree`), E1 `feat/mobile-01-catalog-wallet` (T2 a T10), E2 `feat/mobile-02-selection-review` (T11 a T16), E3 `feat/mobile-03-safe-booking` (T17 a T21), E4 `feat/mobile-04-booking-tracking` (T22 a T28), E5 `chore/mobile-05-p0-readiness` (T29, T30 e correções do Verifier; branch atual). Cada uma contém as anteriores; nada foi enviado ao remoto.
+- **Uncommitted files**: nenhum (`.omc/` agora ignorado).
