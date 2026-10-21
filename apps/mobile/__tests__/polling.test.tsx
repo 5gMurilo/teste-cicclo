@@ -229,3 +229,76 @@ describe('polling the booking detail', () => {
     expect(counts.detail).toBe(before);
   });
 });
+
+describe('T37: offers in the Serviços list', () => {
+  const T0 = Date.parse('2026-10-21T12:00:00Z');
+  const withOffer = (secondsLeft: number, extraItems: ReturnType<typeof item>[] = []) => ({
+    ...booking('queued'),
+    items: [
+      {
+        ...item('to_be_confirmed'),
+        machineId: '20000000-0000-4000-8000-000000000009',
+        expiresAt: new Date(T0 + secondsLeft * 1000).toISOString(),
+      },
+      ...extraItems,
+    ],
+  });
+
+  beforeEach(() => {
+    jest.spyOn(Date, 'now').mockImplementation(() => T0);
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  it('highlights the offer and its deadline right on the card, so nobody has to guess to open the detail', async () => {
+    listReply = () => ({ status: 200, body: { items: [withOffer(60)], page: 1, pageSize: 20, hasNextPage: false } });
+    await openServices();
+
+    expect(screen.getByText('Oferta de máquina para wash: confirme no detalhe')).toBeOnTheScreen();
+    expect(screen.getByText('Tempo restante: 60 s')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: /oferta de máquina aguardando confirmação até / })).toBeOnTheScreen();
+  });
+
+  it('shows no offer block for a booking without an offer', async () => {
+    await openServices();
+
+    expect(screen.queryByText(/Oferta de máquina para/)).toBeNull();
+    expect(screen.queryByText(/Tempo restante/)).toBeNull();
+  });
+
+  it('keeps the finished items of a mixed batch visible next to the offer', async () => {
+    listReply = () => ({
+      status: 200,
+      body: { items: [withOffer(60, [item('completed')])], page: 1, pageSize: 20, hasNextPage: false },
+    });
+    await openServices();
+
+    expect(screen.getByText(/Concluído/)).toBeOnTheScreen();
+    expect(screen.getByText(/Máquina ofertada, aguardando confirmação/)).toBeOnTheScreen();
+    expect(screen.getByText('Tempo restante: 60 s')).toBeOnTheScreen();
+  });
+
+  it('re-reads the list once when the offer expires', async () => {
+    listReply = () => ({ status: 200, body: { items: [withOffer(3)], page: 1, pageSize: 20, hasNextPage: false } });
+    await openServices();
+    const before = counts.list;
+
+    await act(async () => jest.setSystemTime(T0 + 4_000));
+    await advance(4_000);
+
+    expect(await screen.findByText('Oferta vencida')).toBeOnTheScreen();
+    expect(counts.list).toBeGreaterThan(before);
+  });
+
+  it('keeps the card spoken as one static label, without per-second announcements, and opens the detail', async () => {
+    listReply = () => ({ status: 200, body: { items: [withOffer(60)], page: 1, pageSize: 20, hasNextPage: false } });
+    const app = await openServices();
+    const card = screen.getByRole('button', { name: /^Abrir contratação/ });
+    const spoken = card.props.accessibilityLabel as string;
+
+    await advance(3_000);
+    expect(screen.getByRole('button', { name: /^Abrir contratação/ }).props.accessibilityLabel).toBe(spoken);
+
+    await fireEvent.press(card);
+    expect(app.getPathname()).toBe(`/bookings/${BOOKING_ID}`);
+  });
+});

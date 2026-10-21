@@ -17,6 +17,8 @@ const cancelResponseSchema = z.object({
 
 export type CancelResult = z.infer<typeof cancelResponseSchema>;
 
+export const parseCancelResponse = (json: unknown): CancelResult => cancelResponseSchema.parse(json);
+
 export function canCancel(status: string): boolean {
   return capabilities.itemCommands.cancel && isCancellableStatus(status);
 }
@@ -25,7 +27,7 @@ export function useCancelItem(bookingId: string) {
   const queryClient = useQueryClient();
   const send = useCallback(
     async (itemId: string): Promise<CancelResult> => {
-      const result = cancelResponseSchema.parse(await postItemCommand({ bookingId, itemId, action: 'cancel' }));
+      const result = parseCancelResponse(await postItemCommand({ bookingId, itemId, action: 'cancel' }));
       // Only a valid authoritative answer touches the wallet cache; a failure never credits anything.
       // A cache problem cannot turn an already confirmed cancellation into a failure.
       try {

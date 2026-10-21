@@ -1,4 +1,4 @@
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -7,7 +7,9 @@ import { ApiError } from '../../shared/api/apiError';
 import { CONFIG_ERROR_MESSAGE, isConfigError } from '../../shared/config/env';
 import { formatBRL } from '../../shared/lib/money';
 import { colors, spacing } from '../../shared/theme/tokens';
+import { OfferCountdown } from './components/OfferCountdown';
 import { bookingsListOptions } from './listQuery';
+import { bookingsKey } from './queryKeys';
 import type { Booking } from './schema';
 import { bookingPhase, statusLabel } from './status';
 import { LIST_POLL_MS, useBookingPolling } from './useBookingPolling';
@@ -25,6 +27,7 @@ const EMPTY_TEXT: Record<Filter, string> = {
 };
 
 const dateFormat = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+const timeFormat = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 const shortId = (id: string) => id.slice(0, 8);
 
 const hasLiveBookings = (data: { pages: { items: Booking[] }[] } | undefined) =>
@@ -126,13 +129,16 @@ export function BookingsScreen() {
 }
 
 function BookingCard({ booking, onOpen }: { booking: Booking; onOpen: () => void }) {
+  const queryClient = useQueryClient();
   const created = dateFormat.format(new Date(booking.createdAt));
+  const offers = booking.items.filter((item) => item.status === 'to_be_confirmed' && item.expiresAt !== null);
+  const offerSummary = offers.length === 0 ? '' : `, oferta de máquina aguardando confirmação até ${timeFormat.format(new Date(offers[0].expiresAt as string))}`;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Abrir contratação ${shortId(booking.bookingId)}, ${created}, ${formatBRL(booking.chargedAmountCents)}`}
+      accessibilityLabel={`Abrir contratação ${shortId(booking.bookingId)}, ${created}, ${formatBRL(booking.chargedAmountCents)}${offerSummary}`}
       onPress={onOpen}
-      style={styles.card}
+      style={[styles.card, offers.length > 0 && styles.cardOffer]}
     >
       <Text style={styles.name}>{`Contratação ${shortId(booking.bookingId)}`}</Text>
       <Text style={styles.detail}>{`${created} · ${formatBRL(booking.chargedAmountCents)}`}</Text>
@@ -140,6 +146,15 @@ function BookingCard({ booking, onOpen }: { booking: Booking; onOpen: () => void
         <Text key={item.itemId} style={styles.detail}>
           {`${item.serviceCode} · ${formatBRL(item.unitPriceCents)} · ${statusLabel(item.status)}`}
         </Text>
+      ))}
+      {offers.map((item) => (
+        <View key={`offer-${item.itemId}`} style={styles.offer}>
+          <Text style={styles.offerTitle}>{`Oferta de máquina para ${item.serviceCode}: confirme no detalhe`}</Text>
+          <OfferCountdown
+            expiresAt={item.expiresAt as string}
+            onExpired={() => void queryClient.invalidateQueries({ queryKey: bookingsKey })}
+          />
+        </View>
       ))}
     </Pressable>
   );
@@ -173,6 +188,9 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', gap: spacing.sm, padding: spacing.md },
   footer: { alignItems: 'center', gap: spacing.sm, padding: spacing.md },
   card: { gap: spacing.xs, padding: spacing.md, borderColor: colors.border, borderWidth: 1, borderRadius: 8 },
+  cardOffer: { borderColor: colors.text, borderWidth: 2 },
+  offer: { gap: spacing.xs, marginTop: spacing.xs },
+  offerTitle: { fontSize: 14, fontWeight: '700', color: colors.text },
   name: { fontSize: 16, fontWeight: '600', color: colors.text },
   detail: { fontSize: 14, color: colors.text },
   message: { fontSize: 16, color: colors.textMuted, textAlign: 'center' },

@@ -13,6 +13,8 @@ const reportResponseSchema = z.object({
 
 export type ReportResult = z.infer<typeof reportResponseSchema>;
 
+export const parseReportResponse = (json: unknown): ReportResult => reportResponseSchema.parse(json);
+
 /** Only an execution that is running can be reported. */
 export function canReportIssue(status: string): boolean {
   return capabilities.itemCommands.reportIssue && status === 'in_progress';
@@ -21,7 +23,7 @@ export function canReportIssue(status: string): boolean {
 export function useReportIssue(bookingId: string) {
   const send = useCallback(
     async (itemId: string): Promise<ReportResult> =>
-      reportResponseSchema.parse(await postItemCommand({ bookingId, itemId, action: 'report-issue' })),
+      parseReportResponse(await postItemCommand({ bookingId, itemId, action: 'report-issue' })),
     [bookingId],
   );
   return useItemCommand(send);

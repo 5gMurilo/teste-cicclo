@@ -533,7 +533,7 @@ Nenhuma tarefa desta fase começa antes de CP1. Cada comando abaixo requer seu p
 **Reuses**: listQuery, status, OfferCountdown e detalhe; sem duplicar políticas de confirmação.
 **Requirement**: QUEUE-02, QUEUE-03, QUEUE-05, QUEUE-07, QUEUE-10, UX-01.
 **What**: Destacar oferta/prazo e caminho claro ao detalhe; fechar demonstração P1 sem depender de SignalR.
-**Done when**: [ ] Usuário vê oferta sem adivinhar detalhe; fila/estorno são autoritativos; smoke de activate→queued/oferta→confirm/expire/cancel/report real conforme suporte; relatório de capacidades atualizado; depois do commit iniciar V P1.
+**Done when**: [~] Usuário vê oferta sem adivinhar detalhe; fila/estorno são autoritativos; smoke de activate→queued/oferta→confirm/expire/cancel/report real conforme suporte; relatório de capacidades atualizado; depois do commit iniciar V P1.
 **Tests**: integration — teto de 5 casos: oferta destacada, lista sem oferta, expiração/refetch, lote misto e navegação; smoke manual real registra 60s/410 e estorno somente confirmado.
 **Gate**: CP1 + F + B + W + demonstração P1 + CC; V fecha fase após commit.
 **Commit**: `feat(bookings): surface actionable offers in service tracking`
@@ -711,7 +711,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **32/37 tarefas com Done when marcado** (última: T36); demais abertas ou pendentes de gate externo.
+- Implementação: **32/37 tarefas com Done when marcado** (última: T37); demais abertas ou pendentes de gate externo.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1, C2 e C3 provados contra a API real em 2026-10-21; N1 aprovado pelo usuário no iOS em relato global (AD-006); CP1 (P1) não comprovado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.
