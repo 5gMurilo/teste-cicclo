@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** P0 fechado (30/37): C1, C2 e C3 provados contra a API real; N1 aprovado pelo usuário no iOS e aceito para o Android por decisão dele (AD-006, AD-007); Verifier PASS. P1 (T31-T37) em execução.
+**Execução:** 35/37 com Done when marcado. P0 fechado e verificado; P1 implementado e ligado, com T34 (cancelar) e T37 (oferta na lista) ainda `[~]` à espera da prova ao vivo limpa; Verifier de P1 pendente.
 
 ## Execution Protocol
 
@@ -76,15 +76,17 @@ Nenhuma tarefa que altera comportamento transfere sua cobertura para outra taref
 
 ### Branches e integração local
 
+> Nomes finais das branches (2026-10-21): a numeração E0 a E6 foi retirada, ficando `tipo/descrição`, e cada branch é publicada como PR empilhado sobre a anterior.
+
 | Etapa | Branch nova | Tarefas | Saída |
 | --- | --- | --- | --- |
-| E0 | `chore/mobile-00-baseline` | T1 | C0, B, S |
-| E1 | `feat/mobile-01-catalog-wallet` | T2–T10 | B + C1 |
-| E2 | `feat/mobile-02-selection-review` | T11–T16 | B + demo C1 sem débito |
-| E3 | `feat/mobile-03-safe-booking` | T17–T21 | B + C2 + demo compra/replay |
-| E4 | `feat/mobile-04-booking-tracking` | T22–T28 | B + C3 + demo leitura/lifecycle |
-| E5 | `chore/mobile-05-p0-readiness` | T29–T30 | B + W + N1 + V P0 |
-| E6 | `feat/mobile-06-service-lifecycle` | T31–T37 | CP1 + B + W + demo P1 + V P1 |
+| E0 | `docs/mobile-delivery-baseline` | T1 | C0, B, S |
+| E1 | `feat/mobile-catalog-and-wallet-reading` | T2–T10 | B + C1 |
+| E2 | `feat/mobile-service-selection-and-review` | T11–T16 | B + demo C1 sem débito |
+| E3 | `feat/mobile-safe-booking-purchase` | T17–T21 | B + C2 + demo compra/replay |
+| E4 | `feat/mobile-booking-tracking` | T22–T28 | B + C3 + demo leitura/lifecycle |
+| E5 | `chore/mobile-p0-validation-and-evidence` | T29–T30 | B + W + N1 + V P0 |
+| E6 | `feat/mobile-service-lifecycle` | T31–T37 | CP1 + B + W + demo P1 + V P1 |
 
 Default operacional detalhado para futura execução: usar a branch local **`mobile-worktree` como integração**, sem alterar `main` ou o outro worktree. Em T1, criar E0 diretamente do bootstrap commitado vigente, levando somente os documentos de planejamento deste worktree após conferir que não há colisão. Assim se preserva o histórico original sem copiar código nem cherry-pickar o monorepo.
 
@@ -467,10 +469,11 @@ Nenhuma tarefa desta fase começa antes de CP1. Cada comando abaixo requer seu p
 **Reuses**: client/detailQuery/status; estender seletor de ação existente e integrar CTA mínimo ao detalhe.
 **Requirement**: QUEUE-01, QUEUE-02, QUEUE-05, UX-01.
 **What**: Implementar o único endpoint activate, mutation sem retry/pausa e disponibilidade pelo status/capacidade.
-**Done when**: [ ] Só pending_activation oferece CTA; resultado é consultado/invalida detalhe/lista; queued explica pago; 409 faz refetch; ausência de suporte oculta ação.
+**Done when**: [x] Só pending_activation oferece CTA; resultado é consultado/invalida detalhe/lista; queued explica pago; 409 faz refetch; ausência de suporte oculta ação.
 **Tests**: integration — teto de 5 casos: sem capacidade, pending_activation, resposta queued/oferta, estado indevido sem POST, 409 e ação pending não duplicada.
 **Gate**: CP1 + F + CC.
 **Commit**: `feat(bookings): activate paid pending service items`
+**Fechamento CP1**: evidência real parcial, registrada em apps/mobile/docs/api-contract.md: ativação observada ao vivo (item ativo e itens pendentes do lote); caso `queued` sem prova real.
 
 #### T32: renderizar contagem por prazo do servidor
 **Where**: `apps/mobile/src/features/bookings/components/OfferCountdown.tsx`
@@ -478,7 +481,7 @@ Nenhuma tarefa desta fase começa antes de CP1. Cada comando abaixo requer seu p
 **Reuses**: expiresAt do detalhe, Date.now e callback de refetch fornecido pelo consumidor.
 **Requirement**: QUEUE-03, QUEUE-04, SAFE-05, UX-01.
 **What**: Exibir restante calculado por timestamps, disparar expiração uma vez por oferta e limpar timer.
-**Done when**: [ ] 60/1/0s corretos; foreground recalcula; não muda status; não anuncia cada segundo ao leitor de tela; timer inexistente depois de unmount.
+**Done when**: [x] 60/1/0s corretos; foreground recalcula; não muda status; não anuncia cada segundo ao leitor de tela; timer inexistente depois de unmount.
 **Tests**: integration — teto de 6 casos com clock fake: 60s, 1s, zero, timestamp já vencido, background/retorno e cleanup/rerender; callback de expiração não se repete no zero.
 **Gate**: CP1 + F + CC.
 **Commit**: `feat(bookings): render server-based offer countdowns`
@@ -489,10 +492,11 @@ Nenhuma tarefa desta fase começa antes de CP1. Cada comando abaixo requer seu p
 **Reuses**: client, status, OfferCountdown e detalhe existente; uma ação de domínio.
 **Requirement**: QUEUE-01, QUEUE-03, QUEUE-04, QUEUE-05, UX-01.
 **What**: Implementar confirm com bloqueio visual na expiração e submissão pendente, respeitando 410 mesmo com tempo local restante.
-**Done when**: [ ] Só oferta atual habilita; zero não envia; 409/410 refaz leitura e informa estado real; sem transição local presumida para in_progress.
+**Done when**: [x] Só oferta atual habilita; zero não envia; 409/410 refaz leitura e informa estado real; sem transição local presumida para in_progress.
 **Tests**: integration — teto de 5 casos: sucesso, zero sem POST, 410 antes do zero local, 409, duplo toque e retorno do background após expirar.
 **Gate**: CP1 + F + CC.
 **Commit**: `feat(bookings): confirm eligible machine offers`
+**Fechamento CP1**: evidência real parcial, registrada em apps/mobile/docs/api-contract.md: 410 observado ao vivo e confirmação em uso real pelo usuário (relato); repetição do confirm sem prova real.
 
 #### T34: cancelar somente antes do início e refletir refund confirmado
 **Where**: `apps/mobile/src/features/bookings/cancelItem.ts`
@@ -500,7 +504,7 @@ Nenhuma tarefa desta fase começa antes de CP1. Cada comando abaixo requer seu p
 **Reuses**: status e client; sincronização de wallet por contrato público, sem depender de helper interno checkout.
 **Requirement**: QUEUE-05, QUEUE-06, QUEUE-07, UX-01.
 **What**: Implementar cancel com elegibilidade central e invalidação financeira somente após resposta autoritativa.
-**Done when**: [ ] Ação ausente em in_progress/terminal; refund não aparece sem campo/prova real; sem crédito otimista; 409 refaz detalhe.
+**Done when**: [~] Ação ausente em in_progress/terminal; refund não aparece sem campo/prova real; sem crédito otimista; 409 refaz detalhe.
 **Tests**: integration — teto de 6 casos: três estados permitidos parametrizados, in_progress, terminal, 409, sucesso com refund, resposta sem prova de refund e erro sem crédito.
 **Gate**: CP1 + F + CC.
 **Commit**: `feat(bookings): cancel eligible items with confirmed refund feedback`
@@ -511,10 +515,11 @@ Nenhuma tarefa desta fase começa antes de CP1. Cada comando abaixo requer seu p
 **Reuses**: client, contrato real de report-issue, detalhe/status.
 **Requirement**: QUEUE-08, QUEUE-07, UX-01.
 **What**: Implementar report endpoint com feedback de verificação e sem alterar saldo.
-**Done when**: [ ] 202 ou sucesso contratual diz Relato enviado para verificação; ausência de suporte oculta ação; nunca adiciona painel de operador.
+**Done when**: [x] 202 ou sucesso contratual diz Relato enviado para verificação; ausência de suporte oculta ação; nunca adiciona painel de operador.
 **Tests**: integration — teto de 4 casos: aceito sem crédito, rejeitado/409, capacidade ausente, pending impede repetição; não apresentar texto de estorno.
 **Gate**: CP1 + F + CC.
 **Commit**: `feat(bookings): report incidents without implying refunds`
+**Fechamento CP1**: evidência real parcial, registrada em apps/mobile/docs/api-contract.md: 202 e limite de 3/min observados ao vivo e relato em uso real pelo usuário; repetição com o mesmo incidentId sem prova real.
 
 #### T36: atualizar apenas serviços visíveis e não terminais
 **Where**: `apps/mobile/src/features/bookings/useBookingPolling.ts`
@@ -522,7 +527,7 @@ Nenhuma tarefa desta fase começa antes de CP1. Cada comando abaixo requer seu p
 **Reuses**: Query list/detail, status e sinais lifecycle, sem segundo monitor de rede.
 **Requirement**: QUEUE-02, QUEUE-09, SAFE-04, SAFE-05.
 **What**: Aplicar polling condicional de 10s na lista e 5s no detalhe, ajustado ao rate limit real.
-**Done when**: [ ] Blur/background/offline/terminal suspendem; foreground/reconexão refazem GET; não há polling de wallet por reflexo nem POST automático; cleanup sem observer duplicado.
+**Done when**: [x] Blur/background/offline/terminal suspendem; foreground/reconexão refazem GET; não há polling de wallet por reflexo nem POST automático; cleanup sem observer duplicado.
 **Tests**: integration — teto de 7 casos: lista ativa, detalhe ativo, blur, background, offline, todos terminais e reconnect; avançar clock para comprovar chamadas e suspensão reais.
 **Gate**: CP1 + F + CC.
 **Commit**: `feat(bookings): poll visible nonterminal service states`
@@ -533,7 +538,7 @@ Nenhuma tarefa desta fase começa antes de CP1. Cada comando abaixo requer seu p
 **Reuses**: listQuery, status, OfferCountdown e detalhe; sem duplicar políticas de confirmação.
 **Requirement**: QUEUE-02, QUEUE-03, QUEUE-05, QUEUE-07, QUEUE-10, UX-01.
 **What**: Destacar oferta/prazo e caminho claro ao detalhe; fechar demonstração P1 sem depender de SignalR.
-**Done when**: [ ] Usuário vê oferta sem adivinhar detalhe; fila/estorno são autoritativos; smoke de activate→queued/oferta→confirm/expire/cancel/report real conforme suporte; relatório de capacidades atualizado; depois do commit iniciar V P1.
+**Done when**: [~] Usuário vê oferta sem adivinhar detalhe; fila/estorno são autoritativos; smoke de activate→queued/oferta→confirm/expire/cancel/report real conforme suporte; relatório de capacidades atualizado; depois do commit iniciar V P1.
 **Tests**: integration — teto de 5 casos: oferta destacada, lista sem oferta, expiração/refetch, lote misto e navegação; smoke manual real registra 60s/410 e estorno somente confirmado.
 **Gate**: CP1 + F + B + W + demonstração P1 + CC; V fecha fase após commit.
 **Commit**: `feat(bookings): surface actionable offers in service tracking`
@@ -711,7 +716,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **30/37 tarefas com Done when marcado**; T31-T37 (P1) em execução, cada capacidade só liga depois de provada na API real (CP1).
+- Implementação: **35/37 tarefas com Done when marcado**; T34 e T37 aguardam a prova ao vivo limpa depois do reset da demo.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1, C2 e C3 provados contra a API real em 2026-10-21; N1 aprovado pelo usuário no iOS em relato global (AD-006); CP1 (P1) não comprovado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.

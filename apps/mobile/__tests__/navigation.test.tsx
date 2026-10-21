@@ -1,5 +1,5 @@
 import { fireEvent } from '@testing-library/react-native';
-import { renderRouter, screen } from 'expo-router/testing-library';
+import { renderRouter, screen, within } from 'expo-router/testing-library';
 
 import { queryClient } from '../src/shared/api/queryClient';
 
@@ -60,5 +60,22 @@ describe('tab navigation', () => {
     } finally {
       queryClient.clear();
     }
+  });
+});
+
+describe('tab icons', () => {
+  it('gives each tab its own icon without changing the accessible tab names', async () => {
+    globalThis.fetch = jest.fn(async () => ({
+      status: 404,
+      ok: false,
+      headers: { get: () => null },
+      text: async () => '{}',
+    })) as unknown as typeof fetch;
+    await renderRouter(APP_DIR);
+
+    expect(within(screen.getByLabelText('Serviços, tab, 1 of 3')).getAllByText('list').length).toBeGreaterThan(0);
+    expect(within(screen.getByLabelText('Home, tab, 2 of 3')).getAllByText('home').length).toBeGreaterThan(0);
+    expect(within(screen.getByLabelText('Checkout, tab, 3 of 3')).getAllByText('cart').length).toBeGreaterThan(0);
+    queryClient.clear();
   });
 });

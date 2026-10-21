@@ -1,7 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 
 import { bookingsKey } from '../bookings/queryKeys';
-import { walletKey, type Wallet } from '../wallet/queries';
+import { applyConfirmedBalance } from '../wallet/cache';
 import type { ConfirmedBooking } from './createBooking';
 
 /**
@@ -10,17 +10,8 @@ import type { ConfirmedBooking } from './createBooking';
  */
 export async function applyConfirmedBooking(queryClient: QueryClient, booking: ConfirmedBooking): Promise<void> {
   try {
-    // Cancel before writing: cancelling reverts a query to its previous data, and a GET that started
-    // before the purchase must not land afterwards and bring the old balance back.
-    await queryClient.cancelQueries({ queryKey: walletKey });
-
-    // Only an existing, complete wallet is updated; updatedAt is not ours to invent, the refetch restores it.
-    queryClient.setQueryData<Wallet>(walletKey, (current) =>
-      current ? { ...current, balanceCents: booking.remainingBalanceCents } : undefined,
-    );
-
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: walletKey }),
+      applyConfirmedBalance(queryClient, booking.remainingBalanceCents),
       queryClient.invalidateQueries({ queryKey: bookingsKey }),
     ]);
   } catch {

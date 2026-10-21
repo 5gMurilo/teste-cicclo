@@ -43,3 +43,8 @@ export function bookingPhase(items: readonly { status: string }[]): BookingPhase
 export function hasUnrecognizedStatus(items: readonly { status: string }[]): boolean {
   return items.some((item) => !isKnownStatus(item.status));
 }
+
+/** Cancelling is only possible before the execution starts. */
+export function isCancellableStatus(status: string): boolean {
+  return status === 'pending_activation' || status === 'queued' || status === 'to_be_confirmed';
+}

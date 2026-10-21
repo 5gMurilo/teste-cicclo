@@ -9,7 +9,6 @@
  */
 import { QueryClient } from '@tanstack/react-query';
 import { randomUUID } from 'node:crypto';
-import http from 'node:http';
 
 import { ApiError } from '../src/shared/api/apiError';
 import { requestJson } from '../src/shared/api/client';
@@ -19,34 +18,10 @@ import { catalogOptions } from '../src/features/catalog/queries';
 import { classifyFailure } from '../src/features/checkout/useBookingSubmission';
 import { createBooking, serializeBookingBody } from '../src/features/checkout/createBooking';
 import { walletOptions } from '../src/features/wallet/queries';
+import { installNodeFetch } from './nodeFetch';
 
 jest.setTimeout(240_000);
-
-// The React Native Jest environment replaces fetch with a stub that never talks HTTP; use a minimal real one.
-globalThis.fetch = ((input: string | URL | Request, init?: RequestInit) =>
-  new Promise<Response>((resolve, reject) => {
-    const request = http.request(
-      String(input),
-      { method: init?.method ?? 'GET', headers: init?.headers as Record<string, string> },
-      (response) => {
-        const chunks: Buffer[] = [];
-        response.on('data', (chunk: Buffer) => chunks.push(chunk));
-        response.on('end', () => {
-          const status = response.statusCode ?? 0;
-          resolve({
-            status,
-            ok: status >= 200 && status < 300,
-            headers: { get: (name: string) => (response.headers[name.toLowerCase()] as string | undefined) ?? null },
-            text: async () => Buffer.concat(chunks).toString('utf8'),
-          } as unknown as Response);
-        });
-      },
-    );
-    request.on('error', reject);
-    init?.signal?.addEventListener('abort', () => request.destroy(new Error('aborted')));
-    if (init?.body !== undefined) request.write(init.body as string);
-    request.end();
-  })) as typeof fetch;
+installNodeFetch();
 
 const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0, staleTime: 0 } } });
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

@@ -36,3 +36,30 @@ Observações: logo após a compra o item chegou `to_be_confirmed` com `machineI
 5. Só o estado `to_be_confirmed` foi visto ao vivo; os estados terminais e `queued` estão provados com API simulada e pela leitura do backend.
 6. A precificação de duplicatas é inferida de uma recusa; nenhuma compra de duas ou mais unidades, nem preferência aceita, foi exercitada com débito. Para fechar isso: restaurar a demo e repetir com `["wash","wash"]` e preferência.
 7. O teste ao vivo usa o `fetch` do Node, não o do React Native, e o preço histórico (1890) coincide com o atual. A primeira execução com o `fetch` do React Native contra a API será a N1, no Android.
+
+## Provas P1 contra a API real (gate CP1)
+
+**Data:** 2026-10-21, `http://127.0.0.1:5001`. **Fonte dos contratos:** o OpenAPI da própria API em execução (`/openapi/v1.json`): `POST /api/v1/bookings/{bookingId}/items/{itemId}/{activate|confirm|cancel|report-issue}`. Limites por IP e por minuto: `activate` e `confirm` 15 (compartilhado), `cancel` 10, `report-issue` 3, leituras de contratações 30 (lista e detalhe).
+
+**Como foi obtida:** `live/lifecycle.live.test.ts` rodou uma vez contra a demo (cancelou a lavagem A, comprou um lote lavagem + secagem sem preferência, ativou os dois itens, confirmou a lavagem, relatou e cancelou a secagem). **O resumo de aprovação do teste se perdeu** (saída truncada por engano do agente) e a execução não pôde ser repetida sem restaurar a demo. A evidência abaixo vem dos logs que sobraram, do estado final da API e de chamadas diretas depois; ela é menor que um PASS completo do teste.
+
+| Comando | Observado diretamente | Inferido do estado final | Não observado |
+| --- | --- | --- | --- |
+| `activate` | 200 com o item no estado atual ao ativar item já ativo; 200 `to_be_confirmed` com `machineId` e `expiresAt` (60 s) ao ativar os dois itens `pending_activation` do lote (lavagem e secagem) | | Item que fica `queued` com `queuePosition`; 409 em item cancelado |
+| `confirm` | 410 `MACHINE_OFFER_EXPIRED` ao confirmar logo depois do prazo | A lavagem do lote terminou `in_progress`, o que só o `confirm` produz | 200 repetido sem reiniciar; 409 em item cancelado |
+| `cancel` | | Lavagem A e secagem terminaram `cancelled`; o saldo seguiu 3110, 5000, 1020, 3110, coerente com estornos de 1890 e de 2090 (preço histórico) | Corpo da resposta (`refundedAmountCents`, `remainingBalanceCents`); repetição sem novo crédito; 409 em item em andamento |
+| `report-issue` | 202 `{ incidentId, status: "reported" }` em item `in_progress`; 429 `RATE_LIMIT_EXCEEDED` na quarta chamada no minuto (política de 3 por minuto) | | Mesmo `incidentId` na repetição; 409 antes de iniciar |
+
+**Decisão:** as quatro capacidades foram ligadas (`capabilities.itemCommands.*`) com esta evidência, por pedido do usuário, que precisa usar as ações. Os itens da coluna "Não observado" seguem sem prova real; estão cobertos só com API simulada e pela descrição do OpenAPI. Repetir `live/lifecycle.live.test.ts` com a saída salva em arquivo, depois de restaurar a demo, completa a prova.
+
+**Uso real pelo usuário (2026-10-21):** depois de ligar as capacidades, o usuário relatou que **aceitou uma oferta (Confirmar) e relatou um problema (Relatar problema) pelo app contra a API real, e funcionaram**. É relato, sem captura nem resposta registrada, mas cobre o `confirm` e o `report-issue` de ponta a ponta com o `fetch` do React Native, que o teste ao vivo (Node) não exercita. `activate` e `cancel` não foram citados no relato.
+
+## Simulação de conclusão (somente demo)
+
+**Rota:** `POST /api/v1/simulation/machines/{machineId}/complete` (`SimulationResponse`: `machine` e `item`, `item` nulo em ocupação sintética). Segundo o código e o README do backend, existe só com a API em `Development` e `Laundry__DemoMode=true`; fora disso responde 404 e nem aparece no OpenAPI. **Esse 404 não foi observado**: a única API disponível estava em DemoMode; o app trata o 404 sem corpo de erro como "simulação indisponível" por inferência. Não há ação equivalente para o cliente: concluir uma execução é da simulação das máquinas.
+
+**Prova ao vivo (2026-10-21, `live/simulation.live.test.ts`, saída guardada em [evidence/live-simulation-2026-10-21.txt](evidence/live-simulation-2026-10-21.txt)):** com a `washer-01` em `running`, o POST respondeu 200 com a máquina `available` e `activeItemId` nulo e o item `completed` (`machineId`, `queuePosition` e `expiresAt` nulos); a leitura seguinte de `GET /machines` confirmou `available`. A repetição respondeu 409 `INVALID_STATE_TRANSITION`. O teste conclui a primeira máquina `running` que encontrar, o que altera os dados da demo.
+
+**Uso real pelo usuário (2026-10-21):** depois de reiniciar o Metro com a variável, o usuário relatou que o botão apareceu e que o fluxo de conclusão funcionou 100% pelo app (com o `fetch` do React Native).
+
+**No app:** botão "Concluir {serviço} (simulação)" no detalhe, só para item `in_progress` com máquina, rotulado como ação de simulação e visível **apenas** com `EXPO_PUBLIC_DEMO_SIMULATION=true` em `apps/mobile/.env` (reiniciar o Metro) e `capabilities.simulation.complete`. Com a rota ausente (404 sem corpo de erro) o app diz que a simulação não está disponível nesta API. Exceção consciente à regra "sem painel de operador" (AD-008).

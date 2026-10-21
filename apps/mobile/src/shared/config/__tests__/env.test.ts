@@ -1,4 +1,4 @@
-import { ConfigError, parsePublicEnv } from '../env';
+import { ConfigError, isDemoSimulationEnabled, parsePublicEnv } from '../env';
 
 describe('parsePublicEnv', () => {
   it('accepts an http(s) origin and trims the configured name', () => {
@@ -33,5 +33,24 @@ describe('parsePublicEnv', () => {
     'http://host:5001/#frag',
   ])('rejects credentials, path, query or hash (%p)', (apiUrl) => {
     expect(() => parsePublicEnv({ apiUrl })).toThrow(ConfigError);
+  });
+});
+
+describe('isDemoSimulationEnabled', () => {
+  const original = process.env.EXPO_PUBLIC_DEMO_SIMULATION;
+  afterEach(() => {
+    if (original === undefined) delete process.env.EXPO_PUBLIC_DEMO_SIMULATION;
+    else process.env.EXPO_PUBLIC_DEMO_SIMULATION = original;
+  });
+
+  it('is on only for the exact value true', () => {
+    process.env.EXPO_PUBLIC_DEMO_SIMULATION = 'true';
+    expect(isDemoSimulationEnabled()).toBe(true);
+  });
+
+  it.each([undefined, '', 'false', 'TRUE', '1', 'yes', ' true'])('is off for %p', (value) => {
+    if (value === undefined) delete process.env.EXPO_PUBLIC_DEMO_SIMULATION;
+    else process.env.EXPO_PUBLIC_DEMO_SIMULATION = value;
+    expect(isDemoSimulationEnabled()).toBe(false);
   });
 });

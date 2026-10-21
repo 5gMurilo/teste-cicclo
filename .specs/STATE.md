@@ -58,14 +58,21 @@
 - **Date**: 2026-10-21
 - **Status**: active
 
+### AD-008
+- **Decision**: Adicionar ao app a ação demo "Concluir (simulação)" no detalhe de uma execução em andamento, opt-in por `EXPO_PUBLIC_DEMO_SIMULATION=true`, rotulada como simulação, que chama `POST /api/v1/simulation/machines/{machineId}/complete`.
+- **Reason**: Pedido do usuário em 2026-10-21, depois de ligar o DemoMode na API: ele quer concluir serviços pelo app para demonstrar o ciclo completo.
+- **Trade-off**: Contraria a regra da spec "sem painel de operador" (T35) e a rota só existe em Development com DemoMode. Mitigação: oculto por padrão, rótulo explícito de simulação, capacidade e variável de ambiente, e comportamento claro quando a rota não existe.
+- **Scope**: apps/mobile, detalhe da contratação; fora de QUEUE-01 a QUEUE-10 (sem requisito de spec).
+- **Date**: 2026-10-21
+- **Status**: active
+
 ## Handoff
 
 - **Feature**: `.specs/features/cicclo-mobile/spec.md`.
-- **Phase / Task**: P0 implementado (T1 a T30) e verificado pelo Verifier independente no que é verificável localmente e pelo teste ao vivo. C1, C2 e C3 provados contra a API real em 2026-10-21; N1 aprovado pelo usuário no iOS (AD-006) apenas em relato global ("Validado o iOS"), sem registro por cenário, aparelho, versão ou leitor de tela (`apps/mobile/docs/native-validation.md`); por isso T29 fica `[~]`. Android não ensaiado.
-- **Completed**: 30/37 com Done when `[x]` (T1 a T30); P1 iniciado. Gate B: 32 suítes, 262 testes, typecheck, lint e export verdes (o export exige `EXPO_PUBLIC_API_URL` apenas para as leituras em runtime, não para exportar).
-- **Verifier**: PASS na rodada 4 sobre `cb9adcd`. Depois disso entraram 4 commits de correções de uso no iOS (log de desenvolvimento, mensagem de configuração ausente, `anchor`, README) e o registro do N1; a verificação delta desses commits apontou 2 itens (registro do N1 além do relato; guardas do log sem teste), corrigidos no commit seguinte; falta a reverificação.
-- **Pendente**: verificação delta final do Verifier; Android (opcional); ícones das abas (cosmético, exige `@expo/vector-icons`); compra de duas ou mais unidades e preferência aceita ao vivo (exige restaurar a demo); retenção da chave após horas. P1 (T31 a T37) só depois de CP1 e de decisão do usuário.
-- **Next step**: concluir a verificação delta; depois, decidir com o usuário se segue para P1 e quais endpoints de ciclo de vida já estão prontos na API.
-- **Blockers**: nenhum para P0. `dotnet` fora do PATH da sessão do agente (workspace e testes de bootstrap que compilam a API falham por isso; não é do mobile).
-- **Branches**: cadeia linear E0 a E5 (`chore/mobile-05-p0-readiness` é a atual); `mobile-worktree` integrada por fast-forward. Nada foi enviado ao remoto.
+- **Phase / Task**: P0 (T1 a T30) e P1 (T31 a T37) implementados, ligados e verificados pelo Verifier independente (PASS em `749e1b6`, 361 testes; ver `validation.md`). N1 aprovado pelo usuário no iOS e aceito para o Android (AD-006, AD-007). Ação demo "Concluir (simulação)" adicionada por decisão do usuário (AD-008), opt-in por `EXPO_PUBLIC_DEMO_SIMULATION=true`, validada pelo usuário no app contra a API real.
+- **Completed**: 35/37 com Done when `[x]`; T34 (cancelar) e T37 (oferta na lista) seguem `[~]` à espera da prova ao vivo limpa.
+- **Pendente (externo, não força FAIL no Verifier)**: restaurar a demo (`--reset-demo`) e rodar `live/contract.live.test.ts`, `live/lifecycle.live.test.ts` e `live/simulation.live.test.ts` com a saída salva em arquivo; item `queued` real, corpo real do cancelamento e repetições; mesmo `incidentId` na repetição do relato; 404 da rota de simulação fora do DemoMode (inferido); compra após horas; compra ao vivo de duas ou mais unidades com preferência aceita; Android sem ensaio (aceito por decisão).
+- **Estado da demo**: carteira 1020, máquinas livres, várias contratações (a lavagem e a secagem das compras de teste concluídas pela simulação).
+- **Blockers**: nenhum para uso. `dotnet` fora do PATH da sessão do agente (workspace e bootstrap que compilam a API falham por isso; não é do mobile).
+- **Branches**: pilha linear sobre `feat/bootstrap-monorepo`, sem numeração no nome: `docs/mobile-delivery-baseline`, `feat/mobile-catalog-and-wallet-reading`, `feat/mobile-service-selection-and-review`, `feat/mobile-safe-booking-purchase`, `feat/mobile-booking-tracking`, `chore/mobile-p0-validation-and-evidence` e `feat/mobile-service-lifecycle` (atual); `mobile-worktree` é só a branch local deste worktree. Publicadas no GitHub como PRs empilhados, sem merge até o sinal do usuário.
 - **Uncommitted files**: nenhum.

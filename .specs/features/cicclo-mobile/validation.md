@@ -1,16 +1,500 @@
-# Cicclo mobile: validação independente do escopo P0
+# Cicclo mobile: validação independente (P0 mais P1 mais ação de simulação)
 
 **Data:** 2026-10-21
-**Criado:** 2026-10-21. **Última atualização:** 2026-10-21 (reverificação do delta, rodada 2).
+**Criado:** 2026-10-21. **Última atualização:** 2026-10-21 (reverificação do delta `ef90f3d`, rodada 2).
 **Spec:** `.specs/features/cicclo-mobile/spec.md`
-**Faixa Git:** `08e6c7d..HEAD`. Herdado: rodadas 1 a 4 verificaram até `cb9adcd` (PASS da rodada 4). **Delta:** `cb9adcd..57b40ed` (log de desenvolvimento, mensagem de configuração, `anchor`, documentação iOS, registro do N1 e as correções dos dois itens da primeira verificação do delta).
-**Verifier:** agente independente (autor diferente do verificador). Nenhum código de produção ou teste foi alterado na árvore real; este arquivo é a única escrita. O teste ao vivo **não foi executado** (a demo está em 3110).
+**Faixa Git:** `08e6c7d..HEAD`. P0: `57b40ed` (PASS); P1: `fcd69ea` (PASS); ação de simulação: rodada 1 em `f42e39e` (FAIL), **rodada 2 em `749e1b6`** (estado verificado; um commit de correção). Tudo o que veio antes está preservado abaixo.
+**Verifier:** agente independente (autor diferente do verificador). Nenhum código de produção ou teste foi alterado na árvore real; este arquivo é a única escrita. O teste ao vivo **não foi executado** e **nenhum POST foi enviado**.
 
 Verdict: PASS
 
 **Result**: PASS
 
-Condições do PASS atendidas: nenhum GAP de AC P0 (escopo herdado e delta); nenhum mutante não equivalente sobrevivente (L1, L2 e L2b, os do delta, morrem agora); gates verdes (32 suítes, 262 testes); o registro do N1 não afirma mais do que "Validado o iOS". Este PASS não declara a entrega concluída: Android, P1, a compra após horas e a compra de 2 ou mais unidades ao vivo seguem PENDING-EXTERNAL, e há recomendações abertas de baixa gravidade (T30, contagens, texto), listadas abaixo.
+Condições do PASS atendidas para o estado `749e1b6`: os 3 mutantes não equivalentes da rodada 1 (S1b, S3, S11) morrem, assim como as variantes do 404 (S7, S7b e o novo S7c); o sobrevivente que resta (S5a) é equivalente; não há GAP de AC; gates verdes (36 suítes, 361 testes); P0 e P1 sem regressão (amostra de 8 mutantes, todos mortos). O PASS vale para o que se verifica localmente e **não declara P1 nem P0 entregues por completo**: os itens PENDING-EXTERNAL abaixo seguem em aberto. Há uma pendência baixa de evidência (o log versionado pelo doc está fora do git, ver a conferência).
+
+# Delta `ef90f3d`, rodada 2 (HEAD `749e1b6`)
+
+## Comandos executados (árvore real)
+
+| Comando | Resultado real |
+| --- | --- |
+| `pnpm --filter @cicclo/mobile typecheck` | exit 0 |
+| `pnpm --filter @cicclo/mobile lint` (`--max-warnings 0`) | exit 0, zero avisos |
+| `pnpm --filter @cicclo/mobile test` | exit 0: **36 suítes / 36 passaram; 361 testes / 361 passaram; 0 falhas; 0 ignorados** (+16 testes: `env.test.ts`, `itemCommands.test.tsx`, `itemCommand.test.tsx`) |
+| Grep `test.skip|it.skip|describe.skip|.only(|xit|xdescribe|test.todo|it.todo|TODO|FIXME|fit(|fdescribe` | Nenhuma ocorrência |
+| Teste ao vivo; POST à API | Não executados |
+
+## Os achados da rodada 1: reavaliação
+
+| Achado | Correção e evidência `file:linha` | Resultado |
+| --- | --- | --- |
+| S1b: variável vazia ligava a ação | `src/shared/config/__tests__/env.test.ts`: `isDemoSimulationEnabled()` `toBe(true)` só para `'true'` e `toBe(false)` para `undefined`, `''`, `'false'`, `'TRUE'`, `'1'`, `'yes'`, `' true'`; `__tests__/itemCommands.test.tsx` "stays hidden when the opt-in variable is %p" com `''`, `'false'` e `'TRUE'` afirmando `queryByRole('button', { name: /\(simulação\)/ })` nulo | **COVERED**; S1b morto (9 falhas) |
+| S3: status não provado com máquina presente | `it.each` com `queued`, `to_be_confirmed`, `completed`, `cancelled` e `failed` **com `machineId`** e `in_progress` sem máquina, todos afirmando o botão ausente (`itemCommands.test.tsx` "is hidden for an item that is %s with machine %p") | **COVERED**; S3 morto (5 falhas) |
+| S11: resposta de sucesso inválida | `itemCommands.test.tsx` "does not claim completion when the success response is not valid, and the button stays usable": `findByText(/Não foi possível concluir a ação/)`, `queryByText('Execução concluída na simulação.')` nulo, botão `toBeEnabled()` | **COVERED**; S11 morto (com mutação sintaticamente válida: cast `as SimulationResult`) |
+| Mensagem de 404 compartilhada | A mensagem agora é de `SimulationUnavailableError`, lançado só por `completeSimulation.ts` para 404 sem `errorCode`, e mapeado em `commandErrorMessage` (`itemCommand.ts`). Um 404 sem `errorCode` de outro comando diz "Contratação ou execução não encontrada." (`itemCommand.test.tsx` `commandErrorMessage(api(404, null))` `toBe(...)`; `itemCommands.test.tsx` "keeps a bare 404 from a regular command from being blamed on the simulation") | **COVERED**; S7, S7b e S7c (voltar a culpar a simulação em qualquer 404) mortos |
+
+## Conferência da seção "Simulação de conclusão" (`api-contract.md`, linhas 57-65) com o log em `docs/evidence`
+
+| Afirmação | Sustentação | Avaliação |
+| --- | --- | --- |
+| Rota, `SimulationResponse` (`machine` e `item`), "existe só com a API em Development e DemoMode"; fora disso 404 e fora do OpenAPI | O doc agora diz "Segundo o código e o README do backend" e **"Esse 404 não foi observado"**; o app trata o 404 sem corpo como indisponível "por inferência" | Honesta: marcada como inferência (corrige a rodada 1) |
+| 200 com máquina `available`, `activeItemId` nulo, item `completed` com `machineId`, `queuePosition`, `expiresAt` nulos | O log (`docs/evidence/live-simulation-2026-10-21.log`, 995 bytes) é idêntico ao `/tmp/live-simulation.log` (diff sem diferença) e mostra o corpo `{machine, item}` com esses valores | Sustentada |
+| A leitura seguinte de `GET /machines` confirmou `available`; a repetição respondeu 409 `INVALID_STATE_TRANSITION` | O log só mostra "1 passed"; as asserções estão em `live/simulation.live.test.ts:32-33` e `:42-43` | Sustentada pelo teste que passou, não por saída explícita |
+| "O teste conclui a primeira máquina `running` que encontrar, o que altera os dados da demo" | `live.test.ts:21-22` | Sustentada (corrige a omissão da rodada 1) |
+| Relato do usuário: o botão apareceu e o fluxo funcionou 100% pelo app, com o `fetch` do React Native | É relato, sem captura nem resposta registrada | Rotulado como relato; sem base independente |
+| "saída guardada em [evidence/live-simulation-2026-10-21.log]" | **O arquivo não está no git**: `.gitignore:24 *.log` o ignora (`git check-ignore -v` e `git ls-files apps/mobile/docs` confirmam; só `api-contract.md` e `native-validation.md` são versionados). Quem clonar o repositório não terá o log, e o link do doc quebra | **Afirmação sem base para terceiros** (baixa-média) |
+
+## Sensor (worktree descartável em `749e1b6`)
+
+18 mutantes injetados, `typecheck` exit 0 em todos; **17 mortos, 1 sobrevivente (equivalente)**.
+
+| Mutante | Descrição | Resultado |
+| --- | --- | --- |
+| S1b, S3, S11, S7, S7b | os pedidos | **Mortos** (ver tabela acima) |
+| S7c | um 404 sem `errorCode` de qualquer comando volta a ser culpado na simulação | Morto |
+| S5a | botão da simulação sem `disabled` enquanto pendente | **Sobreviveu, equivalente**: a guarda síncrona do hook (`itemCommand.ts`, `busy`; provada por Q13) impede o segundo envio |
+| S1, S2, S4 | variável ignorada; capacidade ignorada; botão sem `machineId` | Mortos |
+| Q1, Q4, Q5, Q8, Q13, Q23 | P1: confirmar no zero; texto de estorno sem checar valor; saldo creditado numa falha; polling sem a guarda de terminal; sem guarda de duplo toque; cancelamento sem `try/catch` do cache | Mortos |
+| M1, R1 | P0: replay com chave nova; `cache.ts` sem `cancelQueries` | Mortos |
+
+**Sobreviventes não equivalentes: 0.** S9 (validação extra do id da máquina), equivalente pela razão da rodada 1, não foi reinjetado.
+
+### Isolamento
+
+`git status --porcelain` da árvore real antes e depois do sensor: vazio nos dois, **idêntico**; a árvore não mudou durante a rodada. O `.env.example` commitado segue com o valor vazio (o `true` visto na rodada 1 foi revertido). Worktree descartável removido, sem `git stash`, reset ou rebase. Nenhum POST.
+
+## Pendente por dependência externa (à parte; não força FAIL)
+
+Os mesmos de antes: comportamento da rota de simulação **fora** do DemoMode (404 sem corpo e ausência no OpenAPI, só inferidos); item `queued` real e corpo real do `cancel`; repetições e 409 em itens cancelados ou em andamento; as linhas "observado" do `api-contract.md` apoiadas em logs perdidos; compra após horas; compra de 2 ou mais unidades; Android sem ensaio (aceito por decisão do usuário, AD-007); `pnpm test:bootstrap` e comandos do workspace sem `dotnet`.
+
+## Gaps por gravidade
+
+1. **Baixa-média:** o log de evidência de `docs/evidence/` está fora do git (`*.log` no `.gitignore`); renomear (por exemplo `.txt`) ou usar `git add -f`, ou o doc referencia um arquivo que terceiros não têm.
+2. **Baixa:** o relato do usuário sobre o fluxo pelo app não tem captura; e o `.env` local do usuário com `true` liga a ação no aparelho dele, o que é esperado (opt-in).
+3. **Observação sem violação de AC:** a ação de simulação é uma exceção consciente à regra "sem painel de operador" (AD-008).
+
+---
+
+# Cabeçalho da verificação anterior do delta `ef90f3d` (`f42e39e`, FAIL; preservado)
+
+**Data:** 2026-10-21
+**Criado:** 2026-10-21. **Última atualização:** 2026-10-21 (delta `ef90f3d`, ação demo "Concluir (simulação)").
+**Spec:** `.specs/features/cicclo-mobile/spec.md`
+**Faixa Git:** `08e6c7d..HEAD`. P0: `57b40ed` (PASS); P1: `fcd69ea` (PASS); **delta desta rodada: `fcd69ea..f42e39e`**, que na prática é o commit `ef90f3d` (o `f42e39e` só acrescenta o relatório anterior). Estado verificado: `f42e39e`.
+**Verifier:** agente independente (autor diferente do verificador). Nenhum código de produção ou teste foi alterado na árvore real; este arquivo é a única escrita. O teste ao vivo **não foi executado** e **nenhum POST foi enviado**; foram feitas leituras `GET` (OpenAPI e `/machines`).
+
+Veredito anterior (f42e39e): FAIL
+
+Resultado anterior (f42e39e): FAIL
+
+Resumo: P0 e P1 seguem como verificados (sem regressão: gates verdes, 36 suítes, 345 testes, e 5 mutantes de regressão mortos). O delta da ação de simulação tem **3 mutantes não equivalentes vivos**, todos na decisão de mostrar o botão e na validação da resposta: (1) a variável vazia (o valor que o `.env.example` traz) liga a ação; (2) o botão aparece para qualquer status quando há máquina (uma oferta `to_be_confirmed` tem `machineId`); (3) uma resposta de sucesso inválida é tratada como sucesso. São três testes pequenos, sem mudança de produção. A seção "Simulação de conclusão" do `api-contract.md` é sustentada pelo log, com uma afirmação que o log não prova.
+
+# Delta `ef90f3d`, rodada 1 (preservada; HEAD `f42e39e`, FAIL por S1b, S3 e S11)
+
+## Comandos executados (árvore real)
+
+| Comando | Resultado real |
+| --- | --- |
+| `pnpm --filter @cicclo/mobile typecheck` | exit 0 |
+| `pnpm --filter @cicclo/mobile lint` (`--max-warnings 0`) | exit 0, zero avisos |
+| `pnpm --filter @cicclo/mobile test` | exit 0: **36 suítes / 36 passaram; 345 testes / 345 passaram; 0 falhas; 0 ignorados** (+10 testes, todos em `itemCommands.test.tsx`) |
+| Grep `test.skip|it.skip|describe.skip|.only(|xit|xdescribe|test.todo|it.todo|TODO|FIXME|fit(|fdescribe` | Nenhuma ocorrência |
+| Teste ao vivo; POST à API | Não executados |
+
+## Revisão adversarial
+
+| Pergunta | Achado |
+| --- | --- |
+| O botão aparece fora da demo? | Precisa de três condições juntas (`completeSimulation.ts` `canSimulateComplete`): `capabilities.simulation.complete`, `EXPO_PUBLIC_DEMO_SIMULATION === 'true'`, `item.status === 'in_progress'` e `machineId` não nulo. Sem variável ou com a capacidade desligada o botão some (`itemCommands.test.tsx:546-551`, `:554-559`; S1 e S2 mortos). **Lacuna:** a variável **vazia** (`EXPO_PUBLIC_DEMO_SIMULATION=`, o valor do `.env.example` commitado) não é testada; um `!== undefined` ligaria a ação (S1b vivo). **Lacuna:** o teste de status só usa linhas **sem máquina** (`:567` "without a machine"), então o guard `status === 'in_progress'` não é provado: uma oferta `to_be_confirmed` tem `machineId` e receberia o botão (S3 vivo) |
+| Pode enviar para a máquina errada, com id malformado, em duplo toque? | Máquina errada: o POST usa `item.machineId` (`ItemActions.tsx`, `useSimulateComplete(item.machineId)`), afirmado em `:585` `posts[0].url toBe(simulationUrl)` (S8 morto). Id malformado: `machineId` já passa pelo schema `z.uuid` da leitura, e a validação extra em `completeSimulation.ts` é inalcançável pela UI (S9 equivalente). Duplo toque: `:615-626`; a guarda do hook (Q13) é provada por `itemCommand.test.tsx`; a do botão (`disabled`) é redundante com ela (S5a equivalente) |
+| O texto deixa claro que é simulação? | Sim: rótulo "Concluir {serviço} (simulação)" (`:575`; S6 morto), nota "Ação de simulação: só existe na demo, não é uma ação do cliente." (`:578`; S10 morto) e "Execução concluída na simulação." (`:583`; S12 morto) |
+| Algum caminho credita saldo ou mostra estorno? | Não: o fluxo não toca a carteira. `:588` `queryByText(/estorno/i)` nulo e `:589` `balanceCents` segue 3110 (S12, texto com estorno, morto) |
+| API sem a rota (404 sem corpo) | Mensagem honesta "A simulação não está disponível nesta API (o DemoMode precisa estar ligado)." e o botão continua habilitado (`:604-612`; S7 morto). **Observação:** a mensagem está em `commandErrorMessage`, compartilhada, então um 404 sem `errorCode` de **qualquer** comando de item (por exemplo uma página HTML de proxy) também mostraria "A simulação não está disponível", o que é enganoso fora da simulação. Baixa. Um 404 `MACHINE_NOT_FOUND` do OpenAPI (com `errorCode`) cai em "Contratação ou execução não encontrada.", ligeiramente impreciso |
+| Resposta de sucesso inválida | `simulationResponseSchema.parse` valida a resposta, mas nenhum teste envia um corpo inválido: tirar o `parse` não derruba nada (S11 vivo). O caminho cairia em "Execução concluída na simulação." com corpo errado |
+| Afeta algum AC de P0 ou P1? | Nenhum AC quebrou: com as capacidades de P1 desligadas ou com `simulation.complete` falso, as suítes de P0 e P1 seguem verdes; QUEUE-06 (sem cancelamento em `in_progress`) e QUEUE-08 (relato sem estorno) continuam provados. **Desvio da spec, consciente:** "painel de operador" está fora de escopo (spec, "Out of Scope") e o Done when de T35 diz "nunca adiciona painel de operador"; a ação de concluir é um controle de operador, aceita pelo usuário como exceção (AD-008), atrás de opt-in. Registrado, não é falha de teste |
+| Observação sobre o estado da árvore | Durante esta rodada a árvore real passou a mostrar ` M apps/mobile/.env.example` com `EXPO_PUBLIC_DEMO_SIMULATION=true` (alteração não versionada, de outro ponto do fluxo; **não verificada**). O README manda copiar o `.env.example` para `.env`: com `true` a ação demo ficaria ligada por padrão em todo onboarding, o que contraria o texto "Deixe vazio fora da demo" e agrava a lacuna S1b se o valor passar a ser outro que não `true` |
+
+## Conferência da seção "Simulação de conclusão" (`api-contract.md`) com o log e o teste ao vivo
+
+Log lido em `/tmp/live-simulation.log` (995 bytes; fora do repositório, então a evidência não é reproduzível por quem clonar) e `live/simulation.live.test.ts`; leituras `GET` próprias do OpenAPI e de `/machines`.
+
+| Afirmação | Sustentação | Avaliação |
+| --- | --- | --- |
+| POST `/api/v1/simulation/machines/{machineId}/complete`, `SimulationResponse` com `machine` e `item` | OpenAPI (GET): a rota existe com essa descrição, 200/400/404/409/500/503; o log mostra o corpo `{machine, item}` | Sustentada |
+| Com a `washer-01` em `running`, o POST respondeu 200, máquina `available`, `activeItemId` nulo, item `completed` com `machineId`, `queuePosition` e `expiresAt` nulos | Log: `"name":"washer-01"`, `"state":"available"`, `"activeItemId":null`, item `"status":"completed"` com os três campos nulos. O estado anterior (`running`) não está no log, mas o teste exige uma máquina `running` com item (`:21-22`) e passou | Sustentada |
+| A leitura seguinte de `GET /machines` confirmou `available` | `live.test.ts:32-33` `after.state toBe(response.machine.state)`; teste passou (1 passed) | Sustentada |
+| A repetição respondeu 409 `INVALID_STATE_TRANSITION` | `:42-43` `toMatchObject({status: 409, errorCode: 'INVALID_STATE_TRANSITION'})`; passou. O OpenAPI descreve o 409 como "a máquina não está running" | Sustentada |
+| "Existe só com a API em Development e `Laundry__DemoMode=true`; fora disso responde 404 e nem aparece no OpenAPI" | O OpenAPI descreve "somente Development com Laundry:DemoMode=true", mas a única API disponível está em DemoMode e **ninguém observou o 404 sem corpo nem a ausência no OpenAPI**; vem da leitura do código. O app depende disso para a mensagem do 404 | **Não sustentada pelo log**: é inferência |
+| "Não há ação equivalente para o cliente" | OpenAPI: os outros comandos de item não concluem uma execução | Sustentada pelo contrato |
+| Efeito colateral | O teste conclui **qualquer** máquina `running` com item real da demo; a saída mostra um item `wash` concluído. O doc não avisa que isso altera dados da demo | Omissão baixa |
+
+## Sensor do delta (worktree descartável em `f42e39e`)
+
+18 mutantes injetados, `typecheck` exit 0 em todos; 13 mortos, 5 sobreviveram.
+
+| Mutante | Descrição | Resultado | Teste que matou ou o que falta |
+| --- | --- | --- | --- |
+| S1 | variável ignorada (sempre ligado) | Morto | `IC:546` "is hidden unless the demo opt-in variable is set" |
+| S2 | capacidade ignorada | Morto | `IC:554` "is hidden while the capability is not proven" |
+| S4 | botão sem checar `machineId` | Morto | `IC:567` "is hidden for an item that is in_progress without a machine" |
+| S6 | rótulo sem "(simulação)" | Morto (4 falhas) | `IC:575` e demais |
+| S7 | mensagem do 404 sem `errorCode` removida | Morto | `IC:604` "says the simulation is unavailable..." |
+| S8 | id errado enviado (id do item no lugar do da máquina) | Morto | `IC:585` URL esperada |
+| S10 | nota de simulação removida | Morto | `IC:578` |
+| S12 | texto de conclusão menciona estorno | Morto | `IC:575` / `:588` |
+| Q13 | comando sem guarda de duplo toque | Morto | `itemCommand.test.tsx` "runs one command at a time..." |
+| Q4, Q23 (P1) | texto de estorno sem checar valor; cancelamento sem `try/catch` | Mortos | `IC` "shows no refund text..."; "keeps a confirmed cancellation..." |
+| M1, R1 (P0) | replay com chave nova; `cache.ts` sem `cancelQueries` | Mortos | `useBookingRecovery.test.tsx`, `purchaseFlow.test.tsx`; `applyConfirmedBooking.test.tsx` |
+| **S1b** | variável com qualquer valor definido (inclui vazio) liga a ação | **SOBREVIVEU, não equivalente** | Teste com `EXPO_PUBLIC_DEMO_SIMULATION=''` (e `'false'`) afirmando que o botão não existe; é o valor do `.env.example` |
+| **S3** | botão para qualquer status com máquina | **SOBREVIVEU, não equivalente** | Item `to_be_confirmed` (e `queued`) **com `machineId`** afirmando que "(simulação)" não existe; hoje todas as linhas do teste têm `machineId` nulo |
+| **S11** | resposta de sucesso sem validação | **SOBREVIVEU, não equivalente** (baixa) | 200 com corpo inválido (por exemplo `{}`): afirmar a mensagem de falha e a ausência de "Execução concluída na simulação." |
+| S5a | botão sem `disabled` enquanto pendente | Sobreviveu, **equivalente** | A guarda do hook (Q13) impede o segundo envio; o `disabled` só duplica |
+| S9 | validação do id da máquina removida | Sobreviveu, **equivalente** | `machineId` já vem validado por `z.uuid` no schema da leitura; inalcançável pela UI |
+
+**Resultado do sensor do delta:** 18 injetados, 13 mortos, 5 sobreviveram: 3 não equivalentes (S1b, S3, S11) e 2 equivalentes (S5a, S9). **Sobreviventes não equivalentes: 3.**
+
+### Isolamento
+
+`git status --porcelain` da árvore real: antes do sensor vazio; depois, ` M apps/mobile/.env.example` (`EXPO_PUBLIC_DEMO_SIMULATION=` passou a `true`), edição de outro ponto do fluxo e não do sensor, que roda só no worktree descartável (criado de `f42e39e`, removido; sem `git stash`, reset ou rebase). Nenhum POST.
+
+## Pendente por dependência externa (à parte; não força FAIL)
+
+Os mesmos itens de P1 já listados (item `queued` real, corpo real do `cancel`, repetições e 409, linhas "observado" do `api-contract.md` sobre logs perdidos, compra após horas, compra de 2 ou mais unidades, Android sem ensaio, comandos do workspace sem `dotnet`), mais: comportamento da rota de simulação **fora** do DemoMode (404 sem corpo, ausência no OpenAPI), nunca observado.
+
+## Plano de correção (só testes)
+
+1. **S1b:** botão ausente com a variável vazia e com `'false'`.
+2. **S3:** botão ausente para `to_be_confirmed` e `queued` com `machineId` presente.
+3. **S11:** resposta de sucesso inválida não vira "Execução concluída na simulação."
+4. Baixas: mensagem do 404 sem `errorCode` só para a simulação (hoje compartilhada); registrar no doc que o teste ao vivo conclui uma máquina real da demo e que o log fica fora do repositório; decidir o valor do `.env.example` (vazio por padrão).
+
+---
+
+# Verificação anterior (P0 mais P1 em `fcd69ea`, PASS; preservada)
+
+**Data:** 2026-10-21
+**Criado:** 2026-10-21. **Última atualização:** 2026-10-21 (reverificação final de P1, rodada 3).
+**Spec:** `.specs/features/cicclo-mobile/spec.md`
+**Faixa Git:** `08e6c7d..HEAD`. P0: verificado até `57b40ed` (PASS), preservado abaixo. P1: rodada 1 em `3643c77` (FAIL), rodada 2 em `1965e45` (FAIL por Q23), **rodada 3 em `fcd69ea`** (branch `feat/mobile-06-service-lifecycle`, um teste novo). As rodadas anteriores estão preservadas.
+**Verifier:** agente independente (autor diferente do verificador). Nenhum código de produção ou teste foi alterado na árvore real; este arquivo é a única escrita. O teste ao vivo **não foi executado** e **nenhum POST foi enviado** à API.
+
+Veredito anterior (fcd69ea): PASS
+
+Resultado anterior (fcd69ea): PASS
+
+Condições do PASS atendidas: os 10 ACs de P1 têm evidência e nenhum GAP testável sem a API real; nenhum mutante não equivalente vivo (Q23 morre agora; a amostra de regressão de 11 mutantes continua morta); gates verdes (36 suítes, 335 testes); P0 sem regressão. O PASS cobre o que se verifica localmente e pelas provas ao vivo já registradas. **Não declara P1 entregue por completo:** os itens PENDING-EXTERNAL abaixo (item `queued` real, corpo real do cancel, repetições, compra após horas, compra de 2 ou mais unidades, Android) seguem sem prova real ou sem ensaio, e três linhas "observado" do `api-contract.md` dependem de logs perdidos.
+
+# Parte P1, rodada 3 (final; HEAD `fcd69ea`)
+
+## Comandos executados (árvore real)
+
+| Comando | Resultado real |
+| --- | --- |
+| `pnpm --filter @cicclo/mobile typecheck` | exit 0 |
+| `pnpm --filter @cicclo/mobile lint` (`--max-warnings 0`) | exit 0, zero avisos |
+| `pnpm --filter @cicclo/mobile test` | exit 0: **36 suítes / 36 passaram; 335 testes / 335 passaram; 0 falhas; 0 ignorados** (+1 teste desde `1965e45`) |
+| Grep `test.skip|it.skip|describe.skip|.only(|xit|xdescribe|test.todo|it.todo|TODO|FIXME|fit(|fdescribe` | Nenhuma ocorrência |
+| Diff `1965e45..fcd69ea` | Só `__tests__/itemCommands.test.tsx` (+16 linhas); nenhum arquivo de produção mudou |
+| Teste ao vivo; POST à API | Não executados |
+
+## Fechamento de Q23 (QUEUE-07, robustez do estorno)
+
+| Item | Evidência `file:linha` + asserção | Resultado |
+| --- | --- | --- |
+| Um problema de cache não transforma um cancelamento confirmado em falha | `__tests__/itemCommands.test.tsx:495` `jest.spyOn(queryClient, 'cancelQueries').mockRejectedValue(new Error('cache exploded'))` com resposta 200 válida; `:500` `findByText(/Estorno confirmado/)` presente; `:501` `queryByText(/Não foi possível concluir a ação/)` nulo; `:502` `posts` com 1 envio | **COVERED** |
+
+QUEUE-01, 02, 04 e 07 seguem COVERED com as evidências da rodada 2 (as citações de `IC` posteriores à linha 490 passaram a `IC:522-523`). Com isso, **P1: 10 de 10 ACs COVERED, 0 GAP**.
+
+## Sensor da rodada 3 (worktree descartável em `fcd69ea`)
+
+12 mutantes injetados, `typecheck` exit 0 em todos, **12 mortos, 0 sobreviventes**.
+
+| Mutante | Descrição | Teste que matou |
+| --- | --- | --- |
+| **Q23** | `cancelItem.ts` sem o `try/catch` em volta da escrita do saldo | `itemCommands.test.tsx` "keeps a confirmed cancellation and its refund even when the wallet cache cannot be updated" (1 falha) |
+| Q5 | saldo creditado numa falha | `IC` "leaves the cached balance untouched..." / "also leaves the balance untouched when a success response is not valid" |
+| Q16 | grava o valor estornado como saldo | `IC` "writes the remaining balance the API returned..." |
+| Q18 | detalhe não relido no zero | `IC` "re-reads the detail when the offer deadline reaches zero..." |
+| Q14b | capacidade `confirm` ignorada | `bookingDetails.test.tsx` "hides Confirmar for a live offer..." |
+| Q1 | confirmar no zero | `IC` "does not send when the offer ran out while the app was away..." |
+| Q4 | texto de estorno sem checar o valor | `IC` "shows no refund text when the API credited nothing" |
+| Q8 | polling sem a guarda de terminal | `polling.test.tsx` (detalhe 5 s; lista tudo terminal) |
+| Q25 | `cache.ts` volta a aguardar a releitura | `IC` "writes the remaining balance... does not wait for the wallet read" |
+| Q13 | comando sem a guarda de duplo toque | `src/features/bookings/__tests__/itemCommand.test.tsx` "runs one command at a time..." |
+| M1 (P0) | replay de compra com chave nova | `useBookingRecovery.test.tsx`, `purchaseFlow.test.tsx` |
+| R1 (P0) | `cache.ts` sem `cancelQueries` | `applyConfirmedBooking.test.tsx` "keeps the confirmed balance when a GET that started before the purchase answers late" |
+
+Acumulado de P1: Q15b (borda do cartão com oferta) permanece sobrevivente **equivalente** (só estilo). **Sobreviventes não equivalentes: 0.**
+
+### Isolamento
+
+`git status --porcelain` da árvore real antes do sensor: apenas ` M .specs/features/cicclo-mobile/validation.md`. Depois do sensor, a árvore apareceu com 18 arquivos modificados e 2 novos (`completeSimulation.ts`, `live/simulation.live.test.ts`): são edições de outro agente, que em seguida foram versionadas no commit `ef90f3d` ("add the demo-only conclude action behind an opt-in"). **Não vieram do sensor**: ele rodou só no worktree descartável criado de `fcd69ea`, e a árvore voltou a mostrar só este relatório. Worktree descartável removido, sem `git stash`, reset ou rebase. Nenhum POST.
+
+**Escopo desta verificação:** o PASS vale para `fcd69ea`. O commit `ef90f3d` (ação "concluir" só para demonstração, atrás de opt-in; toca `ItemActions.tsx`, `itemCommand.ts`, `capabilities.ts`, `env.ts`, vários testes e adiciona `completeSimulation.ts` e um teste ao vivo) **chegou durante esta rodada e não foi verificado**. Ele precisa de verificação própria antes de entrar na entrega; uma ação nova sobre itens em execução é código de P1.
+
+## Pendente por dependência externa (à parte; não força FAIL)
+
+Item `queued` e posição reais da fila; corpo real do `cancel` (`refundedAmountCents`, `remainingBalanceCents`) e repetição sem novo crédito; repetições (`confirm` sem reiniciar, mesmo `incidentId`) e 409 em itens cancelados ou em andamento; as três linhas "observado" do `api-contract.md` que repousam em logs perdidos (ativar item já ativo, 410 após o prazo, 202/429 do relato; rerrodar `live/lifecycle.live.test.ts` com a saída em arquivo e aceitando só 410 no `confirm`); compra após horas (retenção da `Idempotency-Key`); compra ao vivo de 2 ou mais unidades e preferência aceita; Android (aceito por decisão do usuário, AD-007, sem ensaio); `pnpm test:bootstrap` e comandos do workspace (sem `dotnet`).
+
+## Resumo (P0 mais P1)
+
+**Overall:** PASS para P0 e P1 em `fcd69ea`, no que se verifica localmente; `ef90f3d` (ação de demonstração) não verificado. **Gaps:** nenhum GAP de AC; observações sem violação (comandos concorrentes no mesmo item, relógio adiantado, lista destacando oferta vencida, texto falado do cartão com oferta vencida). **Mutantes sobreviventes não equivalentes:** nenhum. **Gate:** typecheck 0, lint 0 avisos, 335 de 335 testes, 36 suítes.
+
+---
+
+# Parte P1, rodada 2 (preservada; HEAD `1965e45`, resultado FAIL por Q23)
+
+## Comandos executados (árvore real)
+
+| Comando | Resultado real |
+| --- | --- |
+| `pnpm --filter @cicclo/mobile typecheck` | exit 0 |
+| `pnpm --filter @cicclo/mobile lint` (`--max-warnings 0`) | exit 0, zero avisos |
+| `pnpm --filter @cicclo/mobile test` | exit 0: **36 suítes / 36 passaram; 334 testes / 334 passaram; 0 falhas; 0 ignorados** (+12 testes: 5 em `itemCommands.test.tsx`, 2 em `bookingDetails.test.tsx`, 5 casos em `itemCommand.test.tsx`) |
+| Grep `test.skip|it.skip|describe.skip|.only(|xit|xdescribe|test.todo|it.todo|TODO|FIXME|fit(|fdescribe` | Nenhuma ocorrência |
+| Teste ao vivo; POST à API | Não executados |
+
+## Reavaliação dos quatro GAPs (rodada 1)
+
+Caminhos relativos a `apps/mobile/`; `IC` = `__tests__/itemCommands.test.tsx`, `BD` = `__tests__/bookingDetails.test.tsx`, `IT` = `src/features/bookings/__tests__/itemCommand.test.tsx`.
+
+| ID | Resultado esperado | Evidência nova `file:linha` + asserção | Mutantes | Resultado |
+| --- | --- | --- | --- | --- |
+| QUEUE-01 | WHERE endpoints comprovados: `confirm` desligada não oferece a ação | `BD:196` `queryByRole('button', { name: /^Confirmar/ })` nulo, com oferta de `expiresAt` 2099 (viva) e o texto `BD:195` "Tempo restante: " presente, o que prova que o botão não some por vencimento | Q14b morto | **COVERED** (era GAP) |
+| QUEUE-02 | `queued` mostra a posição só quando a API a envia; já pago | `BD:204` `queryByText(/Posição na fila/)` nulo para `queued` com `queuePosition` nulo, `BD:203` "Na fila" presente; posição presente segue em `IC:113-114,236` | Q19 morto | **COVERED** (era GAP). Item `queued` real da API: PENDING-EXTERNAL |
+| QUEUE-04 | No zero: confirmação desabilitada e consulta ao servidor, também no detalhe | `IC:522` `findByText('Oferta vencida')` e `IC:523` `expect(gets).toBeGreaterThan(before)`, medido antes de qualquer tick do polling de 5 s (o teste avança 3,1 s) | Q18 morto | **COVERED** (era GAP) |
+| QUEUE-07 | Estorno só com resposta confirmada; carteira atualizada **sem creditar antes** | Com a leitura da carteira **segurada** (`IC:447-453` `holdWallet()`): sucesso `IC:456` `findByText(/Estorno confirmado/)` e `IC:457` `getQueryData(['wallet'])` com `balanceCents: 5000` (valor do `remainingBalanceCents`, não do estorno 1890), sem esperar a leitura; falha 409 `IC:471-472` cache continua 3110; resposta de sucesso inválida `IC:486-487` cache continua 3110 | Q5, Q16, Q25 mortos | **COVERED** (era GAP). Ressalva aberta: Q23, abaixo |
+
+Os 3 mutantes baixos da rodada 1 também morreram: Q13 (`IT:29` `send` chamado uma vez com duas chamadas no mesmo `act`), Q20 (`IT:65` mensagem de 404) e Q17 (`IT:59` `fetch` não chamado para IDs malformados, vazio e `../wallet`).
+
+**P1 agora:** 10 de 10 ACs com evidência; QUEUE-01, 02, 04 e 07 passam de GAP a COVERED; o que só a API real prova está em PENDING-EXTERNAL.
+
+## A mudança de produção em `wallet/cache.ts`
+
+`applyConfirmedBalance` passou de `await queryClient.invalidateQueries(...)` para `void queryClient.invalidateQueries(...)` (`cache.ts:15`), para que a mensagem do cancelamento não espere uma leitura.
+
+| Pergunta | Resposta | Evidência |
+| --- | --- | --- |
+| A compra e o cancelamento ainda cancelam leituras em voo antes de gravar? | Sim: as duas passam por `applyConfirmedBalance`, que aguarda `cancelQueries(walletKey)` e só depois chama `setQueryData` (`cache.ts:12-13`). R1 (remover `cancelQueries`) morreu | `applyConfirmedBooking.test.tsx` "keeps the confirmed balance when a GET that started before the purchase answers late" |
+| Uma falha do `invalidate` vira falha do comando? | Não. `invalidateQueries` não rejeita por falha de leitura (a falha fica no estado da consulta) e a chamada agora é `void`, então nem a espera existe. Se `cancelQueries` ou `setQueryData` lançarem, a compra captura em `applyConfirmedBooking.ts` (`try/catch`), testado ("stays confirmed... when applying the cache throws"). **O cancelamento tem o mesmo `try/catch` em `cancelItem.ts:33-38`, sem teste (Q23 vivo)** | `purchaseTracking.test.tsx` e `applyConfirmedBooking.test.tsx` seguem verdes; Q24 (sem `invalidate`) e Q25 (volta a esperar) mortos |
+| O teste do GET atrasado da compra ainda prova o que prova? | Sim. Ele não tem observador ativo, então nunca dependeu do `invalidate` esperado: o que importa é que o GET anterior seja cancelado antes da escrita, e R1 o derruba. O teste novo do cancelamento com a carteira segurada reforça a leitura de que a mensagem não espera a releitura (Q25) |  |
+
+## Os três itens baixos: violam algum AC de P1?
+
+| Item | Veredito |
+| --- | --- |
+| Dois comandos em voo no mesmo item (confirmar e cancelar, por exemplo) | **Só observação.** Nenhum QUEUE-* trata comandos concorrentes; o servidor serializa e é idempotente para repetir ativar, confirmar e cancelar (OpenAPI). A tela pode mostrar duas mensagens |
+| Relógio adiantado esconde "Confirmar" com a oferta ainda válida no servidor | **Não viola.** QUEUE-04 manda desabilitar a confirmação visual quando o contador chega a zero e consultar o servidor, e a spec (tabela de edge cases) diz que o contador é informativo e o 410 prevalece. Agora o detalhe é relido no zero (Q18). O efeito de perda de função com relógio errado é conhecido e aceito pela spec |
+| Lista destaca oferta já vencida | **Não viola.** QUEUE-10 pede destacar a oferta e seu prazo; o cartão mostra o contador "Oferta vencida". É só inconsistência de texto falado ("aguardando confirmação até <hora passada>") e fica como observação |
+
+## Sensor da rodada 2 (worktree descartável em `1965e45`)
+
+**Profundidade:** P0/crítico; 28 mutantes injetados, `typecheck` exit 0 em todos.
+
+### Os 9 sobreviventes da rodada 1
+
+| Mutante | Resultado | Teste que matou |
+| --- | --- | --- |
+| Q5 (credita 9999 numa falha) | **Morto** (2 falhas) | `IC` "leaves the cached balance untouched when the cancellation fails"; "also leaves the balance untouched when a success response is not valid" |
+| Q16 (grava o valor estornado como saldo) | **Morto** | `IC` "writes the remaining balance the API returned, not the refunded amount, and does not wait for the wallet read" |
+| Q14b (`confirm` ignorada) | **Morto** | `BD` "hides Confirmar for a live offer while the confirm capability is not enabled" |
+| Q18 (detalhe não relido no zero) | **Morto** | `IC` "re-reads the detail when the offer deadline reaches zero, before any polling tick" |
+| Q19 (`queued` sem posição) | **Morto** | `BD` "does not print a queue position when the API sends none for a queued item" |
+| Q13 (sem guarda de duplo toque) | **Morto** | `IT` "runs one command at a time: a second call in the same tick sends nothing" |
+| Q20 (404 não distinguido) | **Morto** | `IT` "names each failure by status and errorCode only" |
+| Q17 (IDs sem validação) | **Morto** (3 falhas) | `IT` "sends nothing for a malformed booking id / item id / an empty item id" |
+| Q15b (borda do cartão) | Sobreviveu, **equivalente** (só estilo; a oferta é destacada também por texto e contador, Q15 morreu) | |
+
+### Amostra do que já morria (P1, 12; P0, 4) e mutantes novos
+
+| Mutante | Descrição | Resultado |
+| --- | --- | --- |
+| Q1, Q2, Q3, Q4, Q6, Q7, Q8, Q9, Q10, Q12, Q14d, Q21 | confirmar no zero; ativar fora de `pending_activation`; cancelar em `in_progress`; texto de estorno sem checar o valor; relato com estorno; polling sem foco, terminal e 429; `onExpired` a cada render; rótulo falado mudando; capacidade de relatar ignorada; confirmar visível após vencer | Todos **mortos** pelos mesmos testes da rodada 1 |
+| M1, N8, R1, R2 | P0: replay com chave nova; botão de compra sem `disabled`; `cache.ts` sem `cancelQueries`; `cache.ts` sem gravar o saldo | Todos **mortos** (R2 agora também pelo teste novo do cancelamento) |
+| Q24 | `cache.ts` sem nenhuma invalidação da carteira | Morto (`applyConfirmedBooking.test.tsx` "marks the wallet for refetch"; `purchaseTracking.test.tsx`) |
+| Q25 | `cache.ts` volta a aguardar a releitura | Morto (`IC` hardening, carteira segurada) |
+| **Q23** | `cancelItem.ts:33-38` sem `try/catch`: uma falha do cache vira falha do cancelamento | **SOBREVIVEU, não equivalente** |
+
+**Q23, o que falta:** em `IC` (cancelamento), fazer `cancelQueries` rejeitar (por exemplo `jest.spyOn(queryClient, 'cancelQueries').mockRejectedValue(new Error('boom'))`) com a resposta 200 válida do cancelamento, e afirmar `findByText(/Estorno confirmado/)` e que "Não foi possível concluir a ação" não aparece. Espelha `applyConfirmedBooking.test.tsx` "stays confirmed... when applying the cache throws". Gravidade baixa: depende de uma exceção do cache, mas o efeito é esconder um estorno que o servidor já fez.
+
+**Resultado do sensor da rodada 2:** 28 injetados, 26 mortos, 2 sobreviveram: Q15b (equivalente) e **Q23 (não equivalente)**.
+
+### Isolamento
+
+`git status --porcelain` da árvore real antes e depois: idêntico (apenas ` M .specs/features/cicclo-mobile/validation.md`, deste relatório). Worktree descartável removido, sem `git stash`, reset ou rebase. Nenhum POST.
+
+## Pendente por dependência externa (à parte; não força FAIL)
+
+Inalterado em relação à rodada 1: item `queued` e posição reais; corpo real do `cancel` e repetição sem novo crédito; repetições (`confirm` sem reiniciar, mesmo `incidentId`) e 409 em itens cancelados ou em andamento; as três linhas "observado" do `api-contract.md` que dependem de logs perdidos (rerrodar `live/lifecycle.live.test.ts` com a saída em arquivo, aceitando só 410 no `confirm` após o prazo); compra após horas; compra de 2 ou mais unidades e preferência aceita; Android (aceito por decisão do usuário, AD-007, sem ensaio); comandos do workspace sem `dotnet`.
+
+## Plano de correção
+
+1. **Q23 (única pendência):** o teste descrito acima. Basta reinjetar Q23.
+2. Opcional: rodar `live/lifecycle.live.test.ts` com a saída em arquivo após restaurar a demo.
+
+## Resumo (P0 mais P1)
+
+**Overall:** P0 PASS (sem regressão). P1: 10 de 10 ACs com evidência, 0 GAP, mas **FAIL** pela regra de nenhum mutante não equivalente vivo (Q23). P1 não está entregue enquanto Q23 não for coberto e os itens PENDING-EXTERNAL não forem resolvidos ou aceitos.
+**Gate:** typecheck 0, lint 0 avisos, 334 de 334 testes, 36 suítes.
+**Sensor:** 26 de 28 mortos; sobrevivente não equivalente: Q23 (baixa).
+**Gaps por gravidade:** baixa, Q23 (cancelamento não protegido contra falha de cache, sem teste); observações sem violação de AC: comandos concorrentes no mesmo item, relógio adiantado, lista destacando oferta vencida.
+
+
+---
+
+# Parte P1, rodada 1 (preservada; `57b40ed..3643c77`, resultado FAIL)
+
+## Comandos executados (árvore real, HEAD `3643c77`)
+
+| Comando | Resultado real |
+| --- | --- |
+| `pnpm --filter @cicclo/mobile typecheck` | exit 0 |
+| `pnpm --filter @cicclo/mobile lint` (`--max-warnings 0`) | exit 0, zero avisos |
+| `pnpm --filter @cicclo/mobile test` | exit 0: **35 suítes / 35 passaram; 322 testes / 322 passaram; 0 falhas; 0 ignorados** (+60 testes desde `57b40ed`) |
+| `pnpm --filter @cicclo/mobile build` (`expo export`), em worktree descartável | exit 0, bundles iOS e Android; confirma que o `@expo/vector-icons` novo empacota |
+| Grep `test.skip|it.skip|describe.skip|.only(|xit|xdescribe|test.todo|it.todo|TODO|FIXME|fit(|fdescribe` | Nenhuma ocorrência |
+| Teste ao vivo | **Não executado** (demo com carteira 1020, vários bookings; ele debita e cancela) |
+
+## Critérios de aceite de P1: spec, asserção e evidência
+
+Caminhos relativos a `apps/mobile/`; `IC` = `__tests__/itemCommands.test.tsx`, `PO` = `__tests__/polling.test.tsx`, `OC` = `src/features/bookings/components/__tests__/OfferCountdown.test.tsx`.
+
+| ID | Resultado esperado pela spec | Evidência `file:linha` + asserção | Resultado |
+| --- | --- | --- | --- |
+| QUEUE-01 | Ativação só em `pending_activation`; confirmação só em `to_be_confirmed` ainda não expirado; WHERE endpoints comprovados | Ativar: `IC:99-102` `getByRole('button',{name:'Ativar wash'})` e `posts[0].url toBe(commandUrl('activate'))`; nunca em `queued`, `to_be_confirmed`, `in_progress`, `completed`, `cancelled`, `failed`: `IC:125-126` `queryByRole(...)` nulo e `posts toHaveLength(0)`. Confirmar vivo: `IC:181-185` `posts[0].url toBe(commandUrl('confirm'))`; expirado: `IC:197-198` botão nulo e `posts` 0; relógio avançado: `IC:209-210`. Capacidades desligadas escondem ativar, cancelar e relatar: `bookingDetails.test.tsx` "offers no action beyond going back while the item commands are not enabled" (mutantes Q14a e Q14c mortos) e `IC:420` para relatar. **`confirm` desligada: sem prova** (o item do teste está vencido, então o botão some por outro motivo); mutante Q14b vivo, `confirmItem.ts:13` | **GAP** (baixa-média) |
+| QUEUE-02 | `queued`: posição autoritativa quando presente e explicação de que já está pago | `IC:113-114` `getByText('Posição na fila: 2')` e `getByText('Já pago: o valor foi cobrado na contratação.')`; `IC:236` posição 3. **Posição ausente** (`queuePosition` nulo): sem teste; Q19 vivo (`BookingDetailsScreen.tsx:86` passaria a mostrar "Posição na fila: null"). Item `queued` real da API: nunca observado | **GAP** (baixa) e PENDING-EXTERNAL para o real |
+| QUEUE-03 | Contador `max(0, ceil((expiresAt - agora)/1000))`; sem assumir timer em segundo plano | `OC:31-34` `secondsUntil(at(60),T0)` 60, `at(0.2)` 1, `at(0)` 0, `at(-30)` 0; `OC:42-49` "Tempo restante: 60 s", "1 s", "Oferta vencida"; foreground: `OC:70-75` "Tempo restante: 15 s" após `setSystemTime(T0+45000)`. Mutantes Q11 e Q12 mortos | COVERED |
+| QUEUE-04 | No zero: confirmação visual desabilitada e consulta ao servidor, sem transicionar localmente | Sem envio no zero: `IC:197-198`; relógio avançado com o timer parado: `IC:209-210` (`posts` 0, botão some; Q1 e Q21 mortos); sem transição local: `IC:182` o status segue "Máquina ofertada" logo após o clique. **Consulta ao servidor**: lista `PO:288-289` `counts.list toBeGreaterThan(before)` e `OC:50` `onExpired` 1 vez; **detalhe**: nenhuma asserção de nova leitura no zero; Q18 vivo (`ItemActions.tsx:29` sem `invalidateQueries`) | **GAP** (baixa-média, só no detalhe) |
+| QUEUE-05 | 410 ou 409: atualiza o detalhe e comunica com base no novo estado | 410 com tempo local sobrando: `IC:222` `/A oferta venceu e a execução voltou para a fila/`, `IC:223` "Na fila" vindo do refetch, `IC:224` `gets > before`; 409: `IC:139-141` (ativar), `IC:235-236` (confirmar), `IC:338-340` (cancelar), `IC:399-401` (relatar). O texto "voltou para a fila" é sustentado pelo OpenAPI do `confirm` (devolve a oferta vencida ao fim da fila). Q22 morto | COVERED |
+| QUEUE-06 | Cancelar só em `pending_activation`, `queued`, `to_be_confirmed`; nunca em `in_progress`; WHERE suportado | `IC:273` botão em cada um dos três; `IC:281-282` nenhum em `in_progress`, `completed`, `cancelled`, `failed` e `posts` 0. Q3 e Q14c mortos | COVERED |
+| QUEUE-07 | Estorno só quando a API o confirma; carteira atualizada, **sem creditá-la antecipadamente** | Texto só com resposta válida: `IC:311` `Execução cancelada. Estorno confirmado: R$ 18,90.`; sem prova na resposta: `IC:325-326` falha e `queryByText(/Estorno confirmado/)` nulo; erro: `IC:338,341` `queryByText(/Estorno/)` nulo; valor zero: `IC:353-354`. Saldo final: `IC:314` `getQueryData(['wallet']) toMatchObject({balanceCents: 5000})`. **Mas** a asserção só é lida depois que a releitura da carteira termina; ela apaga qualquer escrita errada no cache. Mutantes Q5 (credita 9999 numa falha) e Q16 (grava o valor estornado no lugar do saldo restante) sobreviveram | **GAP** (média) |
+| QUEUE-08 | Relato aceito mostra `Relato enviado para verificação`, sem afirmar estorno; WHERE implementado | `IC:371` `findByText('Relato enviado para verificação.')`, `IC:374` corpo vazio, `IC:375` `queryByText(/estorno|reembolso|devolv|crédito/i)` nulo, `IC:377` carteira intacta; só em `in_progress`: `IC:387`; 409 `IC:399-401`; 429 `IC:410-411`; capacidade `IC:420`. Q6 e Q14d mortos | COVERED |
+| QUEUE-09 | Polling REST seletivo: tela visível, app ativo, online, itens não terminais; suspenso fora disso | Lista 10 s: `PO:97-101`; blur: `PO:110-115`; segundo plano (`focusManager` falso): `PO:123-129` e retomada com releitura; offline: `PO:138-144`; tudo terminal: `PO:155-157`; sem carteira nem POST: `PO:165-170`; 429: `PO:180-184`; desmontar: `PO:193-195`. Detalhe 5 s e para no terminal: `PO:207-215`; ID malformado e segundo plano: `PO:219-229`. Q7, Q8, Q9 e R3 mortos | COVERED |
+| QUEUE-10 | Oferta destacada na lista, com prazo, sem exigir abrir o detalhe | `PO:256-258` bloco "Oferta de máquina para wash: confirme no detalhe", "Tempo restante: 60 s" e rótulo falado com "oferta de máquina aguardando confirmação até"; lote misto `PO:275-277`; releitura ao vencer `PO:288-289`; rótulo estático `PO:299`. Q15 morto. A borda destacada (`styles.cardOffer`) é só estilo: Q15b vivo, informativo | COVERED |
+
+**Total P1:** 6 de 10 COVERED, 4 com GAP (QUEUE-01, 02, 04, 07). Nenhum dos GAP exige a API real.
+
+## Revisão adversarial
+
+| Ponto | Achado |
+| --- | --- |
+| Dois cliques | Cada comando tem um `useRef` síncrono (`itemCommand.ts:44,49`) e o botão fica desabilitado; o teste só cobre o segundo toque depois do re-render (`IC:151-154`, `IC:245-248`). O toque duplo no mesmo quadro não é provado (Q13 vivo). O servidor é idempotente para repetir ativar, confirmar e cancelar (OpenAPI), então o dano é baixo. **Observação:** os quatro comandos têm refs independentes e cada botão só se desabilita por conta própria, então "confirmar" e "cancelar" do mesmo item podem estar em voo ao mesmo tempo; o servidor serializa, mas a tela pode mostrar duas mensagens |
+| Confirmar no zero; relógio atrasado ou adiantado | Zero ou vencido no relógio local: nada é enviado e o botão some (`confirmItem.ts:9-10,29`; testes `IC:192-211`). Relógio atrasado (sobra tempo local, servidor já venceu): o servidor decide, 410 tem mensagem e releitura (`IC:213-225`). Relógio adiantado: o botão some mesmo com a oferta ainda válida no servidor, sem possibilidade de confirmar até a oferta mudar; aceitável pela spec (o contador é informativo e o 410 prevalece), mas é uma perda de função por relógio errado, não registrada |
+| 410, 409, 404, 429 | 410 e 409 com mensagem e releitura (acima). 429: mensagem com prazo, botão continua utilizável (`IC:405-411`, só para relatar; a função de mensagem é compartilhada). 404: a mensagem "Contratação ou execução não encontrada." não tem teste (Q20 vivo). Todos os comandos invalidam o cache dos bookings em `finally` (`itemCommand.ts:57-60`) |
+| Crédito de saldo só com resposta válida | O código é correto: a carteira só é tocada depois de `parseCancelResponse` (`cancelItem.ts:30-34`) e um problema de cache não vira falha. **Os testes não provam**: ver QUEUE-07 (Q5 e Q16 vivos) |
+| Texto de estorno sem prova | Só aparece com `refundedAmountCents > 0` da resposta validada (`ItemActions.tsx:83-85`); Q4 morto. O schema do app aceita `refundedAmountCents` 0, enquanto o OpenAPI exige mínimo 1; mais permissivo, inofensivo |
+| Relato que menciona estorno | Não: texto fixo (`ItemActions.tsx:98`); Q6 morto |
+| Polling em foco, segundo plano, offline, terminal e 429 | Cobertos (QUEUE-09). Item com status desconhecido segue sendo sondado (nunca assumido terminal): decisão coerente com SAFE-01. O polling para após um 429 e só volta com uma leitura bem-sucedida ou foco novo |
+| `onExpired` repetido | Uma vez por `expiresAt` (`OfferCountdown.tsx:46-51`); Q10 morto; novo prazo dispara de novo (`OC:100-103`) |
+| Vazamento de timers | `setInterval` e o listener do `AppState` são removidos no desmonte (`OC:105-111`); polling não deixa timer (`PO:193-195`); Q10 e Q11 mortos |
+| Ação visível com capacidade desligada | Ativar, cancelar e relatar somem (Q14a, Q14c, Q14d mortos). **Confirmar não é provado** (Q14b vivo) |
+| Comando para item de outro booking; ID malformado | O caminho usa o `bookingId` da tela e o `itemId` do próprio booking, então a UI não alcança um item de outro booking. `postItemCommand` valida os dois como UUID (`itemCommand.ts:19`), mas nenhum teste cobre (Q17 vivo): equivalente na UI (IDs já validados na rota e no schema), sem teste de unidade |
+| Lista destaca oferta vencida | A lista também destaca uma oferta cujo prazo já passou (`BookingsScreen.tsx`, filtro por status e `expiresAt` não nulo, sem checar o relógio), com o texto falado "aguardando confirmação até <hora passada>" ao lado do contador "Oferta vencida". Inconsistência de apresentação, sem teste; baixa |
+
+## Conferência do `api-contract.md` ("Provas P1 contra a API real") com o teste ao vivo, o OpenAPI e o estado real
+
+Leituras `GET` feitas por este Verifier em `127.0.0.1:5001`: OpenAPI, carteira (1020) e lista de contratações (3 bookings).
+
+| Afirmação da tabela | Sustentação encontrada | Avaliação |
+| --- | --- | --- |
+| Limites por IP e minuto: ativar e confirmar 15 (compartilhado), cancelar 10, relatar 3 | OpenAPI: respostas 429 descrevem "15/min", "10/min" e "3/min" | Sustentada |
+| `activate`: 200 `to_be_confirmed` com `machineId` e `expiresAt` (60 s) ao ativar os dois itens do lote | OpenAPI: oferta exclusiva de 60 s. Estado real: o lote tem a secagem `cancelled` e a lavagem `in_progress`, o que exige os dois itens ativados e a lavagem confirmada. O log de "observado diretamente" não foi visto pelo Verifier | Sustentada pelo estado e pelo OpenAPI; o "observado" repousa em log perdido |
+| `activate` em item já ativo devolve 200 com o estado atual | OpenAPI: repetir ativar de item ativo devolve o estado | Coerente com o contrato; o log citado não foi visto |
+| `confirm`: 410 `MACHINE_OFFER_EXPIRED` logo depois do prazo (observado) | OpenAPI documenta o 410. O teste ao vivo aceita 409 **ou** 410 (`lifecycle.live.test.ts:86-87`); um PASS do teste não distingue os dois. O "410 observado" repousa em log perdido | Não verificável; fraca |
+| `confirm`: a lavagem do lote terminou `in_progress` (inferido) | Estado real: lavagem `in_progress` no booking `01a16024` (1890) | Sustentada |
+| `cancel`: lavagem A e secagem terminaram `cancelled` (inferido) | Estado real: `01a15fdf` lavagem `cancelled`; `01a16024` secagem `cancelled` | Sustentada |
+| `cancel`: saldo 3110, 5000, 1020, 3110 coerente com estornos de 1890 e 2090 | Só a carteira atual (1020, após a compra posterior do usuário: 3110 menos 2090) é verificável; a sequência vem de logs. O OpenAPI diz que o estorno é o preço histórico | Plausível; sequência não verificável |
+| `report-issue`: 202 `{incidentId, status}` e 429 na quarta chamada | OpenAPI: 202 e limite 3/min; sem log visto | Coerente; "observado" repousa em log perdido |
+| Colunas "Não observado": fila `queued`, corpo do cancel, repetições, mesmo `incidentId`, 409 em cancelado e em andamento | O OpenAPI descreve todos, e o teste ao vivo os exercitaria, mas o resumo se perdeu | Honesto: a tabela não alega mais do que isso |
+| Relato do usuário: aceitou oferta e relatou problema pelo app | Estado real: existe o booking `01a16027` (secagem 2090, `in_progress`, criado depois do lote), coerente com compra, ativação e confirmação feitas pelo app. O relato de "relatar problema" não deixa rastro legível na lista | Parcialmente corroborado pelo estado; é relato, sem captura |
+| `activate` e `cancel` pelo app: não citados | O doc diz isso | Honesto |
+
+**Veredito da conferência:** a tabela separa corretamente observado, inferido e não observado e não alega o que não tem base, mas **três linhas marcadas "observado diretamente" dependem de logs que ninguém pode reler** (ativar em item ativo, 410 após o prazo, 202/429 do relato); o próprio teste ao vivo tolera 409 ou 410, então a rerrodada com a saída salva em arquivo, prevista pelo doc, é necessária para fechar essas linhas. Isso é PENDING-EXTERNAL, não falha do app. Também não aparecem na tabela: 404 dos comandos, 429 de ativar, confirmar e cancelar, e o fato de o OpenAPI exigir `refundedAmountCents` mínimo 1.
+
+## Sensor de P1 (worktree descartável em `3643c77`)
+
+**Profundidade:** P0/crítico, 34 mutantes. Cada um rodou `typecheck` (exit 0 em todos) e a suíte completa (322 testes).
+
+### P1: mortos
+
+| Mutante | Descrição | Teste que matou |
+| --- | --- | --- |
+| Q1 | `confirm` envia no zero (`>=`) | `IC` "does not send when the offer ran out while the app was away and the timer never fired" |
+| Q2 | ativar oferecido fora de `pending_activation` | `IC` "never offers or sends activate for an item that is cancelled/failed/..." (7 falhas) |
+| Q3 | cancelar oferecido em `in_progress` | `IC` "never offers cancel for an item that is in_progress" e "on an error gives no credit..." |
+| Q4 | texto de estorno sem checar `refundedAmountCents > 0` | `IC` "shows no refund text when the API credited nothing" |
+| Q6 | relato menciona estorno | `IC` "accepts the report: sends an empty POST, says it went for verification, mentions no refund..." |
+| Q7 | polling sem a guarda de foco | `PO` "stops when the screen loses focus..." |
+| Q8 | polling sem a guarda de terminal | `PO` "does not poll when every booking is terminal"; "refreshes every 5 seconds while the item is not terminal and stops once it is" |
+| Q9 | polling sem a guarda de 429 | `PO` "stops polling after the server rate limits the list" |
+| Q10 | `onExpired` a cada render | `OC` "treats an already expired timestamp as expired at once and reports it a single time" |
+| Q11 | contador sem recálculo no foreground | `OC` "recalculates from timestamps when the app returns to the foreground" |
+| Q12 | rótulo falado muda a cada segundo | `OC` "keeps a fixed spoken label..." |
+| Q14a, Q14c, Q14d | capacidade ignorada em ativar, cancelar, relatar | `bookingDetails.test.tsx` "offers no action beyond going back..." (Q14a, Q14c); `IC` "hides the action when the capability is not proven" (Q14d) |
+| Q15 | oferta não destacada na lista | `PO` "highlights the offer and its deadline..."; "keeps the finished items of a mixed batch..." |
+| Q21 | confirmar continua visível após vencer | `IC` (2 falhas) |
+| Q22 | mensagem de 409 não mapeada | `IC` (4 falhas) |
+| R3, R4 | intervalo do detalhe 1 s; valor do estorno errado no texto | `PO` detalhe 5 s; `IC` "shows the refund the API confirmed..." |
+
+### Regressão de P0 (todos mortos)
+
+R1 (`wallet/cache.ts` sem `cancelQueries`) e R2 (sem gravar o saldo confirmado) por `applyConfirmedBooking.test.tsx`; M1 (replay com chave nova) por `useBookingRecovery.test.tsx` e `purchaseFlow.test.tsx`; N8 (botão de compra sem `disabled`) por `lifecycle.test.tsx` e `purchaseFlow.test.tsx`; L1 (log sem a guarda `__DEV__`) por `client.test.ts`; N1 (`canConfirm` sem `capabilities.purchase`) por `CheckoutProvider.test.tsx`.
+
+### Sobreviventes
+
+| Mutante | Descrição | Arquivo:linha | Classificação | Asserção ou teste que falta |
+| --- | --- | --- | --- | --- |
+| Q5 | saldo creditado (9999) numa falha de cancelamento | `cancelItem.ts:30` | **Não equivalente** | `IC:338-343` lê o cache depois que a releitura da carteira restaura 3110. Bloquear a releitura (o GET da carteira fica pendente após o comando) e afirmar, logo após a falha, `getQueryData(['wallet'])` igual a 3110 |
+| Q16 | cancelamento grava `refundedAmountCents` como saldo | `cancelItem.ts:34` | **Não equivalente** | Mesmo teste: com a releitura bloqueada, afirmar `balanceCents` 5000 (o `remainingBalanceCents` da resposta) logo após o cancelamento |
+| Q14b | capacidade `confirm` ignorada | `confirmItem.ts:13` | **Não equivalente** | Em `bookingDetails.test.tsx` (capacidades desligadas) usar uma oferta com `expiresAt` futuro (por exemplo 2099) e afirmar que "Confirmar wash" não existe; o item atual está vencido |
+| Q18 | prazo da oferta zera e o detalhe não é relido | `ItemActions.tsx:29` | **Não equivalente** | Em `IC` T33, com `gets` capturado, fazer a oferta chegar a zero e afirmar `gets` maior |
+| Q19 | `queued` sem posição mostra "Posição na fila: null" | `BookingDetailsScreen.tsx:86` | **Não equivalente** (baixa) | Item `queued` com `queuePosition` nulo: afirmar que o texto "Posição na fila" não existe e que "Já pago" existe |
+| Q13 | comando sem a guarda síncrona de duplo toque | `itemCommand.ts:49` | **Não equivalente** (baixa; servidor idempotente) | Teste de hook: duas chamadas de `run` no mesmo `act`, um único envio |
+| Q20 | mensagem de 404 não distinguida | `itemCommand.ts:79` | **Não equivalente** (baixa) | Resposta 404 de um comando: afirmar "Contratação ou execução não encontrada." |
+| Q17 | IDs do comando não validados | `itemCommand.ts:19` | Equivalente na UI (IDs já validados na rota e no schema); falta só teste de unidade | `postItemCommand` com `bookingId` ou `itemId` inválido rejeita `InvalidBookingIdError` sem chamar `fetch` |
+| Q15b | borda do cartão com oferta removida | `BookingsScreen.tsx` (`styles.cardOffer`) | Equivalente (estilo); a oferta é destacada também por texto e contador | Opcional: afirmar o estilo do cartão |
+
+**Resultado do sensor de P1:** 34 injetados, 25 mortos, 9 sobreviveram (7 não equivalentes, 2 equivalentes). **Sobreviventes não equivalentes: 7.**
+
+### Regressão de P0 desde `57b40ed`
+
+Ícones das abas (`f9a92bc`): `navigation.test.tsx` "gives each tab its own icon without changing the accessible tab names" mantém os nomes `Serviços, tab, 1 of 3` etc.; o export empacota o `@expo/vector-icons` (exit 0). `wallet/cache.ts` (refator de `applyConfirmedBooking`): R1 e R2 mortos, o teste de GET tardio (`applyConfirmedBooking.test.tsx`) segue verde. Teste ao vivo de P0 reaproveita `installNodeFetch` sem mudança de comportamento. Os relatos do usuário sobre o N1 ("Validado o iOS" e "testei todos os cenários aqui e deu tudo certo") e a decisão de que o iOS vale para o Android (AD-007) estão registrados em `native-validation.md` como relato, sem observação por cenário; a decisão não é evidência de ensaio Android. **Nenhum AC de P0 quebrou.**
+
+## Pendente por dependência externa (à parte; não força FAIL)
+
+| Item | Situação |
+| --- | --- |
+| Item `queued` com `queuePosition` e ordem da fila reais | Nunca observado ao vivo (QUEUE-02) |
+| Corpo real de `cancel` (`refundedAmountCents`, `remainingBalanceCents`) e repetição sem novo crédito | Descritos no OpenAPI, não observados; o app só lê o corpo validado |
+| Repetições (confirmar sem reiniciar, relatar com o mesmo `incidentId`) e 409 em itens cancelados ou em andamento | Não observados ao vivo (resumo do teste perdido); repetir `live/lifecycle.live.test.ts` com a saída salva em arquivo |
+| Linhas "observado" que repousam em log perdido (410 após o prazo; ativar em item ativo; 202/429 do relato) | Dependem de reexecução |
+| Compra após horas (retenção da `Idempotency-Key`) | Inferida pelo código do backend; `keyRetentionMs = null` |
+| Compra ao vivo de 2 ou mais unidades e preferência aceita | Não exercitada |
+| Android (TalkBack, fonte 200%) | Não ensaiado; aceito por decisão do usuário (AD-007), sem ser evidência de ensaio |
+| `pnpm test:bootstrap` e comandos do workspace | Falham só por falta de `dotnet` |
+
+## Planos de correção de P1 (só testes; nenhuma mudança de produção)
+
+1. **QUEUE-07 (Q5, Q16):** teste de cancelamento com a releitura da carteira bloqueada: sucesso deixa o cache em 5000 (valor da resposta), falha o deixa em 3110.
+2. **QUEUE-01 (Q14b):** oferta futura com `confirm` desligada, sem botão.
+3. **QUEUE-04 (Q18):** `gets` aumenta quando o prazo do detalhe zera.
+4. **QUEUE-02 (Q19):** `queued` sem posição.
+5. Baixa: toque duplo no hook (Q13), mensagem de 404 (Q20), validação de IDs (Q17), e corrigir a lista que destaca oferta vencida como "aguardando confirmação".
+6. Rerrodar `live/lifecycle.live.test.ts` com a saída em arquivo depois de restaurar a demo, e ajustar para aceitar só 410 no `confirm` após o prazo.
+
+## Resumo (P0 mais P1)
+
+**Overall:** P0 segue PASS (verificado até `57b40ed`; sem regressão). P1 **não** está pronto: FAIL por 4 ACs com lacuna testável e 7 mutantes não equivalentes vivos, todos de correção barata em teste. P1 não deve ser declarado entregue.
+
+**P1 spec-anchored:** 6 de 10 COVERED (QUEUE-03, 05, 06, 08, 09, 10); 4 com GAP (QUEUE-01, 02, 04, 07).
+**Gate:** typecheck 0, lint 0 avisos, 322 de 322 testes, export ok.
+**Sensor P1 e regressão:** 25 de 34 mortos; 7 sobreviventes não equivalentes.
+**Gaps por gravidade:** média, QUEUE-07 (crédito antecipado não provado); baixa-média, QUEUE-01 (`confirm` desligada) e QUEUE-04 (releitura do detalhe no zero); baixa, QUEUE-02 (fila sem posição), toque duplo, 404; baixa, lista que destaca oferta vencida e três linhas "observado" do doc sobre logs perdidos.
+
+
+---
+
+# Parte P0 (verificação anterior, preservada; válida até `57b40ed`)
 
 ## Delta `cb9adcd..57b40ed`
 

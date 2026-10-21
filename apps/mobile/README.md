@@ -11,7 +11,7 @@ App Expo (React Native) da lavanderia Cicclo. Mostra o saldo da carteira demo, o
 | Navegação, header, catálogo, seleção, revisão (E1 e E2) | Implementado e coberto por testes com API fake |
 | Contratação com intenção única, verificação e recuperação (E3) | Implementado e provado contra a API real (gate C2). O botão de contratar está ligado (`capabilities.purchase = true`) |
 | Lista, detalhe, revalidação por foco e rede (E4) | Implementado e provado contra a API real (gate C3) |
-| Validação nativa (N1) | **Aprovada pelo usuário no iOS** em 2026-10-21, em relato global ("Validado o iOS"), sem registro por cenário; o Android não foi ensaiado, e o usuário decidiu que o iOS vale também para ele (app híbrido). Ver [docs/native-validation.md](docs/native-validation.md) |
+| Validação nativa (N1) | **Aprovada pelo usuário no iOS** em 2026-10-21, nos relatos "Validado o iOS" e "testei todos os cenários e deu tudo certo" (sem observação individual); o Android não foi ensaiado, e o usuário decidiu que o iOS vale também para ele (app híbrido). Ver [docs/native-validation.md](docs/native-validation.md) |
 | Ciclo de vida do serviço: ativar, confirmar oferta, cancelar, relatar problema, polling (P1) | **Não implementado.** Só começa depois de P0 verificado e de cada endpoint comprovado |
 | Intenção persistida, SignalR, APK (P2) | Fora do escopo |
 
@@ -117,4 +117,8 @@ Um export bem-sucedido não prova que o app funciona em um aparelho.
 | Contratação com idempotência e recuperação | Funcional | Testes de integração e prova contra a API real (C2) |
 | Lista e detalhe de contratações | Funcional | Testes de integração e prova contra a API real (C3) |
 | Ativar, confirmar oferta, cancelar, relatar, polling | Não implementado | Fora de P0 |
-| App no iOS (gate N1) | Aprovado pelo usuário em relato global, sem registro por cenário | Relato do usuário; Android sem ensaio, aceito por decisão do usuário |
+| App no iOS (gate N1) | Aprovado pelo usuário (todos os cenários, sem observação individual) | Relato do usuário; Android sem ensaio, aceito por decisão do usuário |
+
+## Demo: concluir uma execução
+
+O cliente não tem ação de concluir: quem conclui é a simulação das máquinas. Para demonstrar o ciclo completo, suba a API em `Development` com `Laundry__DemoMode=true`, defina `EXPO_PUBLIC_DEMO_SIMULATION=true` em `apps/mobile/.env` e reinicie o Metro. O detalhe de uma execução em andamento passa a mostrar "Concluir (simulação)", rotulado como ação de simulação. Sem a variável o botão não aparece; com a variável e uma API sem DemoMode o app avisa que a simulação não está disponível.

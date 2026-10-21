@@ -2,6 +2,15 @@ import { fireEvent, renderRouter, screen } from 'expo-router/testing-library';
 
 import { queryClient } from '../src/shared/api/queryClient';
 
+// This file covers the detail with the item commands off; with them on, see itemCommands.test.tsx.
+jest.mock('../src/shared/api/capabilities', () => ({
+  capabilities: {
+    purchase: true,
+    keyRetentionMs: null,
+    itemCommands: { activate: false, confirm: false, cancel: false, reportIssue: false }, simulation: { complete: false },
+  },
+}));
+
 const APP_DIR = './src/app';
 const nbsp = (text: string) => text.replace(/R\$ /g, 'R$ ');
 const ID = '00000000-0000-4000-8000-000000000001';
@@ -87,7 +96,7 @@ describe('booking details', () => {
     expect(screen.getByText('As máquinas são simuladas.')).toBeOnTheScreen();
   });
 
-  it('offers no action beyond going back: no activate, confirm, cancel or report', async () => {
+  it('offers no action beyond going back while the item commands are not enabled', async () => {
     detailReplies = [{ status: 200, body: booking([item(1, 'wash', 'to_be_confirmed', { expiresAt: '2026-10-21T12:01:00Z', machineId: '20000000-0000-4000-8000-000000000009' }), item(2, 'dry', 'pending_activation')]) }];
 
     await openDetail(ID);
@@ -170,5 +179,28 @@ describe('booking details', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Voltar para Serviços' }));
 
     expect(screen.getByLabelText('Checkout, 1 item, tab, 3 of 3')).toBeOnTheScreen();
+  });
+
+  it('hides Confirmar for a live offer while the confirm capability is not enabled', async () => {
+    detailReplies = [
+      {
+        status: 200,
+        body: booking([
+          item(1, 'wash', 'to_be_confirmed', { machineId: '20000000-0000-4000-8000-000000000009', expiresAt: '2099-01-01T00:00:00Z' }),
+        ]),
+      },
+    ];
+    await openDetail(ID);
+
+    expect(await screen.findByText(/^Tempo restante: /)).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: /^Confirmar/ })).toBeNull();
+  });
+
+  it('does not print a queue position when the API sends none for a queued item', async () => {
+    detailReplies = [{ status: 200, body: booking([item(1, 'wash', 'queued')]) }];
+    await openDetail(ID);
+
+    expect(await screen.findByText('Na fila')).toBeOnTheScreen();
+    expect(screen.queryByText(/Posição na fila/)).toBeNull();
   });
 });

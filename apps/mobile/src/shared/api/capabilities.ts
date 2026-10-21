@@ -14,4 +14,15 @@ export const capabilities = {
    * booking behind a unique index and the backend has no cleanup, so a replay stays valid while the booking exists.
    */
   keyRetentionMs: null as number | null,
+  /**
+   * P1 item commands (CP1): each one is switched on only in the commit that records its proof against the
+   * real API in docs/api-contract.md ("Provas P1 contra a API real", which also lists what was not observed).
+   * A command that is off is hidden, never shown disabled or faked.
+   */
+  itemCommands: { activate: true, confirm: true, cancel: true, reportIssue: true },
+  /**
+   * Demo-only machine simulation (/simulation routes, Development + DemoMode on the API). It is an exception to
+   * the "no operator controls" rule, decided by the user (AD-008), and is also gated by EXPO_PUBLIC_DEMO_SIMULATION.
+   */
+  simulation: { complete: true },
 };
