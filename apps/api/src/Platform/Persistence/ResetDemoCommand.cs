@@ -1,3 +1,4 @@
+using Cicclo.Api.Wallet.ReadCaching;
 using Microsoft.Extensions.Options;
 using Npgsql;
 
@@ -11,12 +12,14 @@ namespace Cicclo.Api.Platform.Persistence;
 /// Em uma única transação, esvazia apenas <see cref="ApplicationTables"/> (sem CASCADE) e reaplica o seed.sql; qualquer
 /// falha reverte as duas etapas. Preserva schema, histórico de migrations, outras tabelas, bancos e volume; não encerra
 /// sessões alheias. Não inicia listener HTTP; com `--bootstrap-demo` presente, o bootstrap tem precedência e nada é apagado.
+/// Com o cache opcional ligado, a chave da projeção da wallet é removida depois do commit e da conexão descartada.
 /// </summary>
 public sealed partial class ResetDemoCommand(
     DemoSeedSql seed,
     IHostEnvironment environment,
     IOptions<LaundryOptions> laundry,
     IConfiguration configuration,
+    WalletCacheInvalidation walletCache,
     ILogger<ResetDemoCommand> logger)
 {
     public const string Option = "--reset-demo";
@@ -125,14 +128,16 @@ public sealed partial class ResetDemoCommand(
 
             await seed.ExecuteAsync(transaction, cancellationToken);
             await transaction.CommitAsync(cancellationToken);
-            LogResetCompleted();
-            return BootstrapDemoCommand.Succeeded;
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             LogResetFailed(exception);
             return BootstrapDemoCommand.Failed;
         }
+
+        await walletCache.AfterCommitAsync();
+        LogResetCompleted();
+        return BootstrapDemoCommand.Succeeded;
     }
 
     private static async Task<long> ApiSessionsAsync(NpgsqlTransaction transaction, CancellationToken cancellationToken)

@@ -1,5 +1,6 @@
 using Cicclo.Api.Bookings;
 using Cicclo.Api.Wallet;
+using Cicclo.Api.Wallet.ReadCaching;
 
 namespace Cicclo.Api.Laundry.ConfirmMachineFailure;
 
@@ -26,9 +27,16 @@ public sealed record ConfirmMachineFailureResult(ConfirmMachineFailureOutcome Ou
 /// falha. Execução real → item failed, máquina out_of_service e refund do preço histórico com crédito na mesma
 /// transação; ocupação sintética → out_of_service sem item, refund ou lançamento. A fila do tipo é reconciliada antes do
 /// commit e as métricas só contam depois dele. Complete e falha disputam os mesmos locks: só um desfecho por execução.
+/// Com refund, o cache de leitura da wallet é invalidado depois do commit; a ocupação sintética não muda saldo.
 /// </summary>
 public sealed partial class ConfirmMachineFailure(
-    ILaundrySessions sessions, QueueCoordinator coordinator, LaundryMetrics laundryMetrics, RefundMetrics refundMetrics, TimeProvider time, ILogger<ConfirmMachineFailure> logger)
+    ILaundrySessions sessions,
+    QueueCoordinator coordinator,
+    LaundryMetrics laundryMetrics,
+    RefundMetrics refundMetrics,
+    TimeProvider time,
+    WalletCacheInvalidation walletCache,
+    ILogger<ConfirmMachineFailure> logger)
 {
     public async Task<ConfirmMachineFailureResult> ExecuteAsync(Guid machineId, CancellationToken cancellationToken)
     {
@@ -59,6 +67,7 @@ public sealed partial class ConfirmMachineFailure(
         laundryMetrics.RecordCommitted(changes);
         if (result.Refund is { } refund)
         {
+            await walletCache.AfterCommitAsync();
             refundMetrics.RecordCommitted(refund.Reason);
         }
 

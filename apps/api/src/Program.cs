@@ -22,6 +22,7 @@ using Cicclo.Api.Services.GetCatalog;
 using Cicclo.Api.Wallet;
 using Cicclo.Api.Wallet.GetBalance;
 using Cicclo.Api.Wallet.ListTransactions;
+using Cicclo.Api.Wallet.ReadCaching;
 using Microsoft.EntityFrameworkCore;
 
 var bootstrapDemo = BootstrapDemoCommand.IsRequested(args);
@@ -49,6 +50,7 @@ builder.Services.AddScoped<PostgresServiceCatalogQuery>();
 builder.Services.AddScoped<PostgresBookingProjection>();
 builder.Services.AddScoped<PostgresLedgerQuery>();
 builder.Services.AddScoped<PostgresMachinesQuery>();
+builder.Services.AddWalletReadCaching(builder.Configuration);
 
 if (bootstrapDemo)
 {

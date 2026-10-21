@@ -1,5 +1,6 @@
 using Cicclo.Api.Bookings;
 using Cicclo.Api.Wallet;
+using Cicclo.Api.Wallet.ReadCaching;
 
 namespace Cicclo.Api.Laundry.ConfirmIncident;
 
@@ -28,10 +29,17 @@ public sealed record ConfirmIncidentResult(ConfirmIncidentOutcome Outcome, Guid?
 /// <see cref="ConfirmMachineFailure.ConfirmMachineFailure.FailAsync"/>, sem outro cálculo de estorno. Numa transação, na
 /// ordem comum de locks wallet → máquinas do tipo → itens → incidente: só um relato aberto cuja máquina está running
 /// com o item in_progress dele falha a execução e passa a confirmed; relato já confirmado devolve o estado atual sem
-/// novo refund; relato de execução já concluída ou falha recusa sem reabrir o item.
+/// novo refund; relato de execução já concluída ou falha recusa sem reabrir o item. Com refund, o cache de leitura da
+/// wallet é invalidado depois do commit.
 /// </summary>
 public sealed partial class ConfirmIncident(
-    ILaundrySessions sessions, QueueCoordinator coordinator, LaundryMetrics laundryMetrics, RefundMetrics refundMetrics, TimeProvider time, ILogger<ConfirmIncident> logger)
+    ILaundrySessions sessions,
+    QueueCoordinator coordinator,
+    LaundryMetrics laundryMetrics,
+    RefundMetrics refundMetrics,
+    TimeProvider time,
+    WalletCacheInvalidation walletCache,
+    ILogger<ConfirmIncident> logger)
 {
     public async Task<ConfirmIncidentResult> ExecuteAsync(Guid incidentId, CancellationToken cancellationToken)
     {
@@ -77,6 +85,7 @@ public sealed partial class ConfirmIncident(
         laundryMetrics.RecordCommitted(changes);
         if (failure.Refund is { } refund)
         {
+            await walletCache.AfterCommitAsync();
             refundMetrics.RecordCommitted(refund.Reason);
         }
 

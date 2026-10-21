@@ -81,7 +81,8 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
                 typeof(Cicclo.Api.Laundry.ConfirmIncident.ConfirmIncidentResponse), typeof(Cicclo.Api.Laundry.ConfirmIncident.ConfirmedIncidentStatusContract),
                 typeof(Cicclo.Api.Laundry.RestoreMachine.RestoreMachine), typeof(Cicclo.Api.Laundry.RestoreMachine.RestoreMachineResult),
                 typeof(Cicclo.Api.Wallet.ReadCaching.IWalletReadCache), typeof(Cicclo.Api.Wallet.ReadCaching.WalletCacheEntry),
-                typeof(Cicclo.Api.Wallet.ReadCaching.WalletCacheOptions),
+                typeof(Cicclo.Api.Wallet.ReadCaching.WalletCacheOptions), typeof(Cicclo.Api.Wallet.ReadCaching.CachedWalletBalanceQuery),
+                typeof(Cicclo.Api.Wallet.ReadCaching.WalletCacheInvalidation), typeof(Cicclo.Api.Wallet.ReadCaching.WalletReadCaching),
             },
             domainTypes.ToHashSet());
         var violations = domainTypes
