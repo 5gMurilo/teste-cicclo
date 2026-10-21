@@ -1,14 +1,15 @@
 namespace Cicclo.Api.Wallet;
 
-/// <summary>Tipos de lançamento existentes nesta etapa; o estorno chega com o cancelamento.</summary>
+/// <summary>Tipos de lançamento: débito da compra (do booking inteiro) e refund de uma execução (aponta o item).</summary>
 public enum LedgerEntryKind
 {
     Debit,
+    Refund,
 }
 
 /// <summary>
 /// Lançamento imutável da wallet (tabela wallet_transactions): valor sempre positivo, saldo resultante não negativo.
-/// O débito pertence ao booking inteiro, por isso não aponta item.
+/// O débito pertence ao booking inteiro, por isso não aponta item; o refund aponta o item estornado, no máximo um por item.
 /// </summary>
 public sealed class LedgerEntry(
     Guid id,

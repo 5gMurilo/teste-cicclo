@@ -15,10 +15,11 @@ internal sealed class LedgerEntryConfiguration : IEntityTypeConfiguration<Ledger
     {
         builder.ToTable("wallet_transactions", table =>
         {
-            table.HasCheckConstraint("ck_wallet_transactions_kind", "kind IN ('debit')");
+            table.HasCheckConstraint("ck_wallet_transactions_kind", "kind IN ('debit', 'refund')");
             table.HasCheckConstraint("ck_wallet_transactions_amount_positive", "amount > 0");
             table.HasCheckConstraint("ck_wallet_transactions_balance_after_non_negative", "balance_after >= 0");
             table.HasCheckConstraint("ck_wallet_transactions_debit_without_item", "kind <> 'debit' OR request_item_id IS NULL");
+            table.HasCheckConstraint("ck_wallet_transactions_refund_with_item", "kind <> 'refund' OR request_item_id IS NOT NULL");
         });
 
         builder.HasKey(entry => entry.Id).HasName("pk_wallet_transactions");
@@ -54,17 +55,26 @@ internal sealed class LedgerEntryConfiguration : IEntityTypeConfiguration<Ledger
             .IsUnique()
             .HasFilter("kind = 'debit'")
             .HasDatabaseName("ux_wallet_transactions_request_debit");
+        // Um único refund por item: defesa no banco contra crédito duplicado, além da validação de estado sob lock.
+        builder.HasIndex(entry => entry.BookingItemId, RefundPerItemIndex)
+            .IsUnique()
+            .HasFilter("kind = 'refund'");
     }
+
+    /// <summary>Unique parcial de refund por item (kind = 'refund').</summary>
+    public const string RefundPerItemIndex = "ux_wallet_transactions_item_refund";
 
     public static string ToText(LedgerEntryKind value) => value switch
     {
         LedgerEntryKind.Debit => "debit",
+        LedgerEntryKind.Refund => "refund",
         _ => throw new ArgumentOutOfRangeException(nameof(value), value, "Tipo de lançamento sem representação persistida."),
     };
 
     public static LedgerEntryKind ParseKind(string value) => value switch
     {
         "debit" => LedgerEntryKind.Debit,
+        "refund" => LedgerEntryKind.Refund,
         _ => throw new InvalidOperationException($"Tipo de lançamento persistido desconhecido: '{value}'."),
     };
 }

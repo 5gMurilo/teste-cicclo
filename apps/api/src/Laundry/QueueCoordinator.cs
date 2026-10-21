@@ -13,6 +13,9 @@ public enum ActivationOutcome
     AlreadyActive,
 
     NotFound,
+
+    /// <summary>Item fora da regra de ativação (cancelado ou com desfecho): nada mudou.</summary>
+    InvalidState,
 }
 
 /// <summary>Estado do item depois da decisão: máquina e prazo na oferta, posição derivada na fila.</summary>
@@ -68,6 +71,12 @@ public sealed class QueueCoordinator(TimeProvider time, IOptions<LaundryOptions>
             var dueExpired = await ExpireDueAsync(session, machines, items, now, cancellationToken);
             var dueOffers = await OfferFreeMachinesAsync(session, machines, items, now, cancellationToken);
             return new(ActivationOutcome.AlreadyActive, Placement(itemId, items), dueOffers, dueExpired, type);
+        }
+
+        if (target.Status != BookingItemStatus.PendingActivation)
+        {
+            // Cancelado ou com desfecho (QUEUE-14): recusa sem reconciliar nem gravar nada.
+            return new(ActivationOutcome.InvalidState, null, [], [], type);
         }
 
         // A oferta vencida volta à fila antes de o item recém-ativado entrar: ela venceu antes desta chegada.
