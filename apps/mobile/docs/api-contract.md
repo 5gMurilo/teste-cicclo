@@ -30,7 +30,7 @@ Observações: logo após a compra o item chegou `to_be_confirmed` com `machineI
 **Ressalvas da prova ao vivo (apontadas pelo Verifier independente):**
 
 1. O código HTTP da criação (201) e do replay (200) não é observado: `createBooking` devolve só o corpo validado. O que o teste prova é o mesmo `bookingId`, o mesmo valor cobrado e a ausência de novo débito. O `remainingBalanceCents` do replay não é afirmado.
-2. O 429 foi observado (`RATE_LIMIT_EXCEEDED`, prazo lido de `Retry-After`), mas o código e o formato do cabeçalho só aparecem no log do teste, sem asserção própria.
+2. O 429 foi observado (`RATE_LIMIT_EXCEEDED`; o log do teste mostra o `errorCode` e o prazo já convertido), sem asserção própria. O formato do `Retry-After` (segundos ou data) **não foi registrado**; o app aceita os dois. Os códigos 413, 415 e 503 vêm só da leitura do código do backend, não foram observados.
 3. A leitura consistente depois da escrita vem de uma única amostra.
 4. Ordenação e paginação com `hasNextPage` verdadeiro não foram vistas ao vivo, pois só existe um booking; estão provadas com API simulada.
 5. Só o estado `to_be_confirmed` foi visto ao vivo; os estados terminais e `queued` estão provados com API simulada e pela leitura do backend.

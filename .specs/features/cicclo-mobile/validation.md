@@ -1,16 +1,16 @@
 # Cicclo mobile: validação independente do escopo P0
 
 **Data:** 2026-10-21
-**Criado:** 2026-10-21. **Última atualização:** 2026-10-21 (iteração 3 de 3, estado final).
+**Criado:** 2026-10-21. **Última atualização:** 2026-10-21 (rodada 4, estado final).
 **Spec:** `.specs/features/cicclo-mobile/spec.md`
-**Faixa Git:** `08e6c7d..HEAD`. Iteração 1 verificou `e16246c`; iteração 2 verificou `db1ea75`; iteração 3 verificou `9d4ad9f` (compra real ligada, prova contra a API real, `.omc/` fora do índice).
-**Verifier:** agente independente (autor diferente do verificador). Nenhum código de produção ou teste foi alterado na árvore real; este arquivo é a única escrita. O teste ao vivo (`apps/mobile/live/contract.live.test.ts`) **não foi executado por este Verifier** (debita a carteira demo); foi lido criticamente.
+**Faixa Git:** `08e6c7d..HEAD`. Rodada 1 verificou `e16246c`; rodada 2, `db1ea75`; rodada 3, `9d4ad9f`; rodada 4 (final), `cb9adcd` (teste `CheckoutProviderPurchase.test.tsx` e ressalvas no `api-contract.md`).
+**Verifier:** agente independente (autor diferente do verificador). Nenhum código de produção ou teste foi alterado na árvore real; este arquivo é a única escrita. O teste ao vivo (`apps/mobile/live/contract.live.test.ts`) **não foi executado por este Verifier** (debita a carteira demo, hoje em 3110); foi lido criticamente.
 
-Verdict: FAIL
+Verdict: PASS
 
-**Result**: FAIL
+**Result**: PASS
 
-Resumo: os gates passam (252 de 252), nenhum AC P0 testável sem a API real ficou sem evidência, e os gates C1 e C3 e quase todo o C2 estão provados ao vivo. O FAIL decorre de **um mutante não equivalente que sobreviveu** no caminho que a compra real ligada tornou exposto (N5: `canConfirm` aceita seleção vazia; só inalcançável pela UI) e da regra "nenhum mutante sobrevivente". A correção é um único teste. Os demais sobreviventes da iteração 3 (N4, N6, N9) foram classificados como equivalentes ou frágeis por tempo, com justificativa abaixo. Itens PENDING-EXTERNAL não forçam FAIL e estão listados à parte.
+Condições do PASS atendidas: nenhum GAP de AC P0; nenhum mutante não equivalente sobrevivente (o N5 da rodada 3 morre agora); gates verdes (31 suítes, 254 testes). Este PASS vale para o que é verificável localmente e contra a API real pelo teste ao vivo lido. Ele **não** declara a entrega concluída: N1 (Android), P1 (QUEUE) e a compra após horas seguem à parte como PENDING-EXTERNAL. Há ressalvas de prova ao vivo registradas (seção própria) e uma imprecisão pequena na ressalva 2, sem efeito sobre o veredito.
 
 ## Escopo
 
@@ -34,20 +34,17 @@ Os gates C1, C2 e C3 deixaram de estar pendentes: ver "Reavaliação dos ACs com
 
 T1-T28 com Done when `[x]` (T10, T21, T23-T26 e T28 viraram `[x]` após a prova ao vivo). T29 e T30 seguem `[~]` (N1 é do usuário). T31-T37 abertas (P1, fora de escopo).
 
-## Comandos executados (iteração 3, árvore real, HEAD `9d4ad9f`)
+## Comandos executados (rodada 4, árvore real, HEAD `cb9adcd`)
 
 | Comando | Resultado real |
 | --- | --- |
 | `pnpm --filter @cicclo/mobile typecheck` | exit 0 |
 | `pnpm --filter @cicclo/mobile lint` (`--max-warnings 0`) | exit 0, zero avisos |
-| `pnpm --filter @cicclo/mobile test` | exit 0: **30 suítes / 30 passaram; 252 testes / 252 passaram; 0 falhas; 0 ignorados** (o teste ao vivo fica fora: `testPathIgnorePatterns` inclui `/live/`) |
-| `pnpm --filter @cicclo/mobile exec jest --listTests --testPathIgnorePatterns=/node_modules/ '--testMatch=**/live/**/*.live.test.ts'` | Lista só `apps/mobile/live/contract.live.test.ts`; confirma que o script `test:live` aponta para o arquivo e que `pnpm test` não o executa. Apenas listagem, sem executar |
-| `pnpm --filter @cicclo/mobile build` | exit 0 na iteração 1 (`e16246c`); não reexecutado: desde então mudaram só rótulo, constante de capacidade e testes |
-| Grep `test.skip|it.skip|describe.skip|.only(|xit|xdescribe|test.todo|it.todo|TODO|FIXME|fit(|fdescribe` em `src`, `__tests__`, `live`, `jest.setup.ts` | Nenhuma ocorrência |
-| `git ls-files | grep .omc` | 0 arquivos; `.gitignore:27 .omc/` ativo (pendência da iteração 2 resolvida) |
+| `pnpm --filter @cicclo/mobile test` | exit 0: **31 suítes / 31 passaram; 254 testes / 254 passaram; 0 falhas; 0 ignorados** (+2 testes, +1 suíte: `CheckoutProviderPurchase.test.tsx`). O teste ao vivo fica fora (`testPathIgnorePatterns` inclui `/live/`) |
+| Grep `test.skip|it.skip|describe.skip|.only(|xit|xdescribe|test.todo|it.todo|TODO|FIXME|fit(|fdescribe` em `src`, `__tests__`, `live` | Nenhuma ocorrência |
+| `pnpm --filter @cicclo/mobile build` | exit 0 na rodada 1; não reexecutado (desde então só rótulo, constante de capacidade, testes e docs) |
 
-Contagem de testes: 252 (sem mudança desde `db1ea75`); os 6 testes ao vivo são adicionais e opt-in. `checkoutReview.test.tsx` e `CheckoutProvider.test.tsx` agora mockam `purchase: false` para continuar cobrindo o caminho desligado; `purchaseFlow`, `purchaseTracking` e `lifecycle` já mockavam `true`; as demais suítes usam o valor real (`true`).
-
+Evolução da contagem: 1 antes da feature; 242 (`e16246c`); 252 (`db1ea75`, `9d4ad9f`); 254 (`cb9adcd`). Nenhum teste removido ou enfraquecido nas rodadas 2 a 4.
 
 ## Reavaliação dos ACs com a API real (leitura crítica do teste ao vivo)
 
@@ -70,8 +67,23 @@ O teste ao vivo usa o transporte (`requestJson`), os schemas Zod, `createBooking
 | BOOK-05 | COVERED (fake) | COVERED | `bookingDetails.test.tsx:79-86`; `detailQuery.test.ts:51-56` | `:160-163` detalhe com preço 1890. **Ressalva:** igual ao catálogo atual, então o teste ao vivo não distingue preço histórico de preço atual; essa distinção só existe no fake |
 | BOOK-06 | COVERED (fake) | COVERED | `bookingDetails.test.tsx:121-135`; `detailQuery.test.ts:60-69` | `:169-172` 404 `BOOKING_NOT_FOUND` para UUID inexistente e 400 `VALIDATION_ERROR` para `abc` (o app nem envia) |
 
-**Afirmações do `api-contract.md` sem prova ao vivo ou com ressalva não registrada:** (1) 201 versus 200 do replay; (2) `RATE_LIMIT_EXCEEDED` e formato de `Retry-After`; (3) leitura consistente generalizada a partir de uma amostra; (4) "ordem `createdAt` e `bookingId` decrescentes" e paginação com várias páginas; (5) estados terminais de item (só `to_be_confirmed` foi visto, então BOOK-02/BOOK-03 e a lista de status do enum seguem apoiados no fake e no código do backend); (6) 413, 415 e 503; (7) retenção da chave (registrada). Nenhuma contradiz o app; são lacunas de prova do doc, não defeitos do app. As ressalvas (1) a (5) deveriam entrar na tabela "Provas contra a API real" para não afirmar além do observado.
+**Afirmações do `api-contract.md` sem prova ao vivo ou com ressalva não registrada:** (1) 201 versus 200 do replay; (2) `RATE_LIMIT_EXCEEDED` e formato de `Retry-After`; (3) leitura consistente generalizada a partir de uma amostra; (4) "ordem `createdAt` e `bookingId` decrescentes" e paginação com várias páginas; (5) estados terminais de item (só `to_be_confirmed` foi visto, então BOOK-02/BOOK-03 e a lista de status do enum seguem apoiados no fake e no código do backend); (6) 413, 415 e 503; (7) retenção da chave (registrada). Nenhuma contradiz o app; são lacunas de prova do doc, não defeitos do app. Na rodada 4 essas ressalvas passaram a constar no `api-contract.md` (conferidas na seção seguinte).
 
+## Conferência das 7 ressalvas do `api-contract.md` contra o teste ao vivo
+
+Seção "Ressalvas da prova ao vivo" (`apps/mobile/docs/api-contract.md`, linhas 30-38), comparada com `apps/mobile/live/contract.live.test.ts`:
+
+| # | O que a ressalva diz | O que o teste faz de fato | Fidelidade |
+| --- | --- | --- | --- |
+| 1 | 201 e 200 não observados; `createBooking` devolve só o corpo; prova mesmo `bookingId`, mesmo valor cobrado, sem novo débito; `remainingBalanceCents` do replay não afirmado | `:136-139` asserta `replay.bookingId`, `chargedAmountCents` e `wallet()` igual a 3110; `createBooking` (`createBooking.ts`) retorna o corpo validado | Fiel |
+| 2 | 429 observado (`RATE_LIMIT_EXCEEDED`, prazo de `Retry-After`); código e formato do cabeçalho só no log, sem asserção | `:106-110` asserta `status 429`, `retryAfterAt` não nulo e a classificação; `:107` só faz `console.log` de `status`, `errorCode` e `retryAfterAt` | **Quase fiel, uma imprecisão:** o `errorCode` está no log sem asserção (correto), mas o **formato** do `Retry-After` (segundos ou data) não aparece em lugar nenhum, porque o log mostra o prazo já convertido (`retryAfterAt`), não o cabeçalho bruto. Deveria dizer "o formato não foi registrado" |
+| 3 | Leitura consistente de uma única amostra | `:134` um único `wallet()` após o POST | Fiel |
+| 4 | Ordenação e paginação com `hasNextPage` verdadeiro não vistas ao vivo; provadas com API simulada | Um só booking (`:157`); `:176-177` só página vazia; ordenação e página 2 cheia em `listQuery.test.ts:73-94,97-115` e `bookingsScreen.test.tsx` | Fiel |
+| 5 | Só `to_be_confirmed` visto ao vivo; terminais e `queued` provados com simulada e pela leitura do backend | `:164-165` apenas registra os status vistos; nenhum teste asserta o status | Fiel (o status visto só aparece em log, o que reforça a ressalva) |
+| 6 | Duplicatas inferidas de uma recusa; nenhuma compra de 2 ou mais unidades nem preferência aceita com débito | `:95` e `:101` duplicatas por recusa; `:121-122` preferência fora do lote por recusa; só `:127` compra com uma lavagem | Fiel. O passo "restaurar a demo e repetir com `["wash","wash"]` e preferência" exige alterar o teste, que hoje compra uma lavagem fixa |
+| 7 | `fetch` do Node e não o do React Native; preço histórico 1890 igual ao atual | `:26-49` `fetch` próprio sobre `http`; `:163` 1890 | Fiel |
+
+Ainda sem ressalva registrada, de menor peso: 413, 415 e 503 vêm só da leitura do código do backend; a linha da tabela principal que afirma "201 na criação e 200 no replay" e "sexta chamada retorna 429 `RATE_LIMIT_EXCEEDED`" continua escrita como observação, embora as ressalvas 1 e 2 a qualifiquem.
 
 ## Critérios de aceite: spec, asserção e evidência
 
@@ -156,7 +168,6 @@ Caminhos relativos a `apps/mobile/`. Linhas valem para `db1ea75`.
 
 ---
 
-
 ## Lacunas de precisão da spec (inalteradas, não bloqueiam)
 
 | Tema | Observação |
@@ -170,7 +181,6 @@ Caminhos relativos a `apps/mobile/`. Linhas valem para `db1ea75`.
 | READ-01 e estado "stale" | A variante desatualizada do saldo usa `Saldo desatualizado: ...` (`AppHeader.tsx:54`), não `Saldo da carteira`; a spec só fixa o rótulo do saldo confirmado |
 
 ---
-
 
 ## Sensor de discriminação
 
@@ -227,10 +237,39 @@ M1 (chave nova no replay), M4 (GET antigo sobrescreve saldo), M5b (guarda de dup
 
 **Resultado do sensor na iteração 3:** 18 injetados (10 novos e N9b mais 7 antigos), 14 mortos, 4 sobreviventes (N5 não equivalente; N4, N6 equivalentes; N9 frágil por tempo, resolvido por N9b). Contagem estrita de sobreviventes não equivalentes: 1 (N5).
 
+### Rodada 4: reinjeção em worktree descartável novo em `cb9adcd`
+
+| Mutante | Descrição | Resultado | Análise ou teste que matou |
+| --- | --- | --- | --- |
+| **N5** | `canConfirm` aceita seleção vazia (`derived.quantity > 0` removido, `CheckoutProvider.tsx:170`) | **Morto** | `CheckoutProviderPurchase.test.tsx` "is enabled with data ready but refuses an empty selection: no request, still idle" (`:56-61`: `enabled` verdadeiro, `canConfirm` falso, `confirm()` mantém `idle` e `posts` com 0 requisições) |
+| N4 | `canConfirm` ignora o estado da submissão | Sobreviveu, **classificação mantida: equivalente** | O teste novo não exercita estados não ociosos. Durante `submitting` e `unknown` a tela troca de visão e a guarda do hook bloqueia; após `confirmed` a seleção está vazia (e o N5 agora é barrado). Só muda o booleano exposto no contexto |
+| N6 | `canConfirm` e `confirm()` aceitam total `null` | Sobreviveu, **classificação mantida: equivalente** | Total `null` implica `problems` ou `readiness` já bloqueando; guarda redundante. O teste novo não muda isso |
+| N9 | Janela de retenção fixada em 1 ms | Sobreviveu, **classificação mantida: frágil por tempo** | Verificação em menos de 1 ms no teste. N9b (0 ms) morre em `lifecycle.test.tsx` e `purchaseFlow.test.tsx`, o que prova que o repasse provider para hook é testado |
+| N9b | Janela fixada em 0 | Morto | idem |
+
+Os testes novos (`CheckoutProviderPurchase.test.tsx`) só alteraram o estado do N5; N4, N6 e N9 permanecem como estavam.
+
+### Rodada 4: amostra no caminho de compra (todos mortos)
+
+| Mutante | Descrição | Teste que matou |
+| --- | --- | --- |
+| N1 | `canConfirm` sem `capabilities.purchase` | `CheckoutProvider.test.tsx` "does not send a purchase from confirm() while the purchase capability is off" |
+| N7 | readiness enfraquecida (`!== 'loading'`) | `lifecycle.test.tsx` "disables the purchase button offline and while the re-read is pending, with no POST" |
+| M26 | `canConfirm` sem `readiness === 'ready'` | idem |
+| M3a | `canConfirm` sem `priceChanges` | `purchaseFlow.test.tsx` "after PRICE_CHANGED requires accepting the new price..." |
+| N10 | sem revisão de preços (preços vistos não registrados) | `checkoutReview.test.tsx`; `purchaseFlow.test.tsx` |
+| N8 | botão sem `disabled` | `lifecycle.test.tsx`; `purchaseFlow.test.tsx` (4 falhas) |
+| M27 | `canConfirm` sem `derived.problems` | `purchaseFlow.test.tsx` (2 falhas) |
+| M1 | replay com chave nova | `useBookingRecovery.test.tsx`; `purchaseFlow.test.tsx` |
+| M4 | sem `cancelQueries` (GET antigo sobrescreve o saldo) | `applyConfirmedBooking.test.tsx` "keeps the confirmed balance when a GET that started before the purchase answers late" |
+| M5b | guarda de duplo toque lê estado React | `useBookingSubmission.test.tsx` "sends at most one initial request..." |
+| M20 | preferência não enviada | `purchaseFlow.test.tsx` "sends the chosen execution preference in the request body" |
+
+**Resultado do sensor na rodada 4:** 16 injetados (N5, N4, N6, N9, N9b mais 11 de amostra): 13 mortos, 3 sobreviventes (N4, N6 equivalentes; N9 frágil por tempo e resolvido por N9b). **Sobreviventes não equivalentes: 0.**
 
 ## Isolamento (porcelain da árvore real)
 
-Iteração 3, `git status --porcelain` antes e depois do sensor: ambos vazios (`.omc/` agora ignorado; `validation.md` já está versionado), diff vazio, **idêntico**. Worktree descartável removido (`git worktree list` mostra só o repositório principal e este worktree). Sem `git stash`, reset ou rebase. O teste ao vivo não foi executado. A carteira demo não foi tocada.
+Rodada 4, `git status --porcelain` antes e depois do sensor: ambos vazios, **idêntico** (`.omc/` ignorado; `validation.md` versionado). Worktree descartável removido. Sem `git stash`, reset ou rebase. O teste ao vivo não foi executado; a carteira demo não foi tocada.
 
 ## Qualidade de código e pendências menores
 
@@ -239,7 +278,7 @@ Iteração 3, `git status --porcelain` antes e depois do sensor: ambos vazios (`
 | Estado de ferramenta versionado | Resolvido | `.omc/` ignorado e arquivo removido do índice (`afb9702`) |
 | Aviso de depreciação do expo-router | Baixa | 54 `console.warn` por `unstable_settings.initialRouteName` em `src/app/(tabs)/_layout.tsx:11` |
 | Timer de `Retry-After` em `CheckoutScreen.tsx:206-212` | Baixa | Sem teste de cleanup no desmonte |
-| Doc `api-contract.md` afirma além do observado | Baixa | Ressalvas (1) a (5) da seção de reavaliação |
+| Doc `api-contract.md` afirma além do observado | Baixa, quase resolvida | As 7 ressalvas foram registradas (conferidas acima); falta corrigir a ressalva 2 (formato do `Retry-After` não foi registrado) e citar 413, 415 e 503 como vindos só do código |
 | Teste ao vivo depende de ordem e de base limpa | Informativa | `process.env.LIVE_BOOKING_ID` passa entre testes; a janela de 5 chamadas por minuto do limite de taxa é contada pelo desenho do teste. Documentado no cabeçalho do arquivo |
 | Teste ao vivo usa `fetch` de Node | Informativa | Não exercita o `fetch` do React Native; coberto só pelo N1 |
 | Arquitetura | OK | `shared/` não importa `features/`; sem `fetch(` direto nas telas |
@@ -248,20 +287,23 @@ Iteração 3, `git status --porcelain` antes e depois do sensor: ambos vazios (`
 
 | Status proposto | IDs |
 | --- | --- |
-| Verified (parte testável localmente e contra a API real) | NAV-01..03, READ-01..06, SEL-01..11, BUY-01..14 (com N5 aberto no comando de confirmação), BOOK-01..07, SAFE-01..05, UX-01 (automatizável), QUAL-01, QUAL-02 (gates automáticos) |
+| Verified (parte testável localmente e contra a API real) | NAV-01..03, READ-01..06, SEL-01..11, BUY-01..14, BOOK-01..07, SAFE-01..05, UX-01 (automatizável), QUAL-01, QUAL-02 (gates automáticos) |
 | Pending external | UX-02, QUAL-02 (smoke Android), UX-01 (leitor de tela), compra após horas |
 | Fora do escopo desta verificação | QUEUE-01..QUEUE-10 |
 
-## Planos de correção
+## Planos de correção (nenhum bloqueia o PASS)
 
-1. **N5 (baixa, único bloqueio do PASS).** Teste com `purchase: true` que monta o provider com seleção vazia e dados prontos, chama `purchase.confirm()` e afirma `canConfirm === false`, `state.status === 'idle'` e nenhum POST.
-2. Opcional: um caso para N4 (`canConfirm` falso durante `submitting`), registrar as ressalvas (1) a (5) no `api-contract.md`, e trocar `initialRouteName` por `anchor`.
+1. `api-contract.md`: na ressalva 2, trocar "o código e o formato do cabeçalho só aparecem no log" por "o código só aparece no log; o formato do `Retry-After` não foi registrado"; acrescentar 413, 415 e 503 como provenientes só da leitura do código.
+2. Opcional: um caso para N4 (`canConfirm` falso durante `submitting`), para tirar a equivalência da dependência da guarda do hook.
+3. Opcional: trocar `initialRouteName` por `anchor` (54 avisos) e testar o cleanup do timer de `Retry-After`.
+4. Quando o usuário puder: repetir a prova ao vivo com `["wash","wash"]` e preferência aceita (requer ajustar o teste e restaurar a demo) e exercitar o replay após horas.
 
 ## Resumo
 
-**Overall:** quase pronto (FAIL por um mutante não equivalente de baixa gravidade).
+**Overall:** PASS para o escopo verificável localmente e pelo teste ao vivo lido. Entrega P0 completa só depois de N1.
 
-**Spec-anchored:** 48 de 50 IDs com evidência `file:linha` e 0 GAP; 2 pendentes de N1 (UX-02, smoke Android de QUAL-02).
-**Sensor:** iteração 3: 14 de 18 mortos; sobrevivente não equivalente: N5. Acumulado do histórico: todos os 8 mínimos pedidos mortos em todas as iterações.
-**Gate:** typecheck 0, lint 0 avisos, 252 de 252 testes, 30 suítes.
-**Próximo passo:** corrigir N5 (um teste), reexecutar apenas esse mutante. Esta é a iteração 3 de 3: se o coordenador aceitar N5 como risco, a decisão cabe ao usuário. Itens N1 e a compra após horas seguem com o usuário.
+**Spec-anchored:** 48 de 50 IDs com evidência `file:linha`, 0 GAP; 2 pendentes de N1 (UX-02, smoke Android de QUAL-02).
+**Sensor:** rodada 4: 13 de 16 mortos; 0 sobreviventes não equivalentes (N4 e N6 equivalentes, N9 frágil por tempo, N9b morto). Os 8 mínimos da rodada 1 ficaram mortos em todas as rodadas.
+**Gate:** typecheck 0, lint 0 avisos, 254 de 254 testes, 31 suítes.
+
+**PENDING-EXTERNAL (à parte):** N1 (Android, TalkBack, fonte ampliada, primeiro uso do `fetch` do React Native contra a API); QUEUE-01..10 (P1); compra após horas (retenção da chave, `keyRetentionMs = null`); compra de 2 ou mais unidades e preferência aceita ao vivo; `pnpm test:bootstrap` e comandos do workspace (sem `dotnet`).
