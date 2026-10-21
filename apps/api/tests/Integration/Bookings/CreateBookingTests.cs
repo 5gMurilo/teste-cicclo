@@ -23,6 +23,7 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
     private const string OutageApp = "cicclo-e02-outage";
     private const string IntruderApp = "cicclo-e02-intruder";
     private const string CompetitorApp = "cicclo-e02-competitor";
+    private const string PricingApp = "cicclo-e02-pricing";
     private static readonly TimeSpan SignalTimeout = TimeSpan.FromSeconds(20);
 
     private const string StateSql =
@@ -650,6 +651,38 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
         Assert.Equal(balance, await database.ScalarAsync<string>("SELECT balance::text FROM wallets"));
     }
 
+    // FIN-06 sob concorrência e design "Ordem de locks" (serviços bloqueados por code; alteração de preço respeita
+    // os locks do catálogo): a compra espera a alteração de preço ainda não confirmada e decide com o preço confirmado.
+    [Fact]
+    public async Task K12j_PurchaseWaitsForAnUncommittedPriceChangeOnTheLockedServiceAndRejectsWithTheNewTotal()
+    {
+        var database = await ReadyAsync();
+        var before = await database.RowsAsync(StateSql);
+        Assert.Contains("service|wash|18.90|true", before);
+        await using var pricing = new NpgsqlConnection(Named(database, PricingApp));
+        await pricing.OpenAsync();
+        await using var transaction = await pricing.BeginTransactionAsync();
+        await using (var update = new NpgsqlCommand("UPDATE services SET current_price = 25.00 WHERE code = 'wash'", pricing, transaction))
+        {
+            await update.ExecuteNonQueryAsync();
+        }
+
+        var purchase = UseCase(Real(database)).ExecuteAsync(Guid.NewGuid(), Intent(["wash"], 1890), CancellationToken.None);
+        await WaitUntilWaitingOnLockAsync(database, BookingApp);
+        Assert.False(purchase.IsCompleted);
+        await transaction.CommitAsync();
+        var result = await purchase.WaitAsync(SignalTimeout);
+
+        Assert.Equal(CreateBookingOutcome.Rejected, result.Outcome);
+        Assert.Equal(BookingRejection.PriceChanged, result.Rejection);
+        Assert.Equal(2500L, result.CalculatedTotalCents);
+        Assert.Null(result.Booking);
+        // Nada gravado pela compra: o único efeito é a alteração de preço confirmada.
+        Assert.Equal(
+            before.Select(line => line == "service|wash|18.90|true" ? "service|wash|25.00|true" : line),
+            await database.RowsAsync(StateSql));
+    }
+
     // A16: numa intenção nova, serviço, capacidade e preço esperado são validados antes do saldo. Saldo 10.00
     // não cobre nem o total enviado (1800) nem o calculado (1890); 900 cobriria só o enviado.
     [Theory]
@@ -691,6 +724,40 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
         Assert.Null(result.Booking);
         Assert.Equal(before, await database.RowsAsync(StateSql));
         Assert.Contains("wallet|10.00|", before[0]);
+    }
+
+    // FIN-11 (datas da decisão coincidem), IDEM-02 (replay com a mesma projeção da criação) e design "UTC no C# e
+    // timestamptz no PostgreSQL": com um relógio que tem ticks abaixo de 1 µs, criação, banco e replay mostram o
+    // mesmo instante no microssegundo do timestamptz. Não depende da resolução do relógio do host.
+    [Fact]
+    public async Task K14_DecisionInstantBelowOneMicrosecondIsTheSameMicrosecondInCreationDatabaseAndReplay()
+    {
+        var database = await ReadyAsync();
+        var clock = new FixedTimeProvider(new DateTimeOffset(2026, 10, 21, 12, 34, 56, TimeSpan.Zero).AddTicks(1_234_567));
+        var key = Guid.NewGuid();
+        var intent = Intent(["wash"], 1890);
+
+        var created = await new CreateBooking(Real(database), clock, NullLogger<CreateBooking>.Instance).ExecuteAsync(key, intent, CancellationToken.None);
+
+        Assert.Equal(CreateBookingOutcome.Created, created.Outcome);
+        var expected = new DateTime(2026, 10, 21, 12, 34, 56, DateTimeKind.Utc).AddTicks(1_234_560);
+        Assert.Equal(expected, created.Booking!.CreatedAt);
+        Assert.Equal(DateTimeKind.Utc, created.Booking.CreatedAt.Kind);
+        Assert.Equal(
+            "2026-10-21 12:34:56.123456|2026-10-21 12:34:56.123456|2026-10-21 12:34:56.123456",
+            (await database.RowsAsync(
+                """
+                SELECT to_char(r.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS.US'),
+                       to_char(t.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS.US'),
+                       to_char(w.updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS.US')
+                FROM service_requests r JOIN wallet_transactions t ON t.request_id = r.id JOIN wallets w ON w.id = r.wallet_id
+                """)).Single());
+
+        var replay = await UseCase(Real(database)).ExecuteAsync(key, intent, CancellationToken.None);
+
+        Assert.Equal(CreateBookingOutcome.Replayed, replay.Outcome);
+        Assert.Equal(expected, replay.Booking!.CreatedAt);
+        Assert.Equal(Describe(created.Booking), Describe(replay.Booking));
     }
 
     private async Task<TestDatabase> ReadyAsync(string? balance = null)
@@ -767,5 +834,11 @@ public sealed class CreateBookingTests(PostgresFixture postgres)
             await beforeOpen(Interlocked.Increment(ref opening));
             return await inner.OpenAsync(cancellationToken);
         }
+    }
+
+    /// <summary>Relógio parado num instante fixo; o caso de uso só lê GetUtcNow.</summary>
+    private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
     }
 }
