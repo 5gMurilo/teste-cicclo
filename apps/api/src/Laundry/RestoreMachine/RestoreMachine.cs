@@ -1,3 +1,5 @@
+using Cicclo.Api.Bookings;
+using Cicclo.Api.Laundry.Notifications;
 using Cicclo.Api.Wallet;
 
 namespace Cicclo.Api.Laundry.RestoreMachine;
@@ -20,16 +22,22 @@ public sealed record RestoreMachineResult(RestoreMachineOutcome Outcome, Guid? B
 /// Restaura uma máquina fora de serviço numa transação, na ordem comum de locks: wallet (mutex das escritas) → máquinas do
 /// tipo → itens do tipo. Só out_of_service restaura: a máquina volta a available e a fila do tipo é reconciliada antes do
 /// commit (o próximo por ticket recebe a oferta). Só itens queued/to_be_confirmed participam da fila: failed/cancelled não
-/// são reativados. Nenhum débito, crédito ou lançamento. Métricas só depois do commit.
+/// são reativados. Nenhum débito, crédito ou lançamento. Métricas e avisos realtime (opcionais) só depois do commit.
 /// </summary>
 public sealed partial class RestoreMachine(
-    ILaundrySessions sessions, QueueCoordinator coordinator, LaundryMetrics metrics, TimeProvider time, ILogger<RestoreMachine> logger)
+    ILaundrySessions sessions,
+    QueueCoordinator coordinator,
+    LaundryMetrics metrics,
+    TimeProvider time,
+    ILogger<RestoreMachine> logger,
+    LaundryChangeNotifier? notifier = null)
 {
     public async Task<RestoreMachineResult> ExecuteAsync(Guid machineId, CancellationToken cancellationToken)
     {
         Guid? bookingId = null;
         Guid? itemId;
         IReadOnlyList<QueueChanges> changes;
+        IReadOnlyList<RevisedBooking> revised;
         await using (var session = await sessions.OpenAsync(cancellationToken))
         {
             await session.LockWalletAsync(DemoWallet.Id, cancellationToken);
@@ -56,9 +64,15 @@ public sealed partial class RestoreMachine(
             }
 
             await session.CommitAsync();
+            revised = session.CommittedRevisions;
         }
 
         metrics.RecordCommitted(changes);
+        if (notifier is not null)
+        {
+            await notifier.NotifyAsync(new CommittedLaundryChanges { Bookings = revised, Queues = changes });
+        }
+
         LogRestored(machineId, itemId);
         return new(RestoreMachineOutcome.Restored, bookingId, itemId);
     }

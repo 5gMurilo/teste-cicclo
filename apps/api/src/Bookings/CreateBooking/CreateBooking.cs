@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Cicclo.Api.Laundry;
+using Cicclo.Api.Laundry.Notifications;
 using Cicclo.Api.Wallet;
 using Cicclo.Api.Wallet.ReadCaching;
 
@@ -42,6 +43,7 @@ public sealed record CreateBookingResult(
 /// a primeira ocorrência do serviço preferido e lote sem preferência fica todo pendente. Falha na ativação reverte tudo.
 /// Só uma compra criada (inclusive a reconhecida depois de commit desconhecido) invalida o cache de leitura da wallet,
 /// depois que a sessão foi descartada; replay e recusa não mudaram saldo e não invalidam.
+/// Avisos realtime (opcionais, notifier null fora da barreira) só saem depois do commit confirmado; commit desconhecido não avisa.
 /// </summary>
 public sealed partial class CreateBooking(
     ICreateBookingSessions sessions,
@@ -49,7 +51,8 @@ public sealed partial class CreateBooking(
     LaundryMetrics laundryMetrics,
     TimeProvider time,
     WalletCacheInvalidation walletCache,
-    ILogger<CreateBooking> logger)
+    ILogger<CreateBooking> logger,
+    LaundryChangeNotifier? notifier = null)
 {
     /// <summary>Tentativas totais da unidade inteira quando o rollback é conhecido.</summary>
     public const int MaxAttempts = 3;
@@ -95,6 +98,7 @@ public sealed partial class CreateBooking(
         Booking booking;
         BookingSnapshot snapshot;
         ActivationResult? activation;
+        IReadOnlyList<RevisedBooking> revised = [];
         var commitOutcomeUnknown = false;
         await using (var session = await sessions.OpenAsync(cancellationToken))
         {
@@ -141,6 +145,7 @@ public sealed partial class CreateBooking(
             try
             {
                 await session.CommitAsync();
+                revised = session.CommittedRevisions;
             }
             catch (CreateBookingStoreException exception) when (exception.Failure == CreateBookingStoreFailure.CommitOutcomeUnknown)
             {
@@ -159,6 +164,17 @@ public sealed partial class CreateBooking(
         if (activation?.Changes is { } changes)
         {
             laundryMetrics.RecordCommitted([changes]);
+        }
+
+        if (notifier is not null)
+        {
+            await notifier.NotifyAsync(new CommittedLaundryChanges
+            {
+                Bookings = [new(booking.Id, BookingRevision.Initial), .. revised],
+                Queues = activation?.Changes is { } queue ? [queue] : [],
+                QueueTypes = activation?.Type is { } type ? [type] : [],
+                WalletChanged = true,
+            });
         }
 
         LogCreated(booking.Id, snapshot.Items.Count);

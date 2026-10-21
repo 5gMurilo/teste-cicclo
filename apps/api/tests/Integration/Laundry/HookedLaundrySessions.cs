@@ -74,6 +74,8 @@ internal sealed class HookedLaundrySessions(ILaundrySessions inner, Func<Task> b
             await inner.CommitAsync();
         }
 
+        public IReadOnlyList<RevisedBooking> CommittedRevisions => inner.CommittedRevisions;
+
         public ValueTask DisposeAsync() => inner.DisposeAsync();
     }
 }

@@ -130,15 +130,13 @@ public sealed class PostgresCreateBookingSessions(IDbContextFactory<CiccloDbCont
             return await db.SaveChangesAsync(cancellationToken);
         });
 
+        public IReadOnlyList<RevisedBooking> CommittedRevisions { get; private set; } = [];
+
         public async Task CommitAsync()
         {
             // Bookings de outras compras alterados pela ativação (oferta vencida devolvida à fila) recebem a revisão
             // nesta mesma transação; uma falha aqui ainda é rollback conhecido, não commit desconhecido.
-            await Translate(async () =>
-            {
-                await queue.IncrementRevisionsAsync(createdItemIds, CancellationToken.None);
-                return 0;
-            });
+            var revised = await Translate(() => queue.IncrementRevisionsAsync(createdItemIds, CancellationToken.None));
             try
             {
                 // Sem token: cancelar no meio do commit só tornaria o resultado desconhecido.
@@ -149,6 +147,8 @@ public sealed class PostgresCreateBookingSessions(IDbContextFactory<CiccloDbCont
                 throw new CreateBookingStoreException(
                     CreateBookingStoreFailure.CommitOutcomeUnknown, "Commit da compra sem confirmação do PostgreSQL.", exception);
             }
+
+            CommittedRevisions = revised;
         }
 
         public async ValueTask DisposeAsync()

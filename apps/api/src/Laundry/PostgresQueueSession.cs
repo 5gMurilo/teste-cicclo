@@ -1,3 +1,4 @@
+using Cicclo.Api.Bookings;
 using Cicclo.Api.Platform.Persistence;
 using Cicclo.Api.Platform.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
@@ -18,26 +19,30 @@ public sealed class PostgresQueueSession(CiccloDbContext db) : IQueueSession
     internal void RecordItemChange(Guid itemId) => changedItems.Add(itemId);
 
     /// <summary>
-    /// Imediatamente antes do commit, na mesma transação: +1 em cada booking distinto dos itens alterados. Itens inseridos
-    /// nesta transação são ignorados, porque seu booking nasce nela e confirma na revisão inicial. Sem outro item
-    /// alterado, não envia nada ao banco.
+    /// Imediatamente antes do commit, na mesma transação: +1 em cada booking distinto dos itens alterados, devolvendo a
+    /// revisão atribuída pelo próprio UPDATE (sem releitura que pudesse ver outro commit). Itens inseridos nesta transação
+    /// são ignorados, porque seu booking nasce nela e confirma na revisão inicial. Sem outro item alterado, não envia nada
+    /// ao banco. O resultado só é fato depois que o commit de quem chamou retornar com sucesso.
     /// </summary>
-    internal async Task IncrementRevisionsAsync(IReadOnlyCollection<Guid> createdItemIds, CancellationToken cancellationToken)
+    internal async Task<IReadOnlyList<RevisedBooking>> IncrementRevisionsAsync(IReadOnlyCollection<Guid> createdItemIds, CancellationToken cancellationToken)
     {
         changedItems.ExceptWith(createdItemIds);
         if (changedItems.Count == 0)
         {
-            return;
+            return [];
         }
 
         var itemIds = changedItems.ToArray();
-        await db.Database.ExecuteSqlAsync(
-            $"""
-            UPDATE service_requests SET revision = revision + 1
-            WHERE id IN (SELECT request_id FROM service_request_items WHERE id = ANY({itemIds}))
-            """,
-            cancellationToken);
+        var revised = await db.Database
+            .SqlQuery<RevisedBooking>(
+                $"""
+                UPDATE service_requests SET revision = revision + 1
+                WHERE id IN (SELECT request_id FROM service_request_items WHERE id = ANY({itemIds}))
+                RETURNING id AS "BookingId", revision AS "Revision"
+                """)
+            .ToListAsync(cancellationToken);
         changedItems.Clear();
+        return [.. revised.OrderBy(booking => booking.BookingId)];
     }
 
     public async Task<ItemLocation?> LocateItemAsync(Guid itemId, CancellationToken cancellationToken)

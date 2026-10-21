@@ -1,4 +1,5 @@
 using Cicclo.Api.Bookings;
+using Cicclo.Api.Laundry.Notifications;
 using Cicclo.Api.Wallet;
 
 namespace Cicclo.Api.Laundry.Simulation;
@@ -21,16 +22,22 @@ public sealed record CompleteMachineResult(CompleteMachineOutcome Outcome, Guid?
 /// Conclui a execução de uma máquina numa transação, na ordem comum de locks: wallet (mutex das escritas) → máquinas do
 /// tipo → itens do tipo e o item em execução. Só running conclui: execução real → item completed e máquina available;
 /// ocupação sintética → máquina available. Em seguida a fila do tipo é reconciliada (próximo por ticket recebe a oferta)
-/// antes do commit. Nenhum débito, crédito ou lançamento. Métricas só depois do commit.
+/// antes do commit. Nenhum débito, crédito ou lançamento. Métricas e avisos realtime (opcionais) só depois do commit.
 /// </summary>
 public sealed partial class CompleteMachine(
-    ILaundrySessions sessions, QueueCoordinator coordinator, LaundryMetrics metrics, TimeProvider time, ILogger<CompleteMachine> logger)
+    ILaundrySessions sessions,
+    QueueCoordinator coordinator,
+    LaundryMetrics metrics,
+    TimeProvider time,
+    ILogger<CompleteMachine> logger,
+    LaundryChangeNotifier? notifier = null)
 {
     public async Task<CompleteMachineResult> ExecuteAsync(Guid machineId, CancellationToken cancellationToken)
     {
         Guid? bookingId = null;
         Guid? itemId;
         IReadOnlyList<QueueChanges> changes;
+        IReadOnlyList<RevisedBooking> revised;
         await using (var session = await sessions.OpenAsync(cancellationToken))
         {
             await session.LockWalletAsync(DemoWallet.Id, cancellationToken);
@@ -63,9 +70,15 @@ public sealed partial class CompleteMachine(
             await session.CompleteRunAsync(machineId, itemId, now, cancellationToken);
             changes = await coordinator.ReconcileAsync(session, [type], cancellationToken);
             await session.CommitAsync();
+            revised = session.CommittedRevisions;
         }
 
         metrics.RecordCommitted(changes);
+        if (notifier is not null)
+        {
+            await notifier.NotifyAsync(new CommittedLaundryChanges { Bookings = revised, Queues = changes });
+        }
+
         LogCompleted(machineId, itemId);
         return new(CompleteMachineOutcome.Completed, bookingId, itemId);
     }

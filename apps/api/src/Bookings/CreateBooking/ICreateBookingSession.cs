@@ -48,6 +48,12 @@ public interface ICreateBookingSession : IAsyncDisposable
 
     /// <summary>Confirma a transação. Falha aqui não prova rollback: chega como CommitOutcomeUnknown.</summary>
     Task CommitAsync();
+
+    /// <summary>
+    /// Bookings anteriores que esta compra revisou (oferta vencida devolvida pela ativação), com a revisão atribuída na
+    /// transação; vazio até <see cref="CommitAsync"/> retornar com sucesso. A compra nova não entra: nasce na revisão inicial.
+    /// </summary>
+    IReadOnlyList<RevisedBooking> CommittedRevisions { get; }
 }
 
 public enum CreateBookingStoreFailure

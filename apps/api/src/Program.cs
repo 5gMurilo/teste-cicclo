@@ -9,6 +9,7 @@ using Cicclo.Api.Laundry.ConfirmIncident;
 using Cicclo.Api.Laundry.ConfirmMachineFailure;
 using Cicclo.Api.Laundry.ConfirmOffer;
 using Cicclo.Api.Laundry.GetMachines;
+using Cicclo.Api.Laundry.Notifications;
 using Cicclo.Api.Laundry.ReportIssue;
 using Cicclo.Api.Laundry.RestoreMachine;
 using Cicclo.Api.Laundry.Simulation;
@@ -95,6 +96,13 @@ builder.Services.AddScoped<ReportIssue>();
 builder.Services.AddScoped<ConfirmMachineFailure>();
 builder.Services.AddScoped<ConfirmIncident>();
 builder.Services.AddScoped<RestoreMachine>();
+// Extensão realtime opcional (E09): fora da barreira nada de SignalR é registrado nem mapeado.
+var realtime = LaundryNotificationServices.IsEnabled(builder.Configuration, builder.Environment);
+if (realtime)
+{
+    builder.Services.AddLaundryNotifications();
+}
+
 var app = builder.Build();
 app.UseHttpBoundary();
 app.UseRateLimiter();
@@ -107,6 +115,11 @@ app.MapGroup("/api/v1").RequireRateLimiting(ApiRateLimits.ItemCommands).MapActiv
 app.MapGroup("/api/v1").RequireRateLimiting(ApiRateLimits.ItemCancel).MapCancelItemEndpoint();
 app.MapGroup("/api/v1").RequireRateLimiting(ApiRateLimits.IssueReports).MapReportIssueEndpoint();
 app.MapSimulationEndpoints();
+if (realtime)
+{
+    app.MapHub<LaundryHub>(LaundryHub.Path);
+}
+
 app.Run();
 return 0;
 

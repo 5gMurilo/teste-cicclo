@@ -121,4 +121,10 @@ public interface ILaundrySession : IQueueSession, IAsyncDisposable
     Task ConfirmIncidentAsync(Guid incidentId, CancellationToken cancellationToken);
 
     Task CommitAsync();
+
+    /// <summary>
+    /// Bookings que esta transação revisou, com a revisão atribuída nela; vazio até <see cref="CommitAsync"/> retornar com
+    /// sucesso, e continua vazio se o commit falhar (rollback ou resultado desconhecido não viram aviso).
+    /// </summary>
+    IReadOnlyList<RevisedBooking> CommittedRevisions { get; }
 }
