@@ -54,6 +54,8 @@ internal sealed class HookedLaundrySessions(ILaundrySessions inner, Func<Task> b
         public Task FailRunAsync(Guid machineId, Guid? itemId, DateTime failedAt, CancellationToken cancellationToken) =>
             inner.FailRunAsync(machineId, itemId, failedAt, cancellationToken);
 
+        public Task RestoreAsync(Guid machineId, DateTime restoredAt, CancellationToken cancellationToken) => inner.RestoreAsync(machineId, restoredAt, cancellationToken);
+
         public Task<decimal> CreditRefundAsync(Guid walletId, Guid bookingId, Guid itemId, decimal amount, DateTime creditedAt, CancellationToken cancellationToken) =>
             inner.CreditRefundAsync(walletId, bookingId, itemId, amount, creditedAt, cancellationToken);
 

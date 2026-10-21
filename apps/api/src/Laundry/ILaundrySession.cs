@@ -99,6 +99,9 @@ public interface ILaundrySession : IQueueSession, IAsyncDisposable
     /// </summary>
     Task FailRunAsync(Guid machineId, Guid? itemId, DateTime failedAt, CancellationToken cancellationToken);
 
+    /// <summary>Restauração: máquina out_of_service → available, sem item nem marca; não toca itens, wallet nem lançamentos.</summary>
+    Task RestoreAsync(Guid machineId, DateTime restoredAt, CancellationToken cancellationToken);
+
     /// <summary>Wallet creditada com o valor e um lançamento refund do item (único pelo índice); devolve o saldo após o crédito.</summary>
     Task<decimal> CreditRefundAsync(Guid walletId, Guid bookingId, Guid itemId, decimal amount, DateTime creditedAt, CancellationToken cancellationToken);
 

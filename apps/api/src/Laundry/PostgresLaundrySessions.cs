@@ -210,6 +210,16 @@ public sealed class PostgresLaundrySessions(IDbContextFactory<CiccloDbContext> c
                 "máquina em execução do item");
         }
 
+        public async Task RestoreAsync(Guid machineId, DateTime restoredAt, CancellationToken cancellationToken) =>
+            PostgresQueueSession.Expect(
+                await db.Database.ExecuteSqlAsync(
+                    $"""
+                    UPDATE machines SET state = 'available', updated_at = {restoredAt}
+                    WHERE id = {machineId} AND state = 'out_of_service' AND active_item_id IS NULL AND NOT is_demo_occupied
+                    """,
+                    cancellationToken),
+                "máquina fora de serviço para restaurar");
+
         public async Task<decimal> CreditRefundAsync(Guid walletId, Guid bookingId, Guid itemId, decimal amount, DateTime creditedAt, CancellationToken cancellationToken)
         {
             var balance = (await db.Database
