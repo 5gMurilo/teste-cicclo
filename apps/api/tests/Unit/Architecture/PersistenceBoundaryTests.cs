@@ -36,7 +36,7 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
     [
         typeof(WalletEndpoint), typeof(PostgresWalletBalanceQuery),
         typeof(ServicesEndpoint), typeof(PostgresServiceCatalogQuery),
-        typeof(PostgresCreateBookingSessions),
+        typeof(PostgresCreateBookingSessions), typeof(PostgresLaundrySessions),
     ];
 
     [Fact]
@@ -53,6 +53,7 @@ public sealed class PersistenceBoundaryTests(WebApplicationFactory<Program> fact
                 typeof(Booking), typeof(BookingItem), typeof(BookingItemStatus), typeof(LedgerEntry), typeof(LedgerEntryKind),
                 typeof(CreateBookingUseCase), typeof(ICreateBookingSessions), typeof(ICreateBookingSession), typeof(StoredBooking),
                 typeof(WalletBalance), typeof(ServiceCatalogEntry),
+                typeof(OfferPolicy), typeof(QueueCoordinator), typeof(IQueueSession), typeof(ILaundrySession), typeof(ILaundrySessions),
             },
             domainTypes.ToHashSet());
         var violations = domainTypes
