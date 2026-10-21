@@ -3,38 +3,23 @@ using Xunit;
 namespace Cicclo.Api.Tests.Support;
 
 /// <summary>
-/// Publica a API em diretório temporário fora da árvore do repositório, como um operador faria,
-/// e remove somente esse diretório ao final.
+/// Publica a API uma única vez por processo de testes, em diretório temporário fora da árvore do repositório, como um
+/// operador faria. As classes que usam esta fixture compartilham o mesmo artefato: publicações concorrentes disputariam
+/// o mesmo `obj/Release` (MSB4018). O diretório é removido somente ao fim do processo.
 /// </summary>
 public sealed class PublishedApiFixture : IAsyncLifetime
 {
-    public string Directory { get; } = Path.Combine(Path.GetTempPath(), $"cicclo-api-publish-{Guid.NewGuid():N}");
+    private static readonly string SharedDirectory = Path.Combine(Path.GetTempPath(), $"cicclo-api-publish-{Environment.ProcessId}-{Guid.NewGuid():N}");
+
+    private static readonly Lazy<Task> Publication = new(PublishAsync);
+
+    public string Directory => SharedDirectory;
 
     public string EntryAssembly => Path.Combine(Directory, "Cicclo.Api.dll");
 
-    public async Task InitializeAsync()
-    {
-        var result = await ProcessRunner.RunAsync(
-            ProcessRunner.DotNet,
-            ["publish", RepositoryPaths.Api("src", "Cicclo.Api.csproj"), "--configuration", "Release", "--no-restore", "--output", Directory, "-nodeReuse:false", "/p:UseAppHost=false"],
-            RepositoryPaths.ApiRoot,
-            new Dictionary<string, string?> { ["MSBUILDDISABLENODEREUSE"] = "1" },
-            TimeSpan.FromMinutes(5));
-        if (result.ExitCode != 0)
-        {
-            throw new InvalidOperationException($"dotnet publish falhou ({result.ExitCode}).\n{result.Output}");
-        }
-    }
+    public Task InitializeAsync() => Publication.Value;
 
-    public Task DisposeAsync()
-    {
-        if (System.IO.Directory.Exists(Directory))
-        {
-            System.IO.Directory.Delete(Directory, recursive: true);
-        }
-
-        return Task.CompletedTask;
-    }
+    public Task DisposeAsync() => Task.CompletedTask;
 
     public Task<ProcessResult> BootstrapAsync(string? connectionString, string environment = "Development", string? demoMode = "true") =>
         ProcessRunner.RunAsync(
@@ -60,4 +45,26 @@ public sealed class PublishedApiFixture : IAsyncLifetime
                 ["Laundry__DemoMode"] = demoMode,
                 ["ConnectionStrings__Cicclo"] = connectionString,
             });
+
+    private static async Task PublishAsync()
+    {
+        AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+        {
+            if (System.IO.Directory.Exists(SharedDirectory))
+            {
+                System.IO.Directory.Delete(SharedDirectory, recursive: true);
+            }
+        };
+
+        var result = await ProcessRunner.RunAsync(
+            ProcessRunner.DotNet,
+            ["publish", RepositoryPaths.Api("src", "Cicclo.Api.csproj"), "--configuration", "Release", "--no-restore", "--output", SharedDirectory, "-nodeReuse:false", "/p:UseAppHost=false"],
+            RepositoryPaths.ApiRoot,
+            new Dictionary<string, string?> { ["MSBUILDDISABLENODEREUSE"] = "1" },
+            TimeSpan.FromMinutes(5));
+        if (result.ExitCode != 0)
+        {
+            throw new InvalidOperationException($"dotnet publish falhou ({result.ExitCode}).\n{result.Output}");
+        }
+    }
 }
