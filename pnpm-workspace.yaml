@@ -1,0 +1,9 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Expo SDK 58 supports pnpm's isolated dependency layout.
+nodeLinker: isolated
+
+onlyBuiltDependencies:
+  - unrs-resolver

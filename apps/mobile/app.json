@@ -1,0 +1,10 @@
+{
+  "expo": {
+    "name": "Cicclo",
+    "slug": "cicclo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "platforms": ["android", "ios"],
+    "userInterfaceStyle": "automatic"
+  }
+}

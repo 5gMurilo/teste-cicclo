@@ -1,0 +1,11 @@
+{
+  "name": "@cicclo/api",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "dotnet watch --no-hot-reload --project src/Cicclo.Api.csproj run --no-launch-profile --urls http://localhost:5001",
+    "build": "dotnet build Cicclo.Api.slnx --configuration Release --nologo",
+    "lint": "dotnet format whitespace Cicclo.Api.slnx --verify-no-changes --verbosity minimal",
+    "test": "dotnet test tests/Cicclo.Api.Tests.csproj --configuration Release --logger \"console;verbosity=normal\""
+  }
+}
