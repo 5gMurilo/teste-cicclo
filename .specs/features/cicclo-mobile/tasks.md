@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** em andamento. T1 (E0) a T5 concluídas em 2026-10-21; T6–T37 abertas.
+**Execução:** em andamento. T1 (E0) a T6 concluídas em 2026-10-21; T7–T37 abertas.
 
 ## Execution Protocol
 
@@ -174,7 +174,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Transporte e Zod; QueryClient criado nesta primeira query, estável no root.
 **Requirement**: READ-01, READ-02, READ-03, SAFE-01.
 **What**: Implementar schema, GET com signal, key/options públicos de wallet e configuração inicial Query.
-**Done when**: [ ] Inteiro seguro BRL/updatedAt validado pelo contrato; sem default monetário; QueryClient único; helper de testes com cache isolado e retries desativados.
+**Done when**: [x] Inteiro seguro BRL/updatedAt validado pelo contrato; sem default monetário; QueryClient único; helper de testes com cache isolado e retries desativados.
 **Tests**: integration — teto de 5 casos: wallet válida, centavos inválidos/fora da faixa segura, campo obrigatório ausente, erro e retry, cancelamento/signal; schema/tipos compatíveis se OpenAPI disponível.
 **Gate**: F + CC; C1 necessário para saída E1.
 **Commit**: `feat(wallet): query validated confirmed balances`
@@ -709,7 +709,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **5/37 tarefas executadas** (T1–T5 concluídas em 2026-10-21); demais checkboxes de Done when abertas.
+- Implementação: **6/37 tarefas executadas** (T1–T6 concluídas em 2026-10-21); demais checkboxes de Done when abertas.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1/C2/C3/CP1 não comprovadas; N1 não executado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.
