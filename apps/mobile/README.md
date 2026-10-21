@@ -11,7 +11,7 @@ App Expo (React Native) da lavanderia Cicclo. Mostra o saldo da carteira demo, o
 | Navegação, header, catálogo, seleção, revisão (E1 e E2) | Implementado e coberto por testes com API fake |
 | Contratação com intenção única, verificação e recuperação (E3) | Implementado e provado contra a API real (gate C2). O botão de contratar está ligado (`capabilities.purchase = true`) |
 | Lista, detalhe, revalidação por foco e rede (E4) | Implementado e provado contra a API real (gate C3) |
-| Validação no aparelho com leitor de tela (N1) | **Aprovada pelo usuário no iOS** em 2026-10-21, em relato global sem detalhe por cenário; o Android não foi ensaiado. Ver [docs/native-validation.md](docs/native-validation.md) |
+| Validação nativa (N1) | **Aprovada pelo usuário no iOS** em 2026-10-21, em relato global ("Validado o iOS"), sem registro por cenário; o Android não foi ensaiado. Ver [docs/native-validation.md](docs/native-validation.md) |
 | Ciclo de vida do serviço: ativar, confirmar oferta, cancelar, relatar problema, polling (P1) | **Não implementado.** Só começa depois de P0 verificado e de cada endpoint comprovado |
 | Intenção persistida, SignalR, APK (P2) | Fora do escopo |
 
@@ -117,4 +117,4 @@ Um export bem-sucedido não prova que o app funciona em um aparelho.
 | Contratação com idempotência e recuperação | Funcional | Testes de integração e prova contra a API real (C2) |
 | Lista e detalhe de contratações | Funcional | Testes de integração e prova contra a API real (C3) |
 | Ativar, confirmar oferta, cancelar, relatar, polling | Não implementado | Fora de P0 |
-| App no aparelho (iOS) com VoiceOver e texto ampliado | Aprovado pelo usuário (relato global) | Gate N1; Android sem ensaio |
+| App no iOS (gate N1) | Aprovado pelo usuário em relato global, sem registro por cenário | Relato do usuário; Android sem ensaio |

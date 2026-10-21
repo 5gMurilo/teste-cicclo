@@ -53,9 +53,9 @@
 ## Handoff
 
 - **Feature**: `.specs/features/cicclo-mobile/spec.md`.
-- **Phase / Task**: P0 completo (T1 a T30). C1, C2 e C3 provados contra a API real em 2026-10-21; N1 aprovado pelo usuário no iOS (AD-006), relato global sem detalhe por cenário (`apps/mobile/docs/native-validation.md`). Android não ensaiado.
-- **Completed**: 30/37 com Done when `[x]`. Gate B: 32 suítes, 260 testes, typecheck, lint e export verdes (o export exige `EXPO_PUBLIC_API_URL` apenas para as leituras em runtime, não para exportar).
-- **Verifier**: PASS na rodada 4 sobre `cb9adcd`. Depois disso entraram 4 commits de correções de uso no iOS (log de desenvolvimento, mensagem de configuração ausente, `anchor`, README) e o registro do N1; a verificação delta final desses commits é o último passo de P0.
+- **Phase / Task**: P0 implementado e verificado (T1 a T30). C1, C2 e C3 provados contra a API real em 2026-10-21; N1 aprovado pelo usuário no iOS (AD-006) apenas em relato global ("Validado o iOS"), sem registro por cenário, aparelho, versão ou leitor de tela (`apps/mobile/docs/native-validation.md`); por isso T29 fica `[~]`. Android não ensaiado.
+- **Completed**: 29/37 com Done when `[x]` (T29 `[~]`). Gate B: 32 suítes, 260 testes, typecheck, lint e export verdes (o export exige `EXPO_PUBLIC_API_URL` apenas para as leituras em runtime, não para exportar).
+- **Verifier**: PASS na rodada 4 sobre `cb9adcd`. Depois disso entraram 4 commits de correções de uso no iOS (log de desenvolvimento, mensagem de configuração ausente, `anchor`, README) e o registro do N1; a verificação delta desses commits apontou 2 itens (registro do N1 além do relato; guardas do log sem teste), corrigidos no commit seguinte; falta a reverificação.
 - **Pendente**: verificação delta final do Verifier; Android (opcional); ícones das abas (cosmético, exige `@expo/vector-icons`); compra de duas ou mais unidades e preferência aceita ao vivo (exige restaurar a demo); retenção da chave após horas. P1 (T31 a T37) só depois de CP1 e de decisão do usuário.
 - **Next step**: concluir a verificação delta; depois, decidir com o usuário se segue para P1 e quais endpoints de ciclo de vida já estão prontos na API.
 - **Blockers**: nenhum para P0. `dotnet` fora do PATH da sessão do agente (workspace e testes de bootstrap que compilam a API falham por isso; não é do mobile).

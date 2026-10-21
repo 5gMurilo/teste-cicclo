@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** P0 completo (30/37 com Done when marcado): C1, C2 e C3 provados contra a API real e N1 aprovado pelo usuário no iOS (AD-006) em 2026-10-21; Android sem ensaio; P1 (T31-T37) não iniciado.
+**Execução:** P0 com 29/37 marcados: C1, C2 e C3 provados contra a API real; N1 aprovado pelo usuário no iOS (AD-006) em relato global, sem registro por cenário, por isso T29 fica `[~]`; Android sem ensaio; P1 (T31-T37) não iniciado.
 
 ## Execution Protocol
 
@@ -437,7 +437,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: App integrado, API demo combinada e testes existentes.
 **Requirement**: UX-01, UX-02, QUAL-02, SAFE-03, SAFE-04.
 **What**: Preparar o checklist de smoke Android; o **usuário executa** e eu documento os resultados que ele reportar por cenário, sem E2E automatizado ou PASS inferido de export.
-**Done when**: [x] N1 executado pelo usuário e aprovado; registrar dispositivo/API/commit/data, fonte 200%, leitor de tela, gestos/safe areas, navegação e falhas de rede/background; ausência de aparelho é BLOCKED.
+**Done when**: [~] N1 executado pelo usuário e aprovado; registrar dispositivo/API/commit/data, fonte 200%, leitor de tela, gestos/safe areas, navegação e falhas de rede/background; ausência de aparelho é BLOCKED.
 **Tests**: manual — teto de 8 cenários: tabs/Home inicial; header/layout; wash 5000→3110 em cenário controlado; seleção/badge; histórico/detalhe; rede e retry explícito; suspensão/retomada; a11y/fonte ampliada. Cuidado com consumo de saldo em demo.
 **Gate**: N1 + B + D + CC.
 **Commit**: `docs(mobile): record verified android and accessibility evidence`
@@ -709,7 +709,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **30/37 tarefas com Done when marcado** (P0 completo); T31-T37 (P1) dependem de CP1 e não foram iniciadas.
+- Implementação: **29/37 tarefas com Done when marcado**; T29 aguarda o detalhamento do N1 (relato do usuário), T31-T37 (P1) dependem de CP1.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1/C2/C3/CP1 não comprovadas; N1 não executado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.

@@ -221,6 +221,29 @@ describe('requestJson development logging', () => {
     });
   });
 
+  it('stays silent in a release bundle, where __DEV__ is false', async () => {
+    const globals = globalThis as { __DEV__?: boolean };
+    const original = globals.__DEV__;
+    globals.__DEV__ = false;
+    installFetch(() => Promise.reject(new TypeError('Network request failed')));
+    try {
+      await expect(requestJson({ method: 'GET', path: '/wallet' })).rejects.toBeInstanceOf(TransportError);
+    } finally {
+      globals.__DEV__ = original;
+    }
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('stays silent under Jest (NODE_ENV test) even in a development bundle', async () => {
+    (process.env as Record<string, string>).NODE_ENV = 'test';
+    installFetch(() => Promise.reject(new TypeError('Network request failed')));
+
+    await expect(requestJson({ method: 'GET', path: '/wallet' })).rejects.toBeInstanceOf(TransportError);
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+
   it('does not log a request cancelled by the caller', async () => {
     installFetch(pendingUntilAborted);
     const controller = new AbortController();
