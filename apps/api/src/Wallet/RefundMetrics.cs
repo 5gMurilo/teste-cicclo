@@ -19,6 +19,7 @@ public sealed class RefundMetrics
         refunds.Add(1, new KeyValuePair<string, object?>("reason", reason switch
         {
             RefundReason.Cancelled => "cancelled",
+            RefundReason.MachineFailure => "machine_failure",
             _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, "Motivo de refund sem dimensão."),
         }));
 }

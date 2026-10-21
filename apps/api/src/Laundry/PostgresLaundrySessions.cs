@@ -174,10 +174,48 @@ public sealed class PostgresLaundrySessions(IDbContextFactory<CiccloDbContext> c
                     "máquina reservada para o item cancelado");
             }
 
+            return await CreditRefundAsync(walletId, bookingId, itemId, amount, cancelledAt, cancellationToken);
+        }
+
+        public async Task FailRunAsync(Guid machineId, Guid? itemId, DateTime failedAt, CancellationToken cancellationToken)
+        {
+            if (itemId is not { } item)
+            {
+                PostgresQueueSession.Expect(
+                    await db.Database.ExecuteSqlAsync(
+                        $"""
+                        UPDATE machines SET state = 'out_of_service', is_demo_occupied = false, updated_at = {failedAt}
+                        WHERE id = {machineId} AND state = 'running' AND active_item_id IS NULL AND is_demo_occupied
+                        """,
+                        cancellationToken),
+                    "máquina em ocupação sintética");
+                return;
+            }
+
+            PostgresQueueSession.Expect(
+                await db.Database.ExecuteSqlAsync(
+                    $"""
+                    UPDATE service_request_items SET status = 'failed'
+                    WHERE id = {item} AND status = 'in_progress' AND machine_id = {machineId}
+                    """,
+                    cancellationToken),
+                "item em execução para falhar");
+            PostgresQueueSession.Expect(
+                await db.Database.ExecuteSqlAsync(
+                    $"""
+                    UPDATE machines SET state = 'out_of_service', active_item_id = NULL, updated_at = {failedAt}
+                    WHERE id = {machineId} AND state = 'running' AND active_item_id = {item}
+                    """,
+                    cancellationToken),
+                "máquina em execução do item");
+        }
+
+        public async Task<decimal> CreditRefundAsync(Guid walletId, Guid bookingId, Guid itemId, decimal amount, DateTime creditedAt, CancellationToken cancellationToken)
+        {
             var balance = (await db.Database
                 .SqlQuery<decimal>(
                     $"""
-                    UPDATE wallets SET balance = balance + {amount}, updated_at = {cancelledAt}
+                    UPDATE wallets SET balance = balance + {amount}, updated_at = {creditedAt}
                     WHERE id = {walletId}
                     RETURNING balance AS "Value"
                     """)
@@ -186,7 +224,7 @@ public sealed class PostgresLaundrySessions(IDbContextFactory<CiccloDbContext> c
                 await db.Database.ExecuteSqlAsync(
                     $"""
                     INSERT INTO wallet_transactions (id, wallet_id, request_id, request_item_id, kind, amount, balance_after, created_at)
-                    VALUES ({Guid.CreateVersion7(new DateTimeOffset(cancelledAt, TimeSpan.Zero))}, {walletId}, {bookingId}, {itemId}, 'refund', {amount}, {balance}, {cancelledAt})
+                    VALUES ({Guid.CreateVersion7(new DateTimeOffset(creditedAt, TimeSpan.Zero))}, {walletId}, {bookingId}, {itemId}, 'refund', {amount}, {balance}, {creditedAt})
                     """,
                     cancellationToken),
                 "lançamento de refund");
