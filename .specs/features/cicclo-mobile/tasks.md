@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** em andamento. Última tarefa concluída: T17 (16/37 com Done when marcado); ver STATE.md.
+**Execução:** em andamento. Última tarefa concluída: T18 (17/37 com Done when marcado); ver STATE.md.
 
 ## Execution Protocol
 
@@ -310,7 +310,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: createBooking; instalar expo-crypto no primeiro uso; mutation Query sem retry/pausa implícita.
 **Requirement**: BUY-01, BUY-02, BUY-03, BUY-04, BUY-08, BUY-13.
 **What**: Criar key/body imutáveis uma vez, guarda síncrona e estados idle/submitting/confirmed/rejected/unknown.
-**Done when**: [ ] Duplo toque antes do render gera um fetch; erro posterior ao envio conserva intenção; substituto de UUID/tempo só no limite; sem geração de chave no render/transport.
+**Done when**: [x] Duplo toque antes do render gera um fetch; erro posterior ao envio conserva intenção; substituto de UUID/tempo só no limite; sem geração de chave no render/transport.
 **Tests**: integration — teto de 8 casos: dois toques mesmo tick, UUID único, payload imutável, 201, replay 200, recusa definitiva, timeout/5xx/parse unknown, conflito bloqueado.
 **Gate**: F + CC.
 **Tools**: Context7 Query networkMode e Expo Crypto; usar APIs compatíveis com versões resolvidas.
@@ -709,7 +709,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **16/37 tarefas com Done when marcado** (última: T17); demais abertas ou pendentes de gate externo.
+- Implementação: **17/37 tarefas com Done when marcado** (última: T18); demais abertas ou pendentes de gate externo.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1/C2/C3/CP1 não comprovadas; N1 não executado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.
