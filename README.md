@@ -5,7 +5,7 @@
 Monorepo pnpm + Turborepo com dois aplicativos independentes:
 
 - `apps/mobile`: React Native 0.88.0, Expo SDK 58 e TypeScript. Ainda não consome a API.
-- `apps/api`: C# e ASP.NET Core em .NET 10 LTS, com carteira demonstrativa, contratações de lavagem/secagem com débito idempotente, fila FIFO de máquinas com oferta de 60 s, cancelamento com estorno, simulação de máquinas e relato de defeito, sobre PostgreSQL 18.1.
+- `apps/api`: C# e ASP.NET Core em .NET 10 LTS, com carteira demonstrativa, contratações de lavagem/secagem com débito idempotente, fila FIFO de máquinas com oferta de 60 s, cancelamento com estorno, simulação de máquinas e relato de defeito, sobre PostgreSQL 18.1, e notificações SignalR opcionais (desligadas por padrão).
 
 O workspace reconhece `apps/*` e `packages/*`. Não há pacotes compartilhados ainda; crie-os apenas quando houver código realmente compartilhado. Expo/React Native não oferecem uma linha LTS formal: o mobile usa a versão estável compatível do Expo. O .NET 10 tem suporte LTS até novembro de 2028.
 
@@ -206,6 +206,7 @@ As rotas sob `/api/v1/simulation` existem apenas quando o ambiente é `Developme
 | `POST .../items/{itemId}/report-issue` | 202 | `IssueReports` (3) |
 | `POST /api/v1/simulation/...` (somente Development + DemoMode) | 200 | sem limite |
 | `GET /openapi/v1.json` (somente Development) | 200 | sem limite |
+| `POST /hubs/laundry/negotiate` e conexão SignalR em `/hubs/laundry` (somente `Realtime:Enabled` + Development + DemoMode; fora do OpenAPI) | 200 | sem limite |
 
 Cada política é uma janela fixa de 1 minuto por endereço IP remoto, sem fila (`QueueLimit` 0), configurável por `RateLimiting:<Política>:PermitLimit`; ao exceder, 429 `RATE_LIMIT_EXCEEDED` com `Retry-After`. Todos os erros usam o mesmo `application/problem+json` descrito em "Consultas da demonstração"; 503 `DATABASE_UNAVAILABLE` nunca acompanha débito, crédito ou mudança de estado afirmados.
 
@@ -227,6 +228,40 @@ O meter `Cicclo.Api.Laundry` publica `cicclo_queue_wait_seconds` (histograma da 
 ### Reconciliação de ofertas
 
 No modo API normal, um worker em background reconcilia a fila a cada `Laundry:QueueWorkerIntervalSeconds` (padrão 5 s). Cada iteração abre um escopo e uma transação própria, bloqueia wallet, máquinas e itens nessa ordem, devolve ao fim da fila as ofertas vencidas (`now >= expires_at`, ticket e `queued_at` novos, sem débito nem cancelamento) e oferta as máquinas livres aos próximos por ticket, com prazo de `Laundry:ConfirmationTimeoutSeconds` (padrão 60 s). O estado vive só no PostgreSQL: reiniciar a API não perde fila nem oferta, e a primeira iteração após o reinício reconcilia o que venceu enquanto ela estava parada. Uma iteração que falha é registrada em log (evento 320) e a próxima tentativa só ocorre no intervalo seguinte; ao parar, a espera e o SQL em andamento são cancelados e a transação é revertida. O prazo da oferta não depende do worker: uma confirmação com `now >= expires_at` já é recusada e reconcilia a fila na mesma transação. O modo `--bootstrap-demo` não inicia o worker. Ativação, confirmação e cancelamento de itens são expostos por HTTP (seção "Contratações").
+
+### Notificações realtime opcionais (SignalR)
+
+Recurso opcional e **desligado por padrão**. O Hub `/hubs/laundry` só é registrado e mapeado quando as três condições valem ao mesmo tempo: `Realtime:Enabled=true` (`Realtime__Enabled=true`), ambiente `Development` e `Laundry:DemoMode=true`. Em qualquer outra combinação (por exemplo, a API do Compose, que não liga `DemoMode`, ou `Production`) nada de SignalR é registrado, `/hubs/laundry` e a negociação respondem 404 e a API se comporta exatamente como sem o recurso. Com a API local do "Roteiro de demonstração", basta acrescentar a flag:
+
+```sh
+export ASPNETCORE_ENVIRONMENT=Development Laundry__DemoMode=true Realtime__Enabled=true
+dotnet run --project apps/api/src/Cicclo.Api.csproj --no-launch-profile --urls http://127.0.0.1:5001
+```
+
+Protocolo: SignalR (JSON) no shared framework do ASP.NET Core, com negociação em `POST /hubs/laundry/negotiate?negotiateVersion=1` e transportes WebSockets, Server-Sent Events e long polling. Essas rotas **não fazem parte do documento OpenAPI**, que continua descrevendo só o REST. O Hub é somente de saída: não tem método invocável (compra, confirmação, estorno ou escolha de wallet são recusados com erro "Method does not exist") e não usa usuário, grupo nem `walletId`. É um **broadcast da wallet demo**, sem isolamento por usuário: qualquer cliente que alcance a porta recebe todos os avisos. A API não habilita CORS, então páginas web de outra origem não conectam; clientes nativos ou de linha de comando no loopback, sim.
+
+Avisos (nome wire com ponto e payload em camelCase, datas UTC com `Z`):
+
+| Evento | Payload | Quando |
+| --- | --- | --- |
+| `booking.updated` | `eventId` (UUID v7, novo por aviso), `bookingId`, `version`, `occurredAt` | Compra nova (`version` 1) ou commit que alterou o booking ou seus itens |
+| `queue.updated` | `machineType` (`washer`/`dryer`), `occurredAt` | Item entrou ou saiu da fila do tipo; posições são lidas por REST |
+| `machine.offered` | `itemId`, `machineId`, `expiresAt`, `occurredAt` | Oferta persistida (`occurredAt` é o `offered_at` gravado) |
+| `machine.offer_expired` | `itemId`, `occurredAt` | Oferta vencida devolvida à fila (`occurredAt` é a nova entrada na fila) |
+| `wallet.updated` | `occurredAt` | Débito ou refund confirmado; sem saldo no payload |
+| `machine.failed` | `machineId`, `occurredAt` | Falha confirmada (breakdown ou incidente), real ou sintética |
+
+`version` é a revisão persistida do booking (`service_requests.revision`): começa em 1 e sobe uma vez por commit que altera o booking ou seus itens, mesmo que vários itens dele mudem juntos; leitura, replay, posição derivada da fila, relato e ocupação sintética não a alteram. Ela compara avisos **do mesmo booking**; não existe ordem global. Em `booking.updated`, `queue.updated`, `wallet.updated` e `machine.failed`, `occurredAt` é o instante em que o servidor observou o commit (logo depois dele), não o `createdAt` da compra. Ocupação sintética, conclusão sem fila e relato de defeito não têm aviso próprio.
+
+Os avisos saem **somente depois do commit**, fora da transação e dos locks, com orçamento próprio de 500 ms. Rollback e commit de resultado desconhecido não publicam nada. Se o transporte falhar ou estourar o orçamento, a API registra o aviso de log 900 e mantém a resposta já confirmada (201/200/410), o saldo e o ledger, sem retry e sem desfazer nada. Não há outbox, fila durável, replay nem entrega offline: um cliente desconectado perde os avisos do período e, ao reconectar, não recebe nada retroativo. A entrega não é exactly-once e a ordem entre bookings diferentes não é garantida; duplicatas ou avisos atrasados podem aparecer, e reenviá-los ao Hub não muda nada no servidor. **O REST é a fonte de recuperação**: ao conectar, depois de uma queda ou diante de `version` repetida ou menor que a já vista, refaça `GET /api/v1/bookings/{bookingId}`, `GET /api/v1/wallet` ou `GET /api/v1/machines`.
+
+Sem Redis e sem backplane: o lifetime manager é o padrão em memória de uma única instância. Duas instâncias da API não compartilham conexões. O cache Redis de saldo não faz parte deste recurso.
+
+Demonstração executada em PostgreSQL 18.1 de container exclusivo, com a API real e um cliente long polling por `curl` (o terminador de mensagem do protocolo é o caractere `0x1e`): sem a flag, a negociação respondeu 404 e a compra 201; com a flag, a negociação respondeu 200, a compra `wash` gerou, nesta ordem, `machine.offered` (item, `washer-01`, `expiresAt` igual ao da resposta), `queue.updated` (`washer`), `booking.updated` (`version` 1) e `wallet.updated`; com o cliente desconectado, o cancelamento respondeu 200 com refund 1890, um cliente novo não recebeu nenhum aviso desse cancelamento e `GET /api/v1/bookings/{bookingId}`, `GET /api/v1/wallet` e o histórico mostraram o item `cancelled`, o saldo 2910 e o refund; uma invocação `CancelItem` enviada ao Hub voltou com erro "Method does not exist"; `/health/ready` ficou 200; e com `ASPNETCORE_ENVIRONMENT=Production` e a flag ligada, a negociação respondeu 404. Os mesmos cenários, mais transporte quebrado e revisão por booking, são reproduzidos por:
+
+```sh
+dotnet test apps/api/tests/Cicclo.Api.Tests.csproj --configuration Release --filter 'Increment=E09'
+```
 
 ## Validação
 
@@ -497,6 +532,7 @@ O Dockerfile usa build multi-stage com SDK .NET fixado e runtime ASP.NET Core n�
 - **Limites simples.** Janela fixa por IP e por política, em memória, sem fila; adequado a uma instância de demonstração.
 - **Bootstrap e reset explícitos.** Migrations e `seed.sql` só rodam por `--bootstrap-demo`; o reset é outro modo, local e confirmado. A API em modo normal nunca altera schema nem restaura dados.
 - **Telemetria opcional.** OpenTelemetry nativo com exportação OTLP só quando configurada; a exportação nunca participa da transação.
+- **Avisos realtime como dica, REST como verdade.** SignalR opcional publica depois do commit, com orçamento curto e sem durabilidade; a revisão persistida por booking permite ao cliente descartar avisos velhos, e qualquer dúvida se resolve com GET. Sem outbox nem backplane: o volume da demo não justifica.
 
 ## Modelo de ameaça sem login
 
@@ -506,6 +542,7 @@ A demonstração não tem autenticação: há uma única wallet, resolvida no se
 - nenhum `walletId`/`userId` do cliente seleciona conta; corpos têm limite de 16 KiB, propriedades desconhecidas e tipos errados são recusados;
 - rotas de simulação (conclusão, falha, ocupação, restauração, confirmação de incidente) só existem em `Development` com `Laundry:DemoMode=true`; fora disso respondem 404 e não aparecem no OpenAPI. Elas não são uma API de administração de produção;
 - o reset não tem rota HTTP e exige ambiente, alvo local e confirmação explícitos;
+- o Hub realtime (`/hubs/laundry`) só existe com `Realtime:Enabled`, `Development` e `Laundry:DemoMode`; não aceita comandos, é broadcast para qualquer cliente que alcance a porta e não isola usuários;
 - erros não expõem SQL, stack trace ou connection string; a senha do banco chega como dado (`PGPASSWORD` ou connection string em variável de ambiente), nunca como argumento, e não aparece em logs;
 - limites por IP reduzem abuso acidental, mas não são proteção contra negação de serviço nem contra vários clientes atrás do mesmo IP (`X-Forwarded-For` é ignorado).
 
@@ -513,7 +550,9 @@ Risco residual aceito: não exponha esta API em rede pública ou compartilhada. 
 
 ## Limitações conhecidas
 
-- **Cache Redis opcional e eventual.** Desligado por padrão e fora do caminho-base; limitações em "Cache Redis opcional". Não há notificações SignalR neste ramo: o cliente consulta o estado por HTTP.
+- **Cache Redis e notificações SignalR implementados como extensões opt-in, ambos desligados por padrão.** Cada um tem a sua própria flag (`Caching:Enabled`, `Realtime:Enabled`) e liga sem depender do outro; desligados, a API se comporta como o caminho-base (nenhuma conexão Redis, `/hubs/laundry` responde 404).
+- **Cache Redis: leitura eventual.** Só `GET /api/v1/wallet` usa o cache, sem read-your-writes; mudanças fora da API e a corrida de repopulação só se corrigem pelo TTL; a invalidação pós-commit é best-effort; um Redis local único, sem persistência, TLS ou ACL além da senha. Detalhes em "Cache Redis opcional".
+- **Notificações SignalR são opcionais e sem garantia de entrega.** Ficam desligadas por padrão e não existem na API do Compose (sem `DemoMode`). Sem replay, outbox, entrega offline, ordem global ou exactly-once; um único processo, sem backplane; broadcast sem isolamento por usuário; sem CORS para clientes web de outra origem. O aplicativo mobile não as consome. Recupere o estado por REST.
 - A API do Compose não liga `Laundry:DemoMode`: a simulação só funciona na API iniciada como em "Roteiro de demonstração" (ou em outro host Development com a flag).
 - O smoke de `start-demo.sh` confere só carteira e catálogo; compra, fila e simulação são conferidas pelo roteiro manual e pelos testes de aceitação.
 - O reset detecta somente conexões abertas com Application Name `cicclo.api`; não encerra sessões nem protege contra clientes externos ou uma API configurada com outro nome. Ele não reinicia a sequência `queue_ticket_seq` (só ordena a fila).
