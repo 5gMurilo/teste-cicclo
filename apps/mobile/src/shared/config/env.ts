@@ -1,0 +1,84 @@
+export class ConfigError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ConfigError';
+  }
+}
+
+export type PublicEnv = {
+  apiOrigin: string;
+  displayName: string;
+};
+
+type RawPublicEnv = {
+  apiUrl?: string;
+  displayName?: string;
+};
+
+const FALLBACK_DISPLAY_NAME = 'Visitante';
+
+function parseApiOrigin(value: string | undefined): string {
+  const raw = value?.trim();
+  if (!raw) {
+    throw new ConfigError('EXPO_PUBLIC_API_URL is not set');
+  }
+
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new ConfigError('EXPO_PUBLIC_API_URL is not a valid URL');
+  }
+
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw new ConfigError('EXPO_PUBLIC_API_URL must use http or https');
+  }
+  if (url.username || url.password) {
+    throw new ConfigError('EXPO_PUBLIC_API_URL must not contain credentials');
+  }
+  if (url.pathname !== '/' || url.search || url.hash || /[?#]/.test(raw)) {
+    throw new ConfigError('EXPO_PUBLIC_API_URL must be an origin without path, query or hash');
+  }
+
+  return url.origin;
+}
+
+function parseDisplayName(value: string | undefined): string {
+  return value?.trim() || FALLBACK_DISPLAY_NAME;
+}
+
+export function parsePublicEnv(raw: RawPublicEnv): PublicEnv {
+  return {
+    apiOrigin: parseApiOrigin(raw.apiUrl),
+    displayName: parseDisplayName(raw.displayName),
+  };
+}
+
+// Expo inlines EXPO_PUBLIC_* only for static `process.env.NAME` accesses.
+export function readPublicEnv(): PublicEnv {
+  return parsePublicEnv({
+    apiUrl: process.env.EXPO_PUBLIC_API_URL,
+    displayName: process.env.EXPO_PUBLIC_DEMO_DISPLAY_NAME,
+  });
+}
+
+/** The greeting must render even when the API URL is misconfigured, so it is read on its own. */
+export function readDisplayName(): string {
+  return parseDisplayName(process.env.EXPO_PUBLIC_DEMO_DISPLAY_NAME);
+}
+
+export function isConfigError(error: unknown): boolean {
+  return error instanceof ConfigError;
+}
+
+/** Shown by every read-error view when the API origin is missing or invalid: retrying cannot fix it. */
+export const CONFIG_ERROR_MESSAGE =
+  'Configuração da API ausente ou inválida. Defina EXPO_PUBLIC_API_URL em apps/mobile/.env e reinicie o Metro.';
+
+/**
+ * Opt-in for the demo-only "Concluir (simulação)" action. It only works against an API started in Development
+ * with Laundry__DemoMode=true; set EXPO_PUBLIC_DEMO_SIMULATION=true in apps/mobile/.env to show it.
+ */
+export function isDemoSimulationEnabled(): boolean {
+  return process.env.EXPO_PUBLIC_DEMO_SIMULATION === 'true';
+}
