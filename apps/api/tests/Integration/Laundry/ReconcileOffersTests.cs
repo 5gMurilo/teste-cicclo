@@ -341,6 +341,35 @@ public sealed class ReconcileOffersTests(PostgresFixture postgres)
         Assert.Equal(before, await database.RowsAsync(StateSql));
     }
 
+    /// <summary>
+    /// Instante da decisão depois dos locks também na reconciliação (dívida N16 da E03, design D02): um detentor fora do
+    /// protocolo segura a lavadora enquanto o relógio passa de 59 s para 61 s; a decisão usa 61 s, expira a oferta e
+    /// reoferta o item sozinho por mais 60 s.
+    /// </summary>
+    [Fact]
+    public async Task D12_ReconciliationTakesTheInstantAfterWaitingForTheMachineLock()
+    {
+        var database = await ReadyAsync(postgres);
+        var clock = Clock();
+        var a = await PendingAsync(database);
+        await ActivateAsync(Sessions(database, SetupApp), Coordinator(clock), a);
+        clock.SetUtcNow(T0.AddSeconds(59));
+        var (holder, transaction) = await HoldAsync(database, HolderApp, $"SELECT 1 FROM machines WHERE id = '{WasherId}' FOR UPDATE");
+
+        var reconcile = Task.Run(() => UseCase(database, clock).ExecuteAsync(CancellationToken.None));
+        await WaitUntilWaitingOnLockAsync(database, ReconcileApp);
+        Assert.False(reconcile.IsCompleted);
+        clock.SetUtcNow(T0.AddSeconds(61));
+        await transaction.RollbackAsync();
+        await holder.DisposeAsync();
+        var changes = await reconcile.WaitAsync(SignalTimeout);
+
+        Assert.Equal([new ExpiredOffer(a, Guid.Parse(WasherId), T0.UtcDateTime.AddSeconds(60), 2, T0.UtcDateTime.AddSeconds(61))], changes.SelectMany(change => change.Expired));
+        Assert.Equal(
+            [$"{a}|to_be_confirmed|2|12:01:01.000000|{WasherId}|12:01:01.000000|12:02:01.000000|null", $"washer-01|reserved|{a}|12:01:01.000000", "wallet|50.00|0"],
+            await RowsAsync(database, a));
+    }
+
     private static ReconcileOffersUseCase UseCase(TestDatabase database, TimeProvider clock, IMeterFactory? meters = null) =>
         new(Sessions(database, ReconcileApp), Coordinator(clock), Metrics(meters), NullLogger<ReconcileOffersUseCase>.Instance);
 
