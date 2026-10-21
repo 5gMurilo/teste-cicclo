@@ -45,11 +45,11 @@
 ## Handoff
 
 - **Feature**: `.specs/features/cicclo-mobile/spec.md`.
-- **Phase / Task**: Execute inline e sequencial. Última tarefa fechada: T28.
-- **Completed**: T1-T9, T11-T20, T22 e T27 fechadas; T10, T21, T23-T26 e T28 implementadas e pendentes de gate com a API real (C1, C2, C3). T28 = pós-compra leva a /bookings/{id} (Ver contratação); lista e detalhe convergem pela invalidação; falha de GET depois do sucesso não reenvia a compra. E1 a E4 completas em código (21/37 com Done when marcado).
+- **Phase / Task**: Execute inline e sequencial. Última tarefa fechada: T29.
+- **Completed**: T1-T9, T11-T20, T22 e T27 fechadas; T10, T21, T23-T26 e T28 pendentes de gate com a API real; T29 com o checklist pronto em apps/mobile/docs/native-validation.md (8 cenários, tudo PENDENTE; N1 é do usuário, AD-005) (21/37 com Done when marcado).
 - **In-progress**: Nenhuma.
-- **Next step**: E5: T29 (checklist de validação Android, executado pelo usuário) e T30 (README e fechamento P0 com Verifier). Depois, o gate com a API real (C1, C2, C3) e a integração das branches.
+- **Next step**: T30 (README mobile, gates W e B registrados e Verifier independente). Depois: gates com a API real (C1, C2, C3), N1 do usuário, integração das branches.
 - **Pendente da API real**: C1 (T10 e demo de E1/E2), integração por fast-forward de E1 e E2 em `mobile-worktree`; C2 (CTA real em T21), C3 (T22-T28), N1 (T29, com o usuário). Decisão do usuário (2026-10-21): implementar o código de todas as etapas E com fakes primeiro e deixar a interação real com a API para depois de todas elas.
 - **Blockers**: C1/C2/C3 não provados. `dotnet` não aparece no PATH desta sessão (há `docker` e `psql`). `tests/bootstrap.test.mjs` teste 6 falha localmente por isso.
-- **Branches** (atual: `feat/mobile-04-booking-tracking`): chore/mobile-00-baseline 08e6c7d; feat/mobile-01-catalog-wallet 6bd529c; feat/mobile-02-selection-review 0a34316; feat/mobile-03-safe-booking 9674db3; feat/mobile-04-booking-tracking 003b1fa; mobile-worktree 08e6c7d.
+- **Branches** (atual: `chore/mobile-05-p0-readiness`): chore/mobile-00-baseline 08e6c7d; chore/mobile-05-p0-readiness ad3d9a8; feat/mobile-01-catalog-wallet 6bd529c; feat/mobile-02-selection-review 0a34316; feat/mobile-03-safe-booking 9674db3; feat/mobile-04-booking-tracking ad3d9a8; mobile-worktree 08e6c7d.
 - **Uncommitted files**: `.omc/` e `apps/mobile/.omc/` (estado de ferramenta, não versionar).
