@@ -74,3 +74,11 @@ export function isConfigError(error: unknown): boolean {
 /** Shown by every read-error view when the API origin is missing or invalid: retrying cannot fix it. */
 export const CONFIG_ERROR_MESSAGE =
   'Configuração da API ausente ou inválida. Defina EXPO_PUBLIC_API_URL em apps/mobile/.env e reinicie o Metro.';
+
+/**
+ * Opt-in for the demo-only "Concluir (simulação)" action. It only works against an API started in Development
+ * with Laundry__DemoMode=true; set EXPO_PUBLIC_DEMO_SIMULATION=true in apps/mobile/.env to show it.
+ */
+export function isDemoSimulationEnabled(): boolean {
+  return process.env.EXPO_PUBLIC_DEMO_SIMULATION === 'true';
+}

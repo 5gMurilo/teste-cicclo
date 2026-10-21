@@ -20,4 +20,9 @@ export const capabilities = {
    * A command that is off is hidden, never shown disabled or faked.
    */
   itemCommands: { activate: true, confirm: true, cancel: true, reportIssue: true },
+  /**
+   * Demo-only machine simulation (/simulation routes, Development + DemoMode on the API). It is an exception to
+   * the "no operator controls" rule, decided by the user (AD-008), and is also gated by EXPO_PUBLIC_DEMO_SIMULATION.
+   */
+  simulation: { complete: true },
 };

@@ -118,3 +118,7 @@ Um export bem-sucedido não prova que o app funciona em um aparelho.
 | Lista e detalhe de contratações | Funcional | Testes de integração e prova contra a API real (C3) |
 | Ativar, confirmar oferta, cancelar, relatar, polling | Não implementado | Fora de P0 |
 | App no iOS (gate N1) | Aprovado pelo usuário (todos os cenários, sem observação individual) | Relato do usuário; Android sem ensaio, aceito por decisão do usuário |
+
+## Demo: concluir uma execução
+
+O cliente não tem ação de concluir: quem conclui é a simulação das máquinas. Para demonstrar o ciclo completo, suba a API em `Development` com `Laundry__DemoMode=true`, defina `EXPO_PUBLIC_DEMO_SIMULATION=true` em `apps/mobile/.env` e reinicie o Metro. O detalhe de uma execução em andamento passa a mostrar "Concluir (simulação)", rotulado como ação de simulação. Sem a variável o botão não aparece; com a variável e uma API sem DemoMode o app avisa que a simulação não está disponível.

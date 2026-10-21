@@ -53,3 +53,11 @@ Observações: logo após a compra o item chegou `to_be_confirmed` com `machineI
 **Decisão:** as quatro capacidades foram ligadas (`capabilities.itemCommands.*`) com esta evidência, por pedido do usuário, que precisa usar as ações. Os itens da coluna "Não observado" seguem sem prova real; estão cobertos só com API simulada e pela descrição do OpenAPI. Repetir `live/lifecycle.live.test.ts` com a saída salva em arquivo, depois de restaurar a demo, completa a prova.
 
 **Uso real pelo usuário (2026-10-21):** depois de ligar as capacidades, o usuário relatou que **aceitou uma oferta (Confirmar) e relatou um problema (Relatar problema) pelo app contra a API real, e funcionaram**. É relato, sem captura nem resposta registrada, mas cobre o `confirm` e o `report-issue` de ponta a ponta com o `fetch` do React Native, que o teste ao vivo (Node) não exercita. `activate` e `cancel` não foram citados no relato.
+
+## Simulação de conclusão (somente demo)
+
+**Rota:** `POST /api/v1/simulation/machines/{machineId}/complete` (`SimulationResponse`: `machine` e `item`, `item` nulo em ocupação sintética). Existe só com a API em `Development` e `Laundry__DemoMode=true`; fora disso responde 404 e nem aparece no OpenAPI. Não há ação equivalente para o cliente: concluir uma execução é da simulação das máquinas.
+
+**Prova ao vivo (2026-10-21, `live/simulation.live.test.ts`, saída em `/tmp/live-simulation.log`):** com a `washer-01` em `running`, o POST respondeu 200 com a máquina `available` e `activeItemId` nulo e o item `completed` (`machineId`, `queuePosition` e `expiresAt` nulos); a leitura seguinte de `GET /machines` confirmou `available`. A repetição respondeu 409 `INVALID_STATE_TRANSITION`.
+
+**No app:** botão "Concluir {serviço} (simulação)" no detalhe, só para item `in_progress` com máquina, rotulado como ação de simulação e visível **apenas** com `EXPO_PUBLIC_DEMO_SIMULATION=true` em `apps/mobile/.env` (reiniciar o Metro) e `capabilities.simulation.complete`. Com a rota ausente (404 sem corpo de erro) o app diz que a simulação não está disponível nesta API. Exceção consciente à regra "sem painel de operador" (AD-008).

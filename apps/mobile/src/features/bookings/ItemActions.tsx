@@ -6,6 +6,7 @@ import { formatBRL } from '../../shared/lib/money';
 import { colors, spacing } from '../../shared/theme/tokens';
 import { canActivate, useActivateItem } from './activateItem';
 import { canCancel, useCancelItem } from './cancelItem';
+import { canSimulateComplete, useSimulateComplete } from './completeSimulation';
 import { OfferCountdown } from './components/OfferCountdown';
 import { confirmEnabled, useConfirmItem } from './confirmItem';
 import { commandErrorMessage, type CommandState } from './itemCommand';
@@ -20,6 +21,7 @@ export function ItemActions({ bookingId, item }: { bookingId: string; item: Book
   const confirm = useConfirmItem(bookingId);
   const cancel = useCancelItem(bookingId);
   const report = useReportIssue(bookingId);
+  const simulate = useSimulateComplete(item.machineId);
   const [askingCancel, setAskingCancel] = useState(false);
   // The deadline we already saw expire: from then on the offer cannot be confirmed from this screen.
   const [expiredDeadline, setExpiredDeadline] = useState<string | null>(null);
@@ -98,6 +100,23 @@ export function ItemActions({ bookingId, item }: { bookingId: string; item: Book
           Relato enviado para verificação.
         </Text>
       ) : null}
+      {canSimulateComplete(item) ? (
+        <View style={styles.actions}>
+          <Text style={styles.note}>Ação de simulação: só existe na demo, não é uma ação do cliente.</Text>
+          <ActionButton
+            label={`Concluir ${item.serviceCode} (simulação)`}
+            busy={isPendingFor(simulate.state, item.itemId)}
+            disabled={simulate.state.status === 'pending'}
+            onPress={() => void simulate.run(item.itemId)}
+          />
+        </View>
+      ) : null}
+      {simulate.state.status === 'done' && simulate.state.itemId === item.itemId ? (
+        <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.note}>
+          Execução concluída na simulação.
+        </Text>
+      ) : null}
+      <Failure state={simulate.state} itemId={item.itemId} />
       <Failure state={report.state} itemId={item.itemId} />
       <Failure state={cancel.state} itemId={item.itemId} />
       <Failure state={activate.state} itemId={item.itemId} />

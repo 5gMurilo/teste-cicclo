@@ -3,7 +3,7 @@ import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-li
 import { queryClient } from '../src/shared/api/queryClient';
 
 // Purchases are gated by a capability proven only against the real API; these tests exercise the enabled path.
-jest.mock('../src/shared/api/capabilities', () => ({ capabilities: { purchase: true, keyRetentionMs: null, itemCommands: { activate: false, confirm: false, cancel: false, reportIssue: false } } }));
+jest.mock('../src/shared/api/capabilities', () => ({ capabilities: { purchase: true, keyRetentionMs: null, itemCommands: { activate: false, confirm: false, cancel: false, reportIssue: false }, simulation: { complete: false } } }));
 jest.mock('expo-crypto', () => {
   let n = 0;
   return { randomUUID: () => `00000000-0000-4000-8000-${String(++n).padStart(12, '0')}` };

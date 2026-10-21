@@ -9,7 +9,7 @@ import { createTestQueryClient } from '../../../test/queryClient';
 import { CheckoutProvider, useCheckout } from '../CheckoutProvider';
 
 // These tests cover the provider with the purchase capability off.
-jest.mock('../../../shared/api/capabilities', () => ({ capabilities: { purchase: false, keyRetentionMs: null, itemCommands: { activate: false, confirm: false, cancel: false, reportIssue: false } } }));
+jest.mock('../../../shared/api/capabilities', () => ({ capabilities: { purchase: false, keyRetentionMs: null, itemCommands: { activate: false, confirm: false, cancel: false, reportIssue: false }, simulation: { complete: false } } }));
 
 const CHECKOUT_TAB = /^Checkout.*tab, 3 of 3$/;
 const service = (code: string, unitPriceCents: number, over: Record<string, unknown> = {}) => ({

@@ -58,6 +58,14 @@
 - **Date**: 2026-10-21
 - **Status**: active
 
+### AD-008
+- **Decision**: Adicionar ao app a ação demo "Concluir (simulação)" no detalhe de uma execução em andamento, opt-in por `EXPO_PUBLIC_DEMO_SIMULATION=true`, rotulada como simulação, que chama `POST /api/v1/simulation/machines/{machineId}/complete`.
+- **Reason**: Pedido do usuário em 2026-10-21, depois de ligar o DemoMode na API: ele quer concluir serviços pelo app para demonstrar o ciclo completo.
+- **Trade-off**: Contraria a regra da spec "sem painel de operador" (T35) e a rota só existe em Development com DemoMode. Mitigação: oculto por padrão, rótulo explícito de simulação, capacidade e variável de ambiente, e comportamento claro quando a rota não existe.
+- **Scope**: apps/mobile, detalhe da contratação; fora de QUEUE-01 a QUEUE-10 (sem requisito de spec).
+- **Date**: 2026-10-21
+- **Status**: active
+
 ## Handoff
 
 - **Feature**: `.specs/features/cicclo-mobile/spec.md`.

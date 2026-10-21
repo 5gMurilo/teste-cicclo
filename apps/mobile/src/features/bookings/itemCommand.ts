@@ -76,6 +76,9 @@ export function commandErrorMessage(error: unknown): string {
     if (error.errorCode === 'INVALID_STATE_TRANSITION') {
       return 'O estado da execução mudou e a ação não se aplica mais. Veja o estado atualizado abaixo.';
     }
+    if (error.status === 404 && error.errorCode === null) {
+      return 'A simulação não está disponível nesta API (o DemoMode precisa estar ligado).';
+    }
     if (error.status === 404) return 'Contratação ou execução não encontrada.';
     if (error.status === 429) {
       return error.retryAfterAt === null

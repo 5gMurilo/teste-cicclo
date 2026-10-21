@@ -9,7 +9,7 @@ jest.mock('../src/shared/api/capabilities', () => ({
   capabilities: {
     purchase: true,
     keyRetentionMs: null,
-    itemCommands: { activate: true, confirm: true, cancel: true, reportIssue: true },
+    itemCommands: { activate: true, confirm: true, cancel: true, reportIssue: true }, simulation: { complete: true },
   },
 }));
 
@@ -522,5 +522,107 @@ describe('T34 and T33 hardening: nothing is credited early, the detail is re-rea
     expect(await screen.findByText('Oferta vencida')).toBeOnTheScreen();
     expect(gets).toBeGreaterThan(before);
     jest.restoreAllMocks();
+  });
+});
+
+describe('demo-only Concluir (simulação)', () => {
+  const simulationUrl = `http://api.test:5001/api/v1/simulation/machines/${MACHINE_ID}/complete`;
+  const running = () => item('in_progress', { machineId: MACHINE_ID });
+  const completeBody = {
+    machine: { machineId: MACHINE_ID, name: 'washer-01', machineType: 'washer', state: 'available', activeItemId: null, isDemoOccupied: false },
+    item: item('completed'),
+  };
+
+  beforeEach(() => {
+    process.env.EXPO_PUBLIC_DEMO_SIMULATION = 'true';
+    detail = { status: 200, body: booking(running()) };
+    commandReply = () => ({ status: 200, body: completeBody });
+  });
+  afterEach(() => {
+    delete process.env.EXPO_PUBLIC_DEMO_SIMULATION;
+    capabilities.simulation.complete = true;
+  });
+
+  it('is hidden unless the demo opt-in variable is set', async () => {
+    delete process.env.EXPO_PUBLIC_DEMO_SIMULATION;
+    await openDetail();
+    await screen.findByText('Em execução');
+
+    expect(screen.queryByRole('button', { name: /\(simulação\)/ })).toBeNull();
+  });
+
+  it('is hidden while the capability is not proven', async () => {
+    capabilities.simulation.complete = false;
+    await openDetail();
+    await screen.findByText('Em execução');
+
+    expect(screen.queryByRole('button', { name: /\(simulação\)/ })).toBeNull();
+  });
+
+  it.each([
+    ['pending_activation', null],
+    ['queued', null],
+    ['completed', null],
+    ['in_progress', null],
+  ])('is hidden for an item that is %s without a machine', async (status, machineId) => {
+    detail = { status: 200, body: booking(item(status, { machineId })) };
+    await openDetail();
+    await screen.findByRole('header', { name: 'Contratação 00000000' });
+
+    expect(screen.queryByRole('button', { name: /\(simulação\)/ })).toBeNull();
+  });
+
+  it('completes the running machine, labels it as simulation, and shows what the server says afterwards', async () => {
+    await openDetail();
+    await screen.findByText('Em execução');
+    expect(screen.getByText(/Ação de simulação: só existe na demo/)).toBeOnTheScreen();
+    detail = { status: 200, body: booking(item('completed')) };
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Concluir wash (simulação)' }));
+
+    expect(await screen.findByText('Execução concluída na simulação.')).toBeOnTheScreen();
+    expect(posts).toHaveLength(1);
+    expect(posts[0].url).toBe(simulationUrl);
+    await waitFor(() => expect(screen.getByText('Concluído')).toBeOnTheScreen());
+    expect(screen.queryByRole('button', { name: /\(simulação\)/ })).toBeNull();
+    expect(screen.queryByText(/estorno/i)).toBeNull();
+    expect(queryClient.getQueryData(['wallet'])).toMatchObject({ balanceCents: 3110 });
+  });
+
+  it('explains a 409 (machine not running) and shows the real state', async () => {
+    commandReply = () => ({ status: 409, body: { errorCode: 'INVALID_STATE_TRANSITION' } });
+    await openDetail();
+    await screen.findByText('Em execução');
+    detail = { status: 200, body: booking(item('completed')) };
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Concluir wash (simulação)' }));
+
+    expect(await screen.findByText(/O estado da execução mudou/)).toBeOnTheScreen();
+    await waitFor(() => expect(screen.getByText('Concluído')).toBeOnTheScreen());
+  });
+
+  it('says the simulation is unavailable when the API has no such route (404 without a problem body)', async () => {
+    commandReply = () => ({ status: 404, body: null });
+    await openDetail();
+    await screen.findByText('Em execução');
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Concluir wash (simulação)' }));
+
+    expect(await screen.findByText(/A simulação não está disponível nesta API/)).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Concluir wash (simulação)' })).toBeEnabled();
+  });
+
+  it('sends a double tap only once', async () => {
+    let finish: (reply: Reply) => void = () => undefined;
+    commandReply = () => new Promise<Reply>((resolve) => (finish = resolve));
+    await openDetail();
+    await screen.findByText('Em execução');
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Concluir wash (simulação)' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Concluir wash (simulação)' }));
+
+    expect(posts).toHaveLength(1);
+    finish({ status: 200, body: completeBody });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Concluir wash (simulação)' })).toBeEnabled());
   });
 });

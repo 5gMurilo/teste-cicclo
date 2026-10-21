@@ -7,7 +7,7 @@ jest.mock('../src/shared/api/capabilities', () => ({
   capabilities: {
     purchase: true,
     keyRetentionMs: null,
-    itemCommands: { activate: false, confirm: false, cancel: false, reportIssue: false },
+    itemCommands: { activate: false, confirm: false, cancel: false, reportIssue: false }, simulation: { complete: false },
   },
 }));
 
