@@ -53,10 +53,11 @@
 ## Handoff
 
 - **Feature**: `.specs/features/cicclo-mobile/spec.md`.
-- **Phase / Task**: Código de P0 completo (E0 a E5). Gates C1, C2 e C3 provados contra a API real em 2026-10-21 (`apps/mobile/live/contract.live.test.ts`, evidência em `apps/mobile/docs/api-contract.md`); compra real ligada (`capabilities.purchase = true`). Verifier independente: PASS na rodada 4 sobre `cb9adcd` (31 suítes, 254 testes, nenhum mutante não equivalente sobrevivente; `validate_state` limpo). O PASS vale para o verificável localmente e pelo teste ao vivo; não declara P0 concluído enquanto N1 não for executado.
-- **Completed**: 28/37 com Done when `[x]` (T1 a T28). Gate B: 31 suítes, 254 testes, typecheck, lint e export Android/iOS verdes.
-- **Pendente**: N1 (T29, executado pelo usuário no iOS por AD-006, com `apps/mobile/docs/native-validation.md`) e, com ele, o fechamento de T30 (README já publicado, falta N1 e o Verifier final). P1 (T31 a T37) só depois de P0 verificado e de CP1.
-- **Next step**: o usuário executa N1 e reporta resultado por cenário; registrar em `native-validation.md`, commit `docs(mobile): record verified android and accessibility evidence`, marcar T29/T30 e reexecutar o Verifier para o fechamento P0. A demo local está com o saldo debitado (3110) e uma contratação; para repetir `test:live` ou o cenário 3 do checklist, restaurar a demo pelo `--reset-demo` do backend (API parada antes).
-- **Blockers**: N1 (usuário). `dotnet` fora do PATH da sessão do agente (workspace e testes de bootstrap que compilam a API falham por isso; não é do mobile).
-- **Branches**: cadeia linear E0 `chore/mobile-00-baseline`, E1 `feat/mobile-01-catalog-wallet`, E2 `feat/mobile-02-selection-review`, E3 `feat/mobile-03-safe-booking`, E4 `feat/mobile-04-booking-tracking`, E5 `chore/mobile-05-p0-readiness`; `mobile-worktree` integrada por fast-forward até a E5. Nada foi enviado ao remoto.
+- **Phase / Task**: P0 completo (T1 a T30). C1, C2 e C3 provados contra a API real em 2026-10-21; N1 aprovado pelo usuário no iOS (AD-006), relato global sem detalhe por cenário (`apps/mobile/docs/native-validation.md`). Android não ensaiado.
+- **Completed**: 30/37 com Done when `[x]`. Gate B: 32 suítes, 260 testes, typecheck, lint e export verdes (o export exige `EXPO_PUBLIC_API_URL` apenas para as leituras em runtime, não para exportar).
+- **Verifier**: PASS na rodada 4 sobre `cb9adcd`. Depois disso entraram 4 commits de correções de uso no iOS (log de desenvolvimento, mensagem de configuração ausente, `anchor`, README) e o registro do N1; a verificação delta final desses commits é o último passo de P0.
+- **Pendente**: verificação delta final do Verifier; Android (opcional); ícones das abas (cosmético, exige `@expo/vector-icons`); compra de duas ou mais unidades e preferência aceita ao vivo (exige restaurar a demo); retenção da chave após horas. P1 (T31 a T37) só depois de CP1 e de decisão do usuário.
+- **Next step**: concluir a verificação delta; depois, decidir com o usuário se segue para P1 e quais endpoints de ciclo de vida já estão prontos na API.
+- **Blockers**: nenhum para P0. `dotnet` fora do PATH da sessão do agente (workspace e testes de bootstrap que compilam a API falham por isso; não é do mobile).
+- **Branches**: cadeia linear E0 a E5 (`chore/mobile-05-p0-readiness` é a atual); `mobile-worktree` integrada por fast-forward. Nada foi enviado ao remoto.
 - **Uncommitted files**: nenhum.

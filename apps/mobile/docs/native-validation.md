@@ -6,7 +6,7 @@
 
 **Plataforma deste ensaio:** iOS (decisão do usuário em 2026-10-21, por ser mais simples de executar). O app é híbrido e o código é o mesmo nas duas plataformas, mas a spec cita Android (UX-02 e QUAL-02). O resultado vale como **"validado no iOS"**; o Android só será declarado validado se for ensaiado também (seção "Android, opcional" no fim).
 
-**Estado:** PENDENTE. Nenhum cenário foi executado.
+**Estado:** EXECUTADO NO iOS, relato global do usuário em 2026-10-21 ("Validado o iOS"). O relato não detalha cenários, aparelho, versão do iOS nem o uso de VoiceOver e Texto Maior; o resultado abaixo é o do relato, sem observações por cenário. **Android não ensaiado.**
 
 ## Pré-requisitos
 
@@ -26,12 +26,12 @@
 
 | Campo | Valor |
 | --- | --- |
-| Data | (preencher) |
-| Simulador ou aparelho e versão do iOS | (preencher) |
-| Leitor de tela usado | VoiceOver (preencher a versão do iOS) |
-| Commit do app (`git rev-parse --short HEAD`) | (preencher) |
-| URL da API usada (sem credenciais) | (preencher) |
-| Saldo inicial | (esperado 5000 centavos, R$ 50,00) |
+| Data | 2026-10-21 (relato do usuário) |
+| Simulador ou aparelho e versão do iOS | não informado (havia um simulador iPhone 17 ligado) |
+| Leitor de tela usado | não informado |
+| Commit do app | `b80fe36` (HEAD quando o relato foi dado) |
+| URL da API usada (sem credenciais) | `http://127.0.0.1:5001` (ou `http://localhost:5001`) |
+| Saldo inicial | não informado (a demo estava em 3110 antes do ensaio) |
 
 ## Cenários
 
@@ -88,17 +88,23 @@ A compra real está habilitada (gate C2 provado contra a API real em 2026-10-21)
 
 | Cenário | Resultado | Observações |
 | --- | --- | --- |
-| 1. Abas e Home inicial | PENDENTE | |
-| 2. Header e layout | PENDENTE | |
-| 3. Compra controlada | PENDENTE | |
-| 4. Seleção e badge | PENDENTE | |
-| 5. Histórico e detalhe | PENDENTE | |
-| 6. Rede e retry explícito | PENDENTE | |
-| 7. Suspensão e retomada | PENDENTE | |
-| 8. Acessibilidade e texto ampliado | PENDENTE | |
+| 1. Abas e Home inicial | APROVADO (relato global do usuário) | Sem observação por cenário |
+| 2. Header e layout | APROVADO (relato global do usuário) | Sem observação por cenário |
+| 3. Compra controlada | APROVADO (relato global do usuário) | Sem observação por cenário |
+| 4. Seleção e badge | APROVADO (relato global do usuário) | Sem observação por cenário |
+| 5. Histórico e detalhe | APROVADO (relato global do usuário) | Sem observação por cenário |
+| 6. Rede e retry explícito | APROVADO (relato global do usuário) | Sem observação por cenário |
+| 7. Suspensão e retomada | APROVADO (relato global do usuário) | Sem observação por cenário |
+| 8. Acessibilidade e texto ampliado | APROVADO (relato global do usuário) | Sem observação por cenário |
 
 Falhas encontradas viram tarefas corretivas atômicas, cada uma com teste de regressão, e o cenário falho é reexecutado antes de fechar este gate.
 
 ## Android, opcional
 
 Para declarar também o Android, repetir os oito cenários com: emulador Android (`EXPO_PUBLIC_API_URL=http://10.0.2.2:5001 pnpm --filter @cicclo/mobile android`) ou aparelho (`http://<IP do Mac>:5001`), TalkBack no lugar do VoiceOver e fonte do sistema em 200% no lugar do texto ampliado do iOS. Enquanto isso não for feito, a entrega fica registrada como "validada no iOS".
+
+## Limites deste registro
+
+- O aprovado é a palavra do usuário sobre a execução, não uma evidência com captura ou observações; vale como o gate N1 do AD-005 (executado pelo usuário), restrito ao iOS (AD-006).
+- Não há registro de que VoiceOver, Texto Maior, modo avião e o cenário de compra tenham sido exercitados um a um. Se algum não foi, o cenário correspondente segue sem prova.
+- Android, TalkBack e fonte 200% não foram ensaiados.
