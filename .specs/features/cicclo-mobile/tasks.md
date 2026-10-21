@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** em andamento. Última tarefa concluída: T27 (21/37 com Done when marcado); ver STATE.md.
+**Execução:** em andamento. Última tarefa concluída: T28 (21/37 com Done when marcado); ver STATE.md.
 
 ## Execution Protocol
 
@@ -424,7 +424,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Resultado confirmado e rota detalhe criada em T26; queries públicas, sem detalhes internos de bookings.
 **Requirement**: BUY-06, BUY-07, BOOK-01, BOOK-05, SEL-06.
 **What**: Conectar CTA pós-compra ao detalhe real e validar convergência da lista/detalhe após contratação.
-**Done when**: [ ] Nenhuma rota inexistente; booking confirmado aparece após invalidação/refetch; retornar à Home mantém novo saldo confirmado; C3/demo E4 atendidos.
+**Done when**: [~] Nenhuma rota inexistente; booking confirmado aparece após invalidação/refetch; retornar à Home mantém novo saldo confirmado; C3/demo E4 atendidos.
 **Tests**: integration — teto de 4 casos: compra→detalhe, compra→Serviços/lista, retorno às tabs e falha GET pós-sucesso sem POST repetido.
 **Gate**: F + B no fechamento E4 + C3 + CC.
 **Commit**: `feat(checkout): link confirmed purchases to live tracking`
@@ -709,7 +709,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **21/37 tarefas com Done when marcado** (última: T27); demais abertas ou pendentes de gate externo.
+- Implementação: **21/37 tarefas com Done when marcado** (última: T28); demais abertas ou pendentes de gate externo.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1/C2/C3/CP1 não comprovadas; N1 não executado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.

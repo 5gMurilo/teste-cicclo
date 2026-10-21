@@ -38,6 +38,7 @@ export function CheckoutScreen() {
         ))}
         <Row label="Valor cobrado" cents={booking.chargedAmountCents} />
         <Row label="Saldo restante" cents={booking.remainingBalanceCents} />
+        <ActionButton label="Ver contratação" onPress={() => router.push(`/bookings/${booking.bookingId}`)} />
         <ActionButton label="Ver serviços" onPress={() => router.navigate('/services')} />
         <ActionButton
           label="Nova seleção"
