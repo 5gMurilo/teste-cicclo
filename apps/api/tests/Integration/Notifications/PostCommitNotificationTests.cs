@@ -9,6 +9,7 @@ using Cicclo.Api.Laundry.Notifications;
 using Cicclo.Api.Tests.Integration.Bookings;
 using Cicclo.Api.Tests.Integration.Laundry;
 using Cicclo.Api.Tests.Support;
+using Cicclo.Api.Wallet.ReadCaching;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR;
@@ -390,13 +391,16 @@ public sealed class PostCommitNotificationTests(PostgresFixture postgres)
         Assert.Equal(("booking.updated", booking.Booking), (updated.Name, updated.Payload.GetProperty("bookingId").GetGuid()));
         Assert.IsType<DefaultHubLifetimeManager<LaundryHub>>(factory.Services.GetRequiredService<HubLifetimeManager<LaundryHub>>());
         Assert.IsType<LaundryNotificationPublisher>(factory.Services.GetRequiredService<ILaundryNotifications>());
-        Assert.DoesNotContain(
-            AppDomain.CurrentDomain.GetAssemblies(),
-            assembly => assembly.GetName().Name!.Contains("Redis", StringComparison.OrdinalIgnoreCase));
-        Assert.DoesNotContain(
-            typeof(Program).Assembly.GetReferencedAssemblies(),
-            reference => reference.Name!.Contains("Redis", StringComparison.OrdinalIgnoreCase));
+        // StackExchange.Redis pertence ao cache opcional (E08), desligado aqui: nenhum adaptador nem conexão Redis é
+        // registrado, e nenhum backplane SignalR Redis é referenciado ou carregado.
+        Assert.Null(factory.Services.GetService<IWalletReadCache>());
+        Assert.Null(factory.Services.GetService<StackExchange.Redis.IConnectionMultiplexer>());
+        Assert.DoesNotContain(AppDomain.CurrentDomain.GetAssemblies(), assembly => IsSignalRRedisBackplane(assembly.GetName().Name!));
+        Assert.DoesNotContain(typeof(Program).Assembly.GetReferencedAssemblies(), reference => IsSignalRRedisBackplane(reference.Name!));
     }
+
+    private static bool IsSignalRRedisBackplane(string assembly) =>
+        assembly.Contains("SignalR", StringComparison.OrdinalIgnoreCase) && assembly.Contains("Redis", StringComparison.OrdinalIgnoreCase);
 
     private static WebApplicationFactory<Program> Host(
         TestDatabase database, FakeTimeProvider clock, Dictionary<string, string> settings, object? notifications = null, CapturingLoggerProvider? logs = null) =>

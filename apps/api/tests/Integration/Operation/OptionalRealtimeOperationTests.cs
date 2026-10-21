@@ -4,6 +4,7 @@ using System.Text.Json;
 using Cicclo.Api.Bookings.CreateBooking;
 using Cicclo.Api.Laundry.Notifications;
 using Cicclo.Api.Tests.Support;
+using Cicclo.Api.Wallet.ReadCaching;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR;
@@ -180,7 +181,13 @@ public sealed class OptionalRealtimeOperationTests(PostgresFixture postgres)
         Assert.Equal(HttpStatusCode.OK, ready.StatusCode);
         Assert.IsType<DefaultHubLifetimeManager<LaundryHub>>(factory.Services.GetRequiredService<HubLifetimeManager<LaundryHub>>());
         Assert.Null(configuration.GetConnectionString("Redis"));
-        Assert.DoesNotContain(AppDomain.CurrentDomain.GetAssemblies(), assembly => assembly.GetName().Name!.Contains("Redis", StringComparison.OrdinalIgnoreCase));
+        // O cache opcional (E08) desligado não registra adaptador nem conexão Redis; o realtime não usa backplane Redis.
+        Assert.Null(factory.Services.GetService<IWalletReadCache>());
+        Assert.Null(factory.Services.GetService<StackExchange.Redis.IConnectionMultiplexer>());
+        Assert.DoesNotContain(
+            AppDomain.CurrentDomain.GetAssemblies(),
+            assembly => assembly.GetName().Name!.Contains("SignalR", StringComparison.OrdinalIgnoreCase)
+                && assembly.GetName().Name!.Contains("Redis", StringComparison.OrdinalIgnoreCase));
     }
 
     [Theory]
