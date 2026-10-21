@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using Cicclo.Api.Laundry;
 using Cicclo.Api.Wallet;
 
 namespace Cicclo.Api.Bookings.CreateBooking;
@@ -34,15 +36,30 @@ public sealed record CreateBookingResult(
 /// <summary>
 /// Caso de uso interno de compra com a wallet demo, numa única transação:
 /// lock da wallet → replay pela chave → catálogo/capacidade sob lock → preço autoritativo →
-/// débito condicional → booking/itens/débito → commit. O replay precede toda regra dinâmica.
-/// Itens nascem pending_activation; a ativação entra na mesma transação antes do POST público (E04).
+/// débito condicional → booking/itens/débito → ativação inicial → commit. O replay precede toda regra dinâmica.
+/// Itens nascem pending_activation; na mesma transação, compra de um item ativa esse item, lote com preferência ativa
+/// a primeira ocorrência do serviço preferido e lote sem preferência fica todo pendente. Falha na ativação reverte tudo.
 /// </summary>
-public sealed partial class CreateBooking(ICreateBookingSessions sessions, TimeProvider time, ILogger<CreateBooking> logger)
+public sealed partial class CreateBooking(
+    ICreateBookingSessions sessions, QueueCoordinator coordinator, LaundryMetrics laundryMetrics, TimeProvider time, ILogger<CreateBooking> logger)
 {
     /// <summary>Tentativas totais da unidade inteira quando o rollback é conhecido.</summary>
     public const int MaxAttempts = 3;
 
+    /// <summary>Fonte dos spans de negócio da compra (booking.create).</summary>
+    public static readonly ActivitySource Activities = new(BookingMetrics.MeterName);
+
     public async Task<CreateBookingResult> ExecuteAsync(Guid idempotencyKey, BookingIntent intent, CancellationToken cancellationToken)
+    {
+        using var activity = Activities.StartActivity("booking.create");
+        var result = await ExecuteWithRetriesAsync(idempotencyKey, intent, cancellationToken);
+        activity?.SetTag("booking.outcome", result.Outcome.ToString());
+        activity?.SetTag("booking.rejection", result.Rejection?.ToString());
+        activity?.SetTag("booking.id", result.Booking?.BookingId.ToString());
+        return result;
+    }
+
+    private async Task<CreateBookingResult> ExecuteWithRetriesAsync(Guid idempotencyKey, BookingIntent intent, CancellationToken cancellationToken)
     {
         for (var attempt = 1; ; attempt++)
         {
@@ -64,6 +81,7 @@ public sealed partial class CreateBooking(ICreateBookingSessions sessions, TimeP
     {
         Booking booking;
         BookingSnapshot snapshot;
+        ActivationResult? activation;
         var commitOutcomeUnknown = false;
         await using (var session = await sessions.OpenAsync(cancellationToken))
         {
@@ -98,12 +116,14 @@ public sealed partial class CreateBooking(ICreateBookingSessions sessions, TimeP
                 .ToList();
             var debit = new LedgerEntry(Guid.CreateVersion7(instant), DemoWallet.Id, booking.Id, null, LedgerEntryKind.Debit, price.Total, remaining.Value, now);
             await session.AddAsync(booking, items, debit, cancellationToken);
+            activation = await ActivateInitialAsync(session, intent, items, cancellationToken);
             snapshot = new(
                 booking.Id,
                 booking.TotalAmount,
                 remaining.Value,
                 now,
-                Ordered(items.Select(item => new BookingItemSnapshot(item.Id, item.ServiceCode, item.UnitPrice, item.Status))));
+                Ordered(items.Select(item => new BookingItemSnapshot(
+                    item.Id, item.ServiceCode, item.UnitPrice, item.Id == activation?.Item!.ItemId ? activation.Item.Status : item.Status))));
 
             try
             {
@@ -123,8 +143,34 @@ public sealed partial class CreateBooking(ICreateBookingSessions sessions, TimeP
             return await ReconcileAsync(idempotencyKey, intent, booking.Id, cancellationToken);
         }
 
+        if (activation?.Changes is { } changes)
+        {
+            laundryMetrics.RecordCommitted([changes]);
+        }
+
         LogCreated(booking.Id, snapshot.Items.Count);
         return new(CreateBookingOutcome.Created, snapshot);
+    }
+
+    /// <summary>
+    /// Ativação inicial na transação da compra: o único item, ou a primeira ocorrência (ordem canônica) do serviço
+    /// preferido; sem preferência num lote, nada é ativado. Usa o mesmo coordenador de fila dos comandos e do worker.
+    /// </summary>
+    private async Task<ActivationResult?> ActivateInitialAsync(
+        ICreateBookingSession session, BookingIntent intent, IReadOnlyList<BookingItem> items, CancellationToken cancellationToken)
+    {
+        var target = items.Count == 1
+            ? items[0]
+            : items.FirstOrDefault(item => string.Equals(item.ServiceCode, intent.PreferredFirstServiceCode, StringComparison.Ordinal));
+        if (target is null)
+        {
+            return null;
+        }
+
+        var activation = await coordinator.ActivateAsync(session.Queue, target.Id, cancellationToken);
+        return activation.Outcome == ActivationOutcome.Activated
+            ? activation
+            : throw new InvalidOperationException($"Ativação inicial do item recém-criado recusada: {activation.Outcome}.");
     }
 
     /// <summary>

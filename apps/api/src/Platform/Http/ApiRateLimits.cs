@@ -25,6 +25,9 @@ public static class ApiRateLimits
     /// <summary>Leituras de contratações e do histórico financeiro: `RateLimiting:BookingReads:PermitLimit`, padrão 30.</summary>
     public const string BookingReads = "booking-reads";
 
+    /// <summary>POST de compra: `RateLimiting:BookingCreate:PermitLimit`, padrão 5.</summary>
+    public const string BookingCreate = "booking-create";
+
     public const string UnknownPartition = "unknown";
 
     private static readonly TimeSpan Window = TimeSpan.FromMinutes(1);
@@ -33,6 +36,7 @@ public static class ApiRateLimits
     [
         (Reads, "Reads", 60),
         (BookingReads, "BookingReads", 30),
+        (BookingCreate, "BookingCreate", 5),
     ];
 
     public static IServiceCollection AddApiRateLimits(this IServiceCollection services, IConfiguration configuration)

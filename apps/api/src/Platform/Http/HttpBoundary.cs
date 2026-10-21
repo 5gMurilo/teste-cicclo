@@ -26,5 +26,31 @@ public static class HttpBoundary
         return services;
     }
 
-    public static IApplicationBuilder UseHttpBoundary(this IApplicationBuilder app) => app.UseExceptionHandler();
+    /// <summary>
+    /// Tratamento de exceções e limite de corpo: Content-Length acima do limite é recusado com 413 antes de qualquer
+    /// leitura (também no TestServer, que não aplica o limite do Kestrel). Um 413 ou 415 sem corpo, que o binding de
+    /// Minimal APIs produz sem lançar exceção (corpo chunked acima do limite, Content-Type que não é JSON), recebe o
+    /// mesmo Problem Details.
+    /// </summary>
+    public static IApplicationBuilder UseHttpBoundary(this IApplicationBuilder app) =>
+        app.UseExceptionHandler().Use(async (context, next) =>
+        {
+            if (context.Request.ContentLength > MaxRequestBodyBytes)
+            {
+                await ApiProblems.TooLarge(context).ExecuteAsync(context);
+                return;
+            }
+
+            await next(context);
+            if (!context.Response.HasStarted)
+            {
+                var problem = context.Response.StatusCode switch
+                {
+                    StatusCodes.Status413PayloadTooLarge => ApiProblems.TooLarge(context),
+                    StatusCodes.Status415UnsupportedMediaType => ApiProblems.Unsupported(context),
+                    _ => null,
+                };
+                await (problem?.ExecuteAsync(context) ?? Task.CompletedTask);
+            }
+        });
 }

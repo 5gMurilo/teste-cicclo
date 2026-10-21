@@ -1,4 +1,5 @@
 using System.Data;
+using Cicclo.Api.Laundry;
 using Cicclo.Api.Platform.Persistence;
 using Cicclo.Api.Platform.Persistence.Configurations;
 using Cicclo.Api.Services;
@@ -40,6 +41,8 @@ public sealed class PostgresCreateBookingSessions(IDbContextFactory<CiccloDbCont
     private sealed class Session(CiccloDbContext db, IDbContextTransaction transaction) : ICreateBookingSession
     {
         private static readonly string[] OperationalStates = [.. ServiceAvailability.OperationalStates.Select(LaundryColumns.ToText)];
+
+        public IQueueSession Queue { get; } = new PostgresQueueSession(db);
 
         public Task<decimal> LockWalletAsync(Guid walletId, CancellationToken cancellationToken) => Translate(async () =>
         {

@@ -1,5 +1,6 @@
 using Cicclo.Api.Bookings;
 using Cicclo.Api.Bookings.CreateBooking;
+using Cicclo.Api.Laundry;
 using Cicclo.Api.Wallet;
 
 namespace Cicclo.Api.Tests.Integration.Bookings;
@@ -39,6 +40,8 @@ public sealed class ScriptedBookingSessions(ICreateBookingSessions inner) : ICre
 
     private sealed class Session(ScriptedBookingSessions script, int number, ICreateBookingSession inner) : ICreateBookingSession
     {
+        public IQueueSession Queue => inner.Queue;
+
         public Task<decimal> LockWalletAsync(Guid walletId, CancellationToken cancellationToken) => Observe(async () =>
         {
             var balance = await inner.LockWalletAsync(walletId, cancellationToken);
