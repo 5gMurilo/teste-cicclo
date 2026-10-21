@@ -2,7 +2,7 @@
 
 **Status:** Approved, pré-aprovado expressamente pelo usuário nesta conversa em 2026-10-21, sem Plannotator.
 **Spec:** [spec.md](spec.md). **Design:** [design.md](design.md).
-**Execução:** em andamento. T1 (E0) a T7 concluídas em 2026-10-21; T8–T37 abertas.
+**Execução:** em andamento. T1 (E0) a T8 concluídas em 2026-10-21; T9–T37 abertas.
 
 ## Execution Protocol
 
@@ -196,7 +196,7 @@ Todas as tarefas herdam o protocolo de conclusão, Gate + CC e padrão de ferram
 **Reuses**: Transporte, QueryClient, Zod e padrão público wallet.
 **Requirement**: READ-04, READ-05, READ-06, SAFE-01.
 **What**: Implementar o único GET catálogo com schema próprio, key e options; documentar contrato real ou temporário.
-**Done when**: [ ] Preço/nome vêm da resposta; códigos/desativação/motivos preservados; sem tipos manuais paralelos a gerados; registry contratual registra origem do schema.
+**Done when**: [x] Preço/nome vêm da resposta; códigos/desativação/motivos preservados; sem tipos manuais paralelos a gerados; registry contratual registra origem do schema.
 **Tests**: integration — teto de 5 casos: catálogo válido, preço variável, vazio, item indisponível, obrigatório inválido/erro; fixtures não entram no bundle real.
 **Gate**: F + CC; C1 necessário para saída E1.
 **Commit**: `feat(catalog): query authoritative service availability`
@@ -709,7 +709,7 @@ Relatório pode ser versionado em commit documental de fechamento depois do últ
 ## Estado inicial e retomada
 
 - Planejamento: pré-aprovado por autorização expressa. Estrutura de spec/tasks deve passar antes de Execute.
-- Implementação: **7/37 tarefas executadas** (T1–T7 concluídas em 2026-10-21); demais checkboxes de Done when abertas.
+- Implementação: **8/37 tarefas executadas** (T1–T8 concluídas em 2026-10-21); demais checkboxes de Done when abertas.
 - Revisão 2026-10-21: testes mínimos e escopados (AD-004) e validação Android pelo usuário (AD-005) incorporados; tetos de casos em `Tests` não são obrigação.
 - Integrações externas: C1/C2/C3/CP1 não comprovadas; N1 não executado; não inferir endpoints do handoff.
 - P2: fora da lista padrão; ativação exige decisão explícita e ACs/tarefas próprios, conforme spec aprovada.
